@@ -1,11 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Archive, Trash2 } from 'lucide-react';
+import { Plus, BookOpen, Archive, Trash2, Beaker } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { loadSampleData } from '../utils/sampleData';
 
 export function Home() {
   const navigate = useNavigate();
-  const { theses, createThesis, deleteThesis, setActiveThesis, getPapersForThesis } = useAppStore();
+  const {
+    theses,
+    createThesis,
+    deleteThesis,
+    setActiveThesis,
+    getPapersForThesis,
+    addPaper,
+    createConnection,
+  } = useAppStore();
   const [showNewThesisForm, setShowNewThesisForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -35,6 +44,12 @@ export function Home() {
     navigate(`/thesis/${id}`);
   };
 
+  const handleLoadSampleData = () => {
+    const thesisId = loadSampleData(createThesis, addPaper, createConnection);
+    setActiveThesis(thesisId);
+    navigate(`/thesis/${thesisId}`);
+  };
+
   return (
     <div className="min-h-screen p-8">
       {/* Header */}
@@ -53,13 +68,25 @@ export function Home() {
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
             Your Research
           </h2>
-          <button
-            onClick={() => setShowNewThesisForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Plus size={20} />
-            New Thesis
-          </button>
+          <div className="flex items-center gap-2">
+            {activeTheses.length === 0 && (
+              <button
+                onClick={handleLoadSampleData}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                title="Load sample data to explore the app"
+              >
+                <Beaker size={20} />
+                Load Demo
+              </button>
+            )}
+            <button
+              onClick={() => setShowNewThesisForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus size={20} />
+              New Thesis
+            </button>
+          </div>
         </div>
 
         {/* New Thesis Form */}
@@ -123,13 +150,22 @@ export function Home() {
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               Create your first thesis to start building your knowledge graph.
             </p>
-            <button
-              onClick={() => setShowNewThesisForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus size={20} />
-              Create Your First Thesis
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setShowNewThesisForm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <Plus size={20} />
+                Create Your First Thesis
+              </button>
+              <button
+                onClick={handleLoadSampleData}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+              >
+                <Beaker size={20} />
+                Load Demo Data
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">

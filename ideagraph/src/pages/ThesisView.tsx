@@ -2,18 +2,35 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, List, Network, Calendar } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { AddPaperModal } from '../components/paper/AddPaperModal';
+import { PaperDetail } from '../components/paper/PaperDetail';
+import { GraphView } from '../components/visualization/GraphView';
 
 type ViewMode = 'list' | 'graph' | 'timeline';
 
 export function ThesisView() {
   const { thesisId } = useParams<{ thesisId: string }>();
   const navigate = useNavigate();
-  const { theses, getPapersForThesis, getConnectionsForThesis } = useAppStore();
+  const {
+    theses,
+    getPapersForThesis,
+    getConnectionsForThesis,
+    getConnectionsForPaper,
+    selectedPaperId,
+    setSelectedPaper,
+  } = useAppStore();
+
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const thesis = theses.find((t) => t.id === thesisId);
   const papers = thesisId ? getPapersForThesis(thesisId) : [];
   const connections = thesisId ? getConnectionsForThesis(thesisId) : [];
+
+  const selectedPaper = papers.find((p) => p.id === selectedPaperId);
+  const selectedPaperConnections = selectedPaperId
+    ? getConnectionsForPaper(selectedPaperId)
+    : [];
 
   if (!thesis) {
     return (
@@ -97,14 +114,19 @@ export function ThesisView() {
             </button>
           </div>
 
-          {/* Add Paper Button */}
-          <button
-            onClick={() => alert('Add paper modal coming soon!')}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <Plus size={20} />
-            Add Paper
-          </button>
+          {/* Stats & Add Paper Button */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {papers.length} papers · {connections.length} connections
+            </span>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Plus size={20} />
+              Add Paper
+            </button>
+          </div>
         </div>
       </div>
 
@@ -120,7 +142,7 @@ export function ThesisView() {
               Add your first paper to start building your knowledge graph.
             </p>
             <button
-              onClick={() => alert('Add paper modal coming soon!')}
+              onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <Plus size={20} />
@@ -129,18 +151,25 @@ export function ThesisView() {
           </div>
         ) : (
           <div>
+            {/* List View */}
             {viewMode === 'list' && (
               <div className="space-y-4">
                 {papers.map((paper) => (
                   <div
                     key={paper.id}
-                    className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+                    onClick={() => setSelectedPaper(paper.id)}
+                    className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border cursor-pointer transition-all ${
+                      selectedPaperId === paper.id
+                        ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
                   >
                     <h3 className="font-medium text-gray-900 dark:text-white">
                       {paper.title}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {paper.authors.map((a) => a.name).join(', ')} ({paper.year})
+                      {paper.authors.map((a) => a.name).join(', ')}
+                      {paper.year && ` (${paper.year})`}
                     </p>
                     <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
                       Takeaway: {paper.takeaway}
@@ -160,34 +189,110 @@ export function ThesisView() {
                         {paper.thesisRole}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {paper.readingStatus}
+                        {paper.readingStatus.replace('-', ' ')}
                       </span>
+                      {paper.citationCount !== null && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          · {paper.citationCount} citations
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Graph View */}
             {viewMode === 'graph' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                <div className="graph-container h-[600px] flex items-center justify-center text-gray-500">
-                  Graph visualization coming soon...
-                  <br />
-                  ({papers.length} papers, {connections.length} connections)
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="h-[600px]">
+                  <GraphView
+                    thesis={thesis}
+                    papers={papers}
+                    connections={connections}
+                    onPaperSelect={(id) => setSelectedPaper(id)}
+                  />
                 </div>
               </div>
             )}
 
+            {/* Timeline View */}
             {viewMode === 'timeline' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                <div className="text-center py-12 text-gray-500">
-                  Timeline view coming soon...
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
+
+                  {/* Papers sorted by year */}
+                  <div className="space-y-6">
+                    {papers
+                      .filter((p) => p.year)
+                      .sort((a, b) => (b.year || 0) - (a.year || 0))
+                      .map((paper) => (
+                        <div
+                          key={paper.id}
+                          onClick={() => setSelectedPaper(paper.id)}
+                          className="relative pl-10 cursor-pointer"
+                        >
+                          {/* Year dot */}
+                          <div
+                            className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 ${
+                              paper.thesisRole === 'supports'
+                                ? 'bg-green-500'
+                                : paper.thesisRole === 'contradicts'
+                                ? 'bg-red-500'
+                                : paper.thesisRole === 'method'
+                                ? 'bg-blue-500'
+                                : 'bg-gray-400'
+                            }`}
+                          />
+
+                          {/* Content */}
+                          <div
+                            className={`p-3 rounded-lg transition-all ${
+                              selectedPaperId === paper.id
+                                ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                            }`}
+                          >
+                            <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                              {paper.year}
+                            </div>
+                            <h4 className="font-medium text-gray-900 dark:text-white mt-1">
+                              {paper.title}
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {paper.takeaway}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
             )}
           </div>
         )}
       </main>
+
+      {/* Add Paper Modal */}
+      {showAddModal && thesisId && (
+        <AddPaperModal
+          thesisId={thesisId}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Paper Detail Panel */}
+      {selectedPaper && (
+        <PaperDetail
+          paper={selectedPaper}
+          connections={selectedPaperConnections}
+          allPapers={papers}
+          onClose={() => setSelectedPaper(null)}
+          onAddConnection={() => alert('Connection editor coming soon!')}
+        />
+      )}
     </div>
   );
 }

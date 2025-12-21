@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(winget search:*)",
+      "Bash(winget install:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(del App.css)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
