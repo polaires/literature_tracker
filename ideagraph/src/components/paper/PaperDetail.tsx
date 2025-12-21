@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { X, ExternalLink, Trash2, Edit2, Link2, Trash } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen } from 'lucide-react';
 import type { Paper, Connection } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { PaperEditModal } from './PaperEditModal';
 import { ConnectionEditor } from '../connection/ConnectionEditor';
+import { PDFViewer, PDFUpload } from '../pdf';
+import { pdfStorage } from '../../services/pdfStorage';
 
 interface PaperDetailProps {
   paper: Paper;
@@ -39,6 +41,36 @@ export function PaperDetail({
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConnectionEditor, setShowConnectionEditor] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [hasPDF, setHasPDF] = useState(false);
+  const [pdfMetadata, setPdfMetadata] = useState<{ filename: string; fileSize: number } | null>(null);
+
+  // Check if paper has a stored PDF
+  useEffect(() => {
+    async function checkPDF() {
+      const hasStoredPDF = await pdfStorage.hasPDF(paper.id);
+      setHasPDF(hasStoredPDF || !!paper.pdfUrl);
+
+      if (hasStoredPDF) {
+        const metadata = await pdfStorage.getPDFMetadata(paper.id);
+        setPdfMetadata(metadata);
+      }
+    }
+    checkPDF();
+  }, [paper.id, paper.pdfUrl]);
+
+  const handlePDFUploadComplete = (metadata: { id: string; filename: string; fileSize: number }) => {
+    setHasPDF(true);
+    setPdfMetadata({ filename: metadata.filename, fileSize: metadata.fileSize });
+    setShowPDFUpload(false);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const handleDelete = () => {
     if (confirm('Delete this paper and all its connections?')) {
@@ -275,6 +307,46 @@ export function PaperDetail({
           )}
         </div>
 
+        {/* PDF Section */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            PDF Document
+          </h3>
+          {hasPDF ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowPDFViewer(true)}
+                className="flex-1 flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+              >
+                <BookOpen size={20} />
+                <div className="text-left">
+                  <p className="text-sm font-medium">Open PDF Reader</p>
+                  {pdfMetadata && (
+                    <p className="text-xs opacity-75">
+                      {pdfMetadata.filename} ({formatFileSize(pdfMetadata.fileSize)})
+                    </p>
+                  )}
+                </div>
+              </button>
+              <button
+                onClick={() => setShowPDFUpload(true)}
+                className="p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Upload different PDF"
+              >
+                <Upload size={18} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowPDFUpload(true)}
+              className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              <FileText size={20} />
+              <span>Add PDF for annotations</span>
+            </button>
+          )}
+        </div>
+
         {/* Links */}
         <div className="flex items-center gap-4">
           {paper.doi && (
@@ -334,6 +406,23 @@ export function PaperDetail({
           thesisId={thesisId}
           sourcePaper={paper}
           onClose={() => setShowConnectionEditor(false)}
+        />
+      )}
+
+      {/* PDF Viewer */}
+      {showPDFViewer && (
+        <PDFViewer
+          paper={paper}
+          onClose={() => setShowPDFViewer(false)}
+        />
+      )}
+
+      {/* PDF Upload */}
+      {showPDFUpload && (
+        <PDFUpload
+          paperId={paper.id}
+          onUploadComplete={handlePDFUploadComplete}
+          onClose={() => setShowPDFUpload(false)}
         />
       )}
     </div>

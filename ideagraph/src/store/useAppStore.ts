@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Thesis, Paper, Connection, UserSettings } from '../types';
+import type { Thesis, Paper, Connection, UserSettings, PDFAnnotation } from '../types';
 
 interface AppStore {
   // Data
   theses: Thesis[];
   papers: Paper[];
   connections: Connection[];
+  annotations: PDFAnnotation[];
 
   // Active state
   activeThesisId: string | null;
@@ -30,6 +31,14 @@ interface AppStore {
   // Connection actions
   createConnection: (connection: Omit<Connection, 'id' | 'createdAt'>) => Connection;
   deleteConnection: (id: string) => void;
+
+  // Annotation actions
+  addAnnotation: (annotation: Omit<PDFAnnotation, 'id' | 'createdAt' | 'updatedAt'>) => PDFAnnotation;
+  updateAnnotation: (id: string, updates: Partial<PDFAnnotation>) => void;
+  deleteAnnotation: (id: string) => void;
+  getAnnotationsForPaper: (paperId: string) => PDFAnnotation[];
+  linkAnnotationToArgument: (annotationId: string, argumentId: string | null) => void;
+  linkAnnotationToEvidence: (annotationId: string, evidenceId: string | null) => void;
 
   // Utilities
   getPapersForThesis: (thesisId: string) => Paper[];
@@ -62,6 +71,7 @@ export const useAppStore = create<AppStore>()(
       theses: [],
       papers: [],
       connections: [],
+      annotations: [],
       activeThesisId: null,
       selectedPaperId: null,
       settings: defaultSettings,
@@ -139,6 +149,7 @@ export const useAppStore = create<AppStore>()(
           connections: state.connections.filter(
             (c) => c.fromPaperId !== id && c.toPaperId !== id
           ),
+          annotations: state.annotations.filter((a) => a.paperId !== id),
           theses: state.theses.map((t) =>
             t.id === paper.thesisId
               ? { ...t, paperIds: t.paperIds.filter((pid) => pid !== id) }
@@ -190,6 +201,59 @@ export const useAppStore = create<AppStore>()(
             t.id === connection.thesisId
               ? { ...t, connectionIds: t.connectionIds.filter((cid) => cid !== id) }
               : t
+          ),
+        }));
+      },
+
+      // Annotation actions
+      addAnnotation: (annotationData) => {
+        const now = new Date().toISOString();
+        const annotation: PDFAnnotation = {
+          ...annotationData,
+          id: generateId(),
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((state) => ({
+          annotations: [...state.annotations, annotation],
+        }));
+        return annotation;
+      },
+
+      updateAnnotation: (id, updates) => {
+        set((state) => ({
+          annotations: state.annotations.map((a) =>
+            a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
+          ),
+        }));
+      },
+
+      deleteAnnotation: (id) => {
+        set((state) => ({
+          annotations: state.annotations.filter((a) => a.id !== id),
+        }));
+      },
+
+      getAnnotationsForPaper: (paperId) => {
+        return get().annotations.filter((a) => a.paperId === paperId);
+      },
+
+      linkAnnotationToArgument: (annotationId, argumentId) => {
+        set((state) => ({
+          annotations: state.annotations.map((a) =>
+            a.id === annotationId
+              ? { ...a, linkedArgumentId: argumentId || undefined, updatedAt: new Date().toISOString() }
+              : a
+          ),
+        }));
+      },
+
+      linkAnnotationToEvidence: (annotationId, evidenceId) => {
+        set((state) => ({
+          annotations: state.annotations.map((a) =>
+            a.id === annotationId
+              ? { ...a, linkedEvidenceId: evidenceId || undefined, updatedAt: new Date().toISOString() }
+              : a
           ),
         }));
       },

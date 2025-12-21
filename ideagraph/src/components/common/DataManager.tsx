@@ -9,6 +9,7 @@ import {
   Check,
   Trash2,
   HardDrive,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { Paper, ThesisRole } from '../../types';
@@ -39,6 +40,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
   const [confirmClear, setConfirmClear] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bibtexInputRef = useRef<HTMLInputElement>(null);
+  const risInputRef = useRef<HTMLInputElement>(null);
 
   // Export as JSON
   const handleExportJSON = () => {
@@ -262,6 +264,77 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
     } finally {
       setIsProcessing(false);
       if (bibtexInputRef.current) bibtexInputRef.current.value = '';
+    }
+  };
+
+  // Import RIS
+  const handleImportRIS = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    setImportResult(null);
+
+    try {
+      const text = await file.text();
+      const entries = parseRIS(text);
+
+      if (entries.length === 0) {
+        throw new Error('No valid RIS entries found');
+      }
+
+      // Need a thesis to import into
+      if (!activeThesis) {
+        throw new Error('Create a thesis first before importing papers');
+      }
+
+      let imported = 0;
+
+      for (const entry of entries) {
+        addPaper({
+          thesisId: activeThesis.id,
+          doi: entry.doi || null,
+          title: entry.title || 'Untitled',
+          authors: entry.authors || [],
+          year: entry.year || null,
+          journal: entry.journal || null,
+          volume: entry.volume || null,
+          issue: entry.issue || null,
+          pages: entry.pages || null,
+          abstract: entry.abstract || null,
+          url: entry.url || null,
+          pdfUrl: null,
+          citationCount: null,
+          takeaway: entry.abstract
+            ? entry.abstract.slice(0, 200) + (entry.abstract.length > 200 ? '...' : '')
+            : 'Imported from RIS - please add takeaway',
+          arguments: [],
+          evidence: [],
+          assessment: null,
+          thesisRole: 'background',
+          readingStatus: 'to-read',
+          tags: entry.keywords || [],
+          readAt: null,
+          source: 'bibtex', // Using bibtex as source type for imports
+          rawBibtex: null,
+        });
+        imported++;
+      }
+
+      setImportResult({
+        success: true,
+        message: `Imported ${imported} papers from RIS`,
+        details: `Added to "${activeThesis.title}"`,
+      });
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Failed to import RIS',
+        details: error instanceof Error ? error.message : 'Invalid RIS format',
+      });
+    } finally {
+      setIsProcessing(false);
+      if (risInputRef.current) risInputRef.current.value = '';
     }
   };
 
@@ -522,6 +595,44 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Import RIS */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <FileSpreadsheet className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      Import RIS
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Import papers from a RIS file (exported from EndNote, RefWorks, etc.).
+                      Papers will be added to your active thesis.
+                    </p>
+                    <input
+                      ref={risInputRef}
+                      type="file"
+                      accept=".ris,text/plain"
+                      onChange={handleImportRIS}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => risInputRef.current?.click()}
+                      disabled={isProcessing || theses.length === 0}
+                      className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                    >
+                      <Upload size={16} />
+                      {isProcessing ? 'Processing...' : 'Choose RIS File'}
+                    </button>
+                    {theses.length === 0 && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">
+                        Create a thesis first before importing papers
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -678,4 +789,130 @@ function parseBibTeX(bibtex: string): BibTeXEntry[] {
   }
 
   return entries;
+}
+
+// RIS Parser
+interface RISEntry {
+  title?: string;
+  authors?: { name: string }[];
+  year?: number;
+  journal?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  doi?: string;
+  url?: string;
+  abstract?: string;
+  keywords?: string[];
+}
+
+function parseRIS(ris: string): RISEntry[] {
+  const entries: RISEntry[] = [];
+  const lines = ris.split(/\r?\n/);
+
+  let currentEntry: RISEntry | null = null;
+  let currentTag = '';
+  let currentValue = '';
+
+  for (const line of lines) {
+    // Check for tag line (e.g., "TY  - JOUR")
+    const tagMatch = line.match(/^([A-Z][A-Z0-9])  - (.*)$/);
+
+    if (tagMatch) {
+      const [, tag, value] = tagMatch;
+
+      // Save previous multi-line value
+      if (currentEntry && currentTag && currentValue) {
+        applyRISField(currentEntry, currentTag, currentValue.trim());
+      }
+
+      currentTag = tag;
+      currentValue = value;
+
+      if (tag === 'TY') {
+        // Start new entry
+        currentEntry = {};
+      } else if (tag === 'ER') {
+        // End of record - save entry
+        if (currentEntry && currentEntry.title) {
+          entries.push(currentEntry);
+        }
+        currentEntry = null;
+        currentTag = '';
+        currentValue = '';
+      } else if (currentEntry) {
+        // Apply single-line field immediately for most tags
+        if (!['AB', 'N2'].includes(tag)) {
+          applyRISField(currentEntry, tag, value);
+          currentTag = '';
+          currentValue = '';
+        }
+      }
+    } else if (currentEntry && currentTag && line.trim()) {
+      // Continuation of multi-line field
+      currentValue += ' ' + line.trim();
+    }
+  }
+
+  return entries;
+}
+
+function applyRISField(entry: RISEntry, tag: string, value: string) {
+  switch (tag) {
+    case 'TI':
+    case 'T1':
+      entry.title = value;
+      break;
+    case 'AU':
+    case 'A1':
+      if (!entry.authors) entry.authors = [];
+      // RIS authors are typically "Last, First" format
+      entry.authors.push({ name: value.replace(/,\s*/g, ' ').trim() });
+      break;
+    case 'PY':
+    case 'Y1':
+      // Year can be "YYYY" or "YYYY/MM/DD" or "YYYY///"
+      const yearMatch = value.match(/^(\d{4})/);
+      if (yearMatch) {
+        entry.year = parseInt(yearMatch[1], 10);
+      }
+      break;
+    case 'JO':
+    case 'JF':
+    case 'T2':
+      entry.journal = value;
+      break;
+    case 'VL':
+      entry.volume = value;
+      break;
+    case 'IS':
+      entry.issue = value;
+      break;
+    case 'SP':
+      entry.pages = value;
+      break;
+    case 'EP':
+      if (entry.pages) {
+        entry.pages += '-' + value;
+      } else {
+        entry.pages = value;
+      }
+      break;
+    case 'DO':
+      entry.doi = value;
+      break;
+    case 'UR':
+    case 'L1':
+    case 'L2':
+      if (!entry.url) entry.url = value;
+      break;
+    case 'AB':
+    case 'N2':
+      entry.abstract = value;
+      break;
+    case 'KW':
+      if (!entry.keywords) entry.keywords = [];
+      entry.keywords.push(value);
+      break;
+  }
 }

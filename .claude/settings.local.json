@@ -9,7 +9,13 @@
       "Bash(del App.css)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(npx tsc -b)",
+      "Bash(npx vite build)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,6 +6,7 @@ import {
   List,
   Network,
   Calendar,
+  GitBranch,
   SortAsc,
   SortDesc,
   Filter,
@@ -13,15 +14,18 @@ import {
   Settings,
   X,
   ChevronDown,
+  Keyboard,
 } from 'lucide-react';
+import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
 import { AddPaperModal } from '../components/paper/AddPaperModal';
 import { PaperDetail } from '../components/paper/PaperDetail';
 import { GraphView } from '../components/visualization/GraphView';
+import { ArgumentMapView } from '../components/visualization/ArgumentMapView';
 import { DataManager } from '../components/common/DataManager';
 import type { ThesisRole, ReadingStatus } from '../types';
 
-type ViewMode = 'list' | 'graph' | 'timeline';
+type ViewMode = 'list' | 'graph' | 'timeline' | 'arguments';
 type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
 type SortOrder = 'asc' | 'desc';
 
@@ -51,6 +55,10 @@ export function ThesisView() {
   const [filterRole, setFilterRole] = useState<ThesisRole | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<ReadingStatus | 'all'>('all');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
+  // Refs for keyboard navigation
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const thesis = theses.find((t) => t.id === thesisId);
   const papers = thesisId ? getPapersForThesis(thesisId) : [];
@@ -139,6 +147,55 @@ export function ThesisView() {
     setFilterStatus('all');
   };
 
+  // Keyboard navigation
+  const handleNavigatePapers = useCallback(
+    (direction: 'up' | 'down') => {
+      if (filteredAndSortedPapers.length === 0) return;
+
+      const currentIndex = selectedPaperId
+        ? filteredAndSortedPapers.findIndex((p) => p.id === selectedPaperId)
+        : -1;
+
+      let newIndex: number;
+      if (direction === 'down') {
+        newIndex = currentIndex < filteredAndSortedPapers.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        newIndex = currentIndex > 0 ? currentIndex - 1 : filteredAndSortedPapers.length - 1;
+      }
+
+      setSelectedPaper(filteredAndSortedPapers[newIndex].id);
+    },
+    [filteredAndSortedPapers, selectedPaperId, setSelectedPaper]
+  );
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onNewPaper: () => setShowAddModal(true),
+    onSearch: () => searchInputRef.current?.focus(),
+    onToggleView: () => {
+      setViewMode((prev) => {
+        if (prev === 'list') return 'graph';
+        if (prev === 'graph') return 'timeline';
+        if (prev === 'timeline') return 'arguments';
+        return 'list';
+      });
+    },
+    onExport: () => setShowDataManager(true),
+    onEscape: () => {
+      if (showAddModal) setShowAddModal(false);
+      else if (showDataManager) setShowDataManager(false);
+      else if (showKeyboardHelp) setShowKeyboardHelp(false);
+      else if (selectedPaperId) setSelectedPaper(null);
+      else if (showFilterPanel) setShowFilterPanel(false);
+      else if (showSortMenu) setShowSortMenu(false);
+    },
+    onNavigateUp: () => handleNavigatePapers('up'),
+    onNavigateDown: () => handleNavigatePapers('down'),
+    onEnter: () => {
+      // Paper is already selected and displayed - no additional action needed
+    },
+  });
+
   if (!thesis) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -219,6 +276,17 @@ export function ThesisView() {
               <Calendar size={16} />
               Timeline
             </button>
+            <button
+              onClick={() => setViewMode('arguments')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'arguments'
+                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <GitBranch size={16} />
+              Arguments
+            </button>
           </div>
 
           {/* Search, Filter, Sort (List view only) */}
@@ -231,10 +299,11 @@ export function ThesisView() {
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search papers..."
+                  placeholder="Search papers... (⌘F)"
                   className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 {searchQuery && (
@@ -323,15 +392,23 @@ export function ThesisView() {
               {' · '}{connections.length} connections
             </span>
             <button
+              onClick={() => setShowKeyboardHelp(true)}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden md:flex"
+              title="Keyboard Shortcuts"
+            >
+              <Keyboard size={18} />
+            </button>
+            <button
               onClick={() => setShowDataManager(true)}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Data & Export"
+              title="Data & Export (⌘E)"
             >
               <Settings size={18} />
             </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              title="Add Paper (⌘N)"
             >
               <Plus size={18} />
               <span className="hidden sm:inline">Add Paper</span>
@@ -571,6 +648,19 @@ export function ThesisView() {
                 </div>
               </div>
             )}
+
+            {/* Arguments Map View */}
+            {viewMode === 'arguments' && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="h-[calc(100vh-300px)] min-h-[500px]">
+                  <ArgumentMapView
+                    thesis={thesis}
+                    papers={papers}
+                    onPaperSelect={(id) => setSelectedPaper(id)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -600,6 +690,58 @@ export function ThesisView() {
           thesisId={thesisId}
           onClose={() => setShowDataManager(false)}
         />
+      )}
+
+      {/* Keyboard Shortcuts Help Modal */}
+      {showKeyboardHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowKeyboardHelp(false)}
+          />
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <Keyboard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Keyboard Shortcuts
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowKeyboardHelp(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                {KEYBOARD_SHORTCUTS.map((shortcut, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {shortcut.action}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {shortcut.keys.map((key, j) => (
+                        <span key={j}>
+                          <kbd className="px-2 py-1 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-600">
+                            {key}
+                          </kbd>
+                          {j < shortcut.keys.length - 1 && (
+                            <span className="mx-1 text-gray-400">+</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center">
+                Press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 rounded">Esc</kbd> to close this dialog
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

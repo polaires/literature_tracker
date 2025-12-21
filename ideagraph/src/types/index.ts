@@ -123,6 +123,84 @@ export interface Connection {
 }
 
 // ============================================
+// PDF ANNOTATIONS (Zotero-like)
+// ============================================
+
+export type AnnotationType =
+  | 'highlight'     // Text highlight with color
+  | 'underline'     // Text underline
+  | 'note'          // Sticky note at position
+  | 'area'          // Rectangle selection (screenshot)
+  | 'text';         // Text insertion annotation
+
+export type AnnotationColor =
+  | 'yellow'        // Default highlight
+  | 'red'           // Important/contradicting
+  | 'green'         // Supporting/agree
+  | 'blue'          // Method/technical
+  | 'purple'        // Question/unclear
+  | 'orange';       // Review later
+
+export interface ScaledPosition {
+  boundingRect: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    width: number;
+    height: number;
+  };
+  rects: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    width: number;
+    height: number;
+  }>;
+  pageNumber: number;
+  // For viewport-independent storage
+  usePdfCoordinates?: boolean;
+}
+
+export interface PDFAnnotation {
+  id: string;
+  paperId: string;              // Links to Paper
+  type: AnnotationType;
+  color: AnnotationColor;
+
+  // Position (viewport-independent for storage)
+  position: ScaledPosition;
+
+  // Content
+  selectedText?: string;        // For highlights/underlines
+  comment?: string;             // User's note/comment
+  imageDataUrl?: string;        // For area selections (base64)
+
+  // IdeaGraph Integration - THE KEY DIFFERENTIATOR
+  linkedArgumentId?: string;    // Link highlight to an argument
+  linkedEvidenceId?: string;    // Link highlight to evidence
+  exportedToTakeaway?: boolean; // Was this exported to paper takeaway?
+  tags: string[];               // User tags for organization
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  pageLabel?: string;           // Display label (e.g., "p. 5")
+}
+
+// For PDF file storage
+export interface PDFFile {
+  id: string;
+  paperId: string;
+  filename: string;
+  fileSize: number;
+  // Stored in IndexedDB as ArrayBuffer, not in this object
+  addedAt: string;
+  lastOpenedAt: string;
+}
+
+// ============================================
 // APPLICATION STATE
 // ============================================
 

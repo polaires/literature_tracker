@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings } from 'lucide-react';
+import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings, Clock, AlertCircle, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { loadSampleData } from '../utils/sampleData';
 import { DataManager } from '../components/common/DataManager';
+import type { Paper } from '../types';
 
 export function Home() {
   const navigate = useNavigate();
   const {
     theses,
+    papers,
     createThesis,
     updateThesis,
     deleteThesis,
@@ -22,6 +24,75 @@ export function Home() {
   const [newDescription, setNewDescription] = useState('');
   const [showDataManager, setShowDataManager] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [showStats, setShowStats] = useState(false);
+
+  // Calculate forgotten papers (not accessed in 14+ days)
+  const forgottenPapers = useMemo(() => {
+    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const activeThesisIds = theses.filter((t) => !t.isArchived).map((t) => t.id);
+
+    return papers
+      .filter((p) => {
+        const lastAccessed = new Date(p.lastAccessedAt).getTime();
+        return (
+          activeThesisIds.includes(p.thesisId) &&
+          lastAccessed < fourteenDaysAgo &&
+          p.readingStatus !== 'read' // Don't remind about fully read papers
+        );
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.lastAccessedAt).getTime() - new Date(b.lastAccessedAt).getTime()
+      )
+      .slice(0, 5); // Show max 5
+  }, [papers, theses]);
+
+  // Reading statistics
+  const readingStats = useMemo(() => {
+    const activeThesisIds = theses.filter((t) => !t.isArchived).map((t) => t.id);
+    const activePapers = papers.filter((p) => activeThesisIds.includes(p.thesisId));
+
+    const byStatus = {
+      'to-read': activePapers.filter((p) => p.readingStatus === 'to-read').length,
+      reading: activePapers.filter((p) => p.readingStatus === 'reading').length,
+      read: activePapers.filter((p) => p.readingStatus === 'read').length,
+      'to-revisit': activePapers.filter((p) => p.readingStatus === 'to-revisit').length,
+    };
+
+    const byRole = {
+      supports: activePapers.filter((p) => p.thesisRole === 'supports').length,
+      contradicts: activePapers.filter((p) => p.thesisRole === 'contradicts').length,
+      method: activePapers.filter((p) => p.thesisRole === 'method').length,
+      background: activePapers.filter((p) => p.thesisRole === 'background').length,
+      other: activePapers.filter((p) => p.thesisRole === 'other').length,
+    };
+
+    // Papers added in last 7 days
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentlyAdded = activePapers.filter(
+      (p) => new Date(p.addedAt).getTime() > sevenDaysAgo
+    ).length;
+
+    return {
+      total: activePapers.length,
+      byStatus,
+      byRole,
+      recentlyAdded,
+    };
+  }, [papers, theses]);
+
+  const getDaysAgo = (dateStr: string) => {
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  const handleOpenPaper = (paper: Paper) => {
+    const thesis = theses.find((t) => t.id === paper.thesisId);
+    if (thesis) {
+      setActiveThesis(thesis.id);
+      navigate(`/thesis/${thesis.id}`);
+    }
+  };
 
   const handleArchiveThesis = (id: string, archive: boolean) => {
     updateThesis(id, { isArchived: archive });
@@ -84,6 +155,114 @@ export function Home() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto">
+        {/* Forgotten Papers Alert */}
+        {forgottenPapers.length > 0 && (
+          <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-2">
+                  Papers you might have forgotten
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                  These papers haven't been accessed in over 2 weeks and are still unread or in progress.
+                </p>
+                <div className="space-y-2">
+                  {forgottenPapers.map((paper) => {
+                    const thesis = theses.find((t) => t.id === paper.thesisId);
+                    const daysAgo = getDaysAgo(paper.lastAccessedAt);
+                    return (
+                      <div
+                        key={paper.id}
+                        onClick={() => handleOpenPaper(paper)}
+                        className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {paper.title}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {thesis?.title} · Last accessed {daysAgo} days ago
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex-shrink-0 ml-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reading Statistics */}
+        {readingStats.total > 0 && (
+          <div className="mb-8">
+            <button
+              onClick={() => setShowStats(!showStats)}
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors mb-2"
+            >
+              <BarChart3 size={16} />
+              {showStats ? 'Hide' : 'Show'} Reading Statistics
+            </button>
+
+            {showStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                    {readingStats.total}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Total Papers</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {readingStats.byStatus.read}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Read</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    {readingStats.byStatus.reading}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Reading</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                    {readingStats.byStatus['to-read']}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">To Read</p>
+                </div>
+
+                {/* Role breakdown */}
+                <div className="col-span-2 md:col-span-4 pt-3 mt-2 border-t border-gray-100 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">By Role:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                      {readingStats.byRole.supports} supporting
+                    </span>
+                    <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                      {readingStats.byRole.contradicts} contradicting
+                    </span>
+                    <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                      {readingStats.byRole.method} methods
+                    </span>
+                    <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                      {readingStats.byRole.background} background
+                    </span>
+                  </div>
+                </div>
+
+                {readingStats.recentlyAdded > 0 && (
+                  <div className="col-span-2 md:col-span-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <Clock size={12} />
+                    {readingStats.recentlyAdded} papers added in the last 7 days
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
             Your Research
