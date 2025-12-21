@@ -1,13 +1,16 @@
-import { X, ExternalLink, Trash2, Edit2, Link2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, ExternalLink, Trash2, Edit2, Link2, Trash } from 'lucide-react';
 import type { Paper, Connection } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
+import { PaperEditModal } from './PaperEditModal';
+import { ConnectionEditor } from '../connection/ConnectionEditor';
 
 interface PaperDetailProps {
   paper: Paper;
   connections: Connection[];
   allPapers: Paper[];
+  thesisId: string;
   onClose: () => void;
-  onAddConnection: () => void;
 }
 
 const ROLE_STYLES: Record<string, string> = {
@@ -29,16 +32,35 @@ export function PaperDetail({
   paper,
   connections,
   allPapers,
+  thesisId,
   onClose,
-  onAddConnection,
 }: PaperDetailProps) {
-  const { deletePaper, setSelectedPaper } = useAppStore();
+  const { deletePaper, deleteConnection, setSelectedPaper, updatePaper } = useAppStore();
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showConnectionEditor, setShowConnectionEditor] = useState(false);
 
   const handleDelete = () => {
     if (confirm('Delete this paper and all its connections?')) {
       deletePaper(paper.id);
       onClose();
     }
+  };
+
+  const handleDeleteConnection = (connectionId: string) => {
+    if (confirm('Remove this connection?')) {
+      deleteConnection(connectionId);
+    }
+  };
+
+  const handleToggleReadingStatus = () => {
+    const statusOrder = ['to-read', 'reading', 'read', 'to-revisit'] as const;
+    const currentIndex = statusOrder.indexOf(paper.readingStatus);
+    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+    updatePaper(paper.id, {
+      readingStatus: nextStatus,
+      readAt: nextStatus === 'read' && !paper.readAt ? new Date().toISOString() : paper.readAt,
+    });
   };
 
   // Get connected papers
@@ -74,18 +96,39 @@ export function PaperDetail({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Tags */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs px-2 py-1 rounded-full ${ROLE_STYLES[paper.thesisRole]}`}>
-            {paper.thesisRole}
-          </span>
-          <span className={`text-xs px-2 py-1 rounded-full ${STATUS_STYLES[paper.readingStatus]}`}>
-            {paper.readingStatus.replace('-', ' ')}
-          </span>
-          {paper.citationCount !== null && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {paper.citationCount} citations
+        {/* Tags & Quick Actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs px-2 py-1 rounded-full ${ROLE_STYLES[paper.thesisRole]}`}>
+              {paper.thesisRole}
             </span>
+            <button
+              onClick={handleToggleReadingStatus}
+              className={`text-xs px-2 py-1 rounded-full transition-colors hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 ${STATUS_STYLES[paper.readingStatus]}`}
+              title="Click to change reading status"
+            >
+              {paper.readingStatus.replace('-', ' ')}
+            </button>
+            {paper.citationCount !== null && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {paper.citationCount} citations
+              </span>
+            )}
+          </div>
+          {paper.tags.length > 0 && (
+            <div className="flex items-center gap-1">
+              {paper.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+              {paper.tags.length > 3 && (
+                <span className="text-xs text-gray-500">+{paper.tags.length - 3}</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -153,6 +196,18 @@ export function PaperDetail({
           </details>
         )}
 
+        {/* Assessment */}
+        {paper.assessment && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Your Assessment
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+              {paper.assessment}
+            </p>
+          </div>
+        )}
+
         {/* Connections */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -160,7 +215,7 @@ export function PaperDetail({
               Connections ({connectedPapers.length})
             </h3>
             <button
-              onClick={onAddConnection}
+              onClick={() => setShowConnectionEditor(true)}
               className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
             >
               <Link2 size={14} />
@@ -173,20 +228,49 @@ export function PaperDetail({
             </p>
           ) : (
             <ul className="space-y-2">
-              {connectedPapers.map(({ connection, paper: otherPaper }) => (
-                <li
-                  key={connection.id}
-                  className="text-sm p-2 bg-gray-50 dark:bg-gray-700/50 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => otherPaper && setSelectedPaper(otherPaper.id)}
-                >
-                  <span className="text-gray-600 dark:text-gray-400">
-                    {connection.type.replace('-', ' ')}:
-                  </span>{' '}
-                  <span className="text-gray-900 dark:text-white">
-                    {otherPaper?.title || 'Unknown paper'}
-                  </span>
-                </li>
-              ))}
+              {connectedPapers.map(({ connection, paper: otherPaper }) => {
+                const isSource = connection.fromPaperId === paper.id;
+                const direction = isSource ? '→' : '←';
+
+                return (
+                  <li
+                    key={connection.id}
+                    className="group text-sm p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => otherPaper && setSelectedPaper(otherPaper.id)}
+                      >
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
+                          <span className="text-xs font-medium px-2 py-0.5 bg-gray-200 dark:bg-gray-600 rounded">
+                            {connection.type.replace('-', ' ')}
+                          </span>
+                          <span className="text-xs">{direction}</span>
+                        </div>
+                        <p className="text-gray-900 dark:text-white line-clamp-2">
+                          {otherPaper?.title || 'Unknown paper'}
+                        </p>
+                        {connection.note && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                            {connection.note}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteConnection(connection.id);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded opacity-0 group-hover:opacity-100 transition-all"
+                        title="Remove connection"
+                      >
+                        <Trash size={14} />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -222,16 +306,36 @@ export function PaperDetail({
       <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
         <button
           onClick={handleDelete}
-          className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
+          className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
         >
           <Trash2 size={16} />
           Delete
         </button>
-        <button className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1">
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors font-medium"
+        >
           <Edit2 size={16} />
-          Edit
+          Edit Paper
         </button>
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <PaperEditModal
+          paper={paper}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {/* Connection Editor */}
+      {showConnectionEditor && (
+        <ConnectionEditor
+          thesisId={thesisId}
+          sourcePaper={paper}
+          onClose={() => setShowConnectionEditor(false)}
+        />
+      )}
     </div>
   );
 }

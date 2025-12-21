@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Archive, Trash2, Beaker } from 'lucide-react';
+import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { loadSampleData } from '../utils/sampleData';
+import { DataManager } from '../components/common/DataManager';
 
 export function Home() {
   const navigate = useNavigate();
   const {
     theses,
     createThesis,
+    updateThesis,
     deleteThesis,
     setActiveThesis,
     getPapersForThesis,
@@ -18,6 +20,13 @@ export function Home() {
   const [showNewThesisForm, setShowNewThesisForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [showDataManager, setShowDataManager] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  const handleArchiveThesis = (id: string, archive: boolean) => {
+    updateThesis(id, { isArchived: archive });
+    setActiveMenuId(null);
+  };
 
   const activeTheses = theses.filter((t) => !t.isArchived);
   const archivedTheses = theses.filter((t) => t.isArchived);
@@ -54,12 +63,23 @@ export function Home() {
     <div className="min-h-screen p-8">
       {/* Header */}
       <header className="max-w-4xl mx-auto mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-          IdeaGraph
-        </h1>
-        <p className="text-lg text-gray-600 dark:text-gray-400">
-          Catalog ideas, not just papers. Build your knowledge graph.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              IdeaGraph
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Catalog ideas, not just papers. Build your knowledge graph.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowDataManager(true)}
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Settings & Data"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -202,19 +222,54 @@ export function Home() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm('Delete this thesis and all its papers?')) {
-                            deleteThesis(thesis.id);
-                          }
+                          setActiveMenuId(activeMenuId === thesis.id ? null : thesis.id);
                         }}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete thesis"
+                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
-                        <Trash2 size={18} />
+                        <MoreVertical size={18} />
                       </button>
+
+                      {/* Dropdown Menu */}
+                      {activeMenuId === thesis.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(null);
+                            }}
+                          />
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchiveThesis(thesis.id, true);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                            >
+                              <Archive size={14} />
+                              Archive
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Delete this thesis and all its papers?')) {
+                                  deleteThesis(thesis.id);
+                                }
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -228,24 +283,65 @@ export function Home() {
           <div className="mt-12">
             <h3 className="flex items-center gap-2 text-lg font-medium text-gray-500 dark:text-gray-400 mb-4">
               <Archive size={20} />
-              Archived
+              Archived ({archivedTheses.length})
             </h3>
             <div className="space-y-2">
-              {archivedTheses.map((thesis) => (
-                <div
-                  key={thesis.id}
-                  className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-                  onClick={() => handleOpenThesis(thesis.id)}
-                >
-                  <h4 className="font-medium text-gray-700 dark:text-gray-300">
-                    {thesis.title}
-                  </h4>
-                </div>
-              ))}
+              {archivedTheses.map((thesis) => {
+                const papers = getPapersForThesis(thesis.id);
+                return (
+                  <div
+                    key={thesis.id}
+                    className="group p-4 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => handleOpenThesis(thesis.id)}
+                      >
+                        <h4 className="font-medium text-gray-700 dark:text-gray-300">
+                          {thesis.title}
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {papers.length} papers
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleArchiveThesis(thesis.id, false);
+                          }}
+                          className="p-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                          title="Restore"
+                        >
+                          <ArchiveRestore size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('Permanently delete this thesis and all its papers?')) {
+                              deleteThesis(thesis.id);
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Delete permanently"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </main>
+
+      {/* Data Manager Modal */}
+      {showDataManager && (
+        <DataManager onClose={() => setShowDataManager(false)} />
+      )}
     </div>
   );
 }
