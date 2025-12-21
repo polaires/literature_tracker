@@ -20,7 +20,27 @@ declare module 'react-cytoscapejs' {
     boxSelectionEnabled?: boolean;
     autoungrabify?: boolean;
     autounselectify?: boolean;
+    wheelSensitivity?: number;
   }
 
   export default class CytoscapeComponent extends Component<CytoscapeComponentProps> {}
+}
+
+// Cytoscape layout extensions
+declare module 'cytoscape-fcose' {
+  import cytoscape from 'cytoscape';
+  const fcose: cytoscape.Ext;
+  export default fcose;
+}
+
+declare module 'cytoscape-dagre' {
+  import cytoscape from 'cytoscape';
+  const dagre: cytoscape.Ext;
+  export default dagre;
+}
+
+declare module 'cytoscape-cose-bilkent' {
+  import cytoscape from 'cytoscape';
+  const coseBilkent: cytoscape.Ext;
+  export default coseBilkent;
 }
