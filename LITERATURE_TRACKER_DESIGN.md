@@ -1,6 +1,6 @@
 # IdeaGraph: Literature Idea Connection Tool
 
-## Design Document v1.0
+## Design Document v1.1
 
 > **Philosophy**: Zotero catalogs papers. IdeaGraph catalogs ideas.
 
@@ -603,101 +603,306 @@ Using existing design system patterns where possible:
 
 ## 6. Technical Architecture
 
-### 6.1 Technology Stack
+### 6.1 Cross-Platform Strategy
+
+IdeaGraph is designed to run on multiple platforms from a single codebase:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        FRONTEND                                  │
+│                    SINGLE REACT CODEBASE                         │
+│              (TypeScript + Tailwind + Cytoscape.js)              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+   │     WEB     │    │   iOS App   │    │   Desktop   │
+   │             │    │   macOS App │    │ (Optional)  │
+   │   Vite      │    │  Capacitor  │    │   Tauri     │
+   │   (build)   │    │  (wrapper)  │    │  (wrapper)  │
+   └─────────────┘    └─────────────┘    └─────────────┘
+          │                   │                   │
+          ▼                   ▼                   ▼
+   Browser/PWA          App Store           Native Binary
+```
+
+**Why This Stack?**
+
+| Requirement | Solution | Benefit |
+|-------------|----------|---------|
+| Web integration | React + Vite | Matches parent project exactly |
+| iOS/macOS apps | Capacitor | Same codebase, native app wrapper |
+| Desktop apps | Tauri | Already set up in parent project |
+| Code reuse | Single React codebase | Write once, deploy everywhere |
+| Consistent styling | Tailwind CSS | Same design on all platforms |
+
+### 6.2 Technology Stack
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      CORE FRAMEWORK                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  Framework:      React 18+ with TypeScript                      │
-│  State:          React Context + useReducer (or Zustand)        │
-│  Styling:        Tailwind CSS (consistent with parent project)  │
-│  Visualization:  Cytoscape.js                                   │
-│  Forms:          React Hook Form + Zod validation               │
-│  Storage:        LocalStorage (Phase 1) → IndexedDB (Phase 2)   │
+│  Language:       TypeScript 5.x                                  │
+│  Framework:      React 18+                                       │
+│  Build Tool:     Vite 5.x                                        │
+│  Styling:        Tailwind CSS 3.x                                │
+│  State:          React Context + useReducer (or Zustand)         │
+│  Forms:          React Hook Form + Zod validation                │
+│  Visualization:  Cytoscape.js                                    │
+│  Icons:          Lucide React                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    PLATFORM WRAPPERS                             │
+├─────────────────────────────────────────────────────────────────┤
+│  iOS/macOS:      Capacitor 5.x                                   │
+│                  - Native app wrapper for Apple platforms        │
+│                  - Access to native APIs (file system, etc.)     │
+│                  - App Store deployment ready                    │
+│                                                                  │
+│  Desktop:        Tauri 1.x (Optional)                            │
+│                  - Already configured in parent project          │
+│                  - Smaller bundle than Electron                  │
+│                  - Windows/macOS/Linux support                   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        STORAGE                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Phase 1:        LocalStorage (simple, works everywhere)         │
+│  Phase 2:        IndexedDB via 'idb' library (larger datasets)   │
+│  Phase 3:        Optional cloud sync (PostgreSQL/SQLite backend) │
+│                                                                  │
+│  Note: Both LocalStorage and IndexedDB work in Capacitor apps   │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                      EXTERNAL APIS                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  Primary:        Semantic Scholar API (abstracts, metadata)     │
-│  Fallback:       CrossRef API (DOI resolution)                  │
-│  Optional:       OpenAlex API (open access links)               │
+│  Primary:        Semantic Scholar API                            │
+│                  - Paper metadata, abstracts, citations          │
+│                  - TLDR summaries (useful for AI features)       │
+│                  - Rate limit: 100 req/sec with API key          │
+│                                                                  │
+│  Fallback:       CrossRef API                                    │
+│                  - DOI resolution, comprehensive coverage        │
+│                  - Rate limit: 50 req/sec (polite pool)          │
+│                                                                  │
+│  Optional:       OpenAlex API (open access links)                │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│                    FUTURE BACKEND (Phase 3+)                    │
+│                    FUTURE BACKEND (Phase 3+)                     │
 ├─────────────────────────────────────────────────────────────────┤
-│  Database:       PostgreSQL or SQLite                           │
-│  API:            REST or tRPC                                   │
-│  Auth:           OAuth (optional, for sync)                     │
-│  AI:             OpenAI/Claude API for suggestions              │
+│  Database:       PostgreSQL or SQLite                            │
+│  API:            REST or tRPC                                    │
+│  Auth:           OAuth (optional, for sync)                      │
+│  AI:             Claude/OpenAI API for suggestions               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Project Structure
+### 6.3 Capacitor Setup (iOS/macOS)
 
-```
-src/
-├── components/
-│   ├── common/              # Shared UI components
-│   │   ├── Button.tsx
-│   │   ├── Modal.tsx
-│   │   ├── Card.tsx
-│   │   └── ...
-│   ├── thesis/              # Thesis-related components
-│   │   ├── ThesisCard.tsx
-│   │   ├── ThesisList.tsx
-│   │   ├── ThesisForm.tsx
-│   │   └── ...
-│   ├── paper/               # Paper-related components
-│   │   ├── PaperCard.tsx
-│   │   ├── PaperDetail.tsx
-│   │   ├── PaperForm.tsx
-│   │   ├── AddPaperModal.tsx
-│   │   └── ...
-│   ├── connection/          # Connection components
-│   │   ├── ConnectionEditor.tsx
-│   │   ├── ConnectionBadge.tsx
-│   │   └── ...
-│   └── visualization/       # Graph and views
-│       ├── GraphView.tsx
-│       ├── ListView.tsx
-│       ├── TimelineView.tsx
-│       └── ...
-├── hooks/
-│   ├── useThesis.ts         # Thesis CRUD operations
-│   ├── usePapers.ts         # Paper CRUD operations
-│   ├── useConnections.ts    # Connection operations
-│   ├── useStorage.ts        # LocalStorage abstraction
-│   ├── useMetadataFetch.ts  # DOI/URL metadata fetching
-│   └── ...
-├── services/
-│   ├── storage.ts           # LocalStorage/IndexedDB
-│   ├── semanticScholar.ts   # Semantic Scholar API
-│   ├── crossref.ts          # CrossRef API
-│   ├── bibtexParser.ts      # BibTeX import
-│   └── export.ts            # Export utilities
-├── types/
-│   ├── thesis.ts
-│   ├── paper.ts
-│   ├── connection.ts
-│   └── index.ts
-├── utils/
-│   ├── validation.ts        # Zod schemas
-│   ├── formatting.ts        # Citation formatting
-│   ├── graph.ts             # Graph utilities
-│   └── ...
-├── context/
-│   ├── AppContext.tsx       # Global state
-│   └── ThesisContext.tsx    # Active thesis context
-└── pages/
-    ├── Home.tsx             # Thesis selection
-    ├── ThesisView.tsx       # Main workspace
-    └── Settings.tsx         # User settings
+**Installation:**
+
+```bash
+# Install Capacitor
+npm install @capacitor/core @capacitor/cli
+
+# Initialize Capacitor
+npx cap init "IdeaGraph" "com.yourorg.ideagraph"
+
+# Add iOS platform
+npm install @capacitor/ios
+npx cap add ios
+
+# Build and sync
+npm run build
+npx cap sync
+
+# Open in Xcode
+npx cap open ios
 ```
 
-### 6.3 State Management
+**capacitor.config.ts:**
+
+```typescript
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.yourorg.ideagraph',
+  appName: 'IdeaGraph',
+  webDir: 'dist',
+  server: {
+    // For development
+    url: 'http://localhost:5173',
+    cleartext: true
+  },
+  ios: {
+    contentInset: 'automatic',
+    preferredContentMode: 'mobile',
+    // For macOS Catalyst support
+    scheme: 'IdeaGraph'
+  },
+  plugins: {
+    // Enable keyboard accessory bar for better text input
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true
+    }
+  }
+};
+
+export default config;
+```
+
+**Useful Capacitor Plugins:**
+
+| Plugin | Purpose |
+|--------|---------|
+| `@capacitor/filesystem` | Save/load JSON exports |
+| `@capacitor/share` | Share thesis/papers |
+| `@capacitor/clipboard` | Copy DOI/citations |
+| `@capacitor/keyboard` | Better text input handling |
+| `@capacitor/status-bar` | Native status bar styling |
+
+### 6.4 Platform-Specific Considerations
+
+**iOS/macOS (Capacitor):**
+```typescript
+// Detect platform for conditional features
+import { Capacitor } from '@capacitor/core';
+
+const isNative = Capacitor.isNativePlatform();
+const platform = Capacitor.getPlatform(); // 'ios', 'android', 'web'
+
+// Example: Use native file picker on iOS, web file input on browser
+if (isNative) {
+  // Use Capacitor Filesystem plugin
+} else {
+  // Use standard File API
+}
+```
+
+**Responsive Design:**
+```typescript
+// Tailwind breakpoints work across all platforms
+// Mobile-first approach ensures good iOS experience
+
+// Example component
+<div className="
+  p-4 md:p-6           // Padding: mobile vs desktop
+  grid grid-cols-1      // Single column on mobile
+  md:grid-cols-2        // Two columns on tablet
+  lg:grid-cols-3        // Three columns on desktop
+">
+```
+
+**Safe Areas (iOS notch/Dynamic Island):**
+```css
+/* In your global CSS */
+.app-container {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+```
+
+### 6.5 Project Structure
+
+```
+ideagraph/
+├── src/                        # React application source
+│   ├── components/
+│   │   ├── common/             # Shared UI components
+│   │   │   ├── Button.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   ├── Card.tsx
+│   │   │   └── ...
+│   │   ├── thesis/             # Thesis-related components
+│   │   │   ├── ThesisCard.tsx
+│   │   │   ├── ThesisList.tsx
+│   │   │   ├── ThesisForm.tsx
+│   │   │   └── ...
+│   │   ├── paper/              # Paper-related components
+│   │   │   ├── PaperCard.tsx
+│   │   │   ├── PaperDetail.tsx
+│   │   │   ├── PaperForm.tsx
+│   │   │   ├── AddPaperModal.tsx
+│   │   │   └── ...
+│   │   ├── connection/         # Connection components
+│   │   │   ├── ConnectionEditor.tsx
+│   │   │   ├── ConnectionBadge.tsx
+│   │   │   └── ...
+│   │   └── visualization/      # Graph and views
+│   │       ├── GraphView.tsx
+│   │       ├── ListView.tsx
+│   │       ├── TimelineView.tsx
+│   │       └── ...
+│   ├── hooks/
+│   │   ├── useThesis.ts        # Thesis CRUD operations
+│   │   ├── usePapers.ts        # Paper CRUD operations
+│   │   ├── useConnections.ts   # Connection operations
+│   │   ├── useStorage.ts       # LocalStorage abstraction
+│   │   ├── useMetadataFetch.ts # DOI/URL metadata fetching
+│   │   ├── usePlatform.ts      # Platform detection (web/iOS/desktop)
+│   │   └── ...
+│   ├── services/
+│   │   ├── storage.ts          # LocalStorage/IndexedDB
+│   │   ├── semanticScholar.ts  # Semantic Scholar API
+│   │   ├── crossref.ts         # CrossRef API
+│   │   ├── bibtexParser.ts     # BibTeX import
+│   │   ├── export.ts           # Export utilities
+│   │   └── platform/           # Platform-specific services
+│   │       ├── filesystem.ts   # Capacitor/Web file handling
+│   │       └── share.ts        # Native share functionality
+│   ├── types/
+│   │   ├── thesis.ts
+│   │   ├── paper.ts
+│   │   ├── connection.ts
+│   │   └── index.ts
+│   ├── utils/
+│   │   ├── validation.ts       # Zod schemas
+│   │   ├── formatting.ts       # Citation formatting
+│   │   ├── graph.ts            # Graph utilities
+│   │   └── ...
+│   ├── context/
+│   │   ├── AppContext.tsx      # Global state
+│   │   └── ThesisContext.tsx   # Active thesis context
+│   ├── pages/
+│   │   ├── Home.tsx            # Thesis selection
+│   │   ├── ThesisView.tsx      # Main workspace
+│   │   └── Settings.tsx        # User settings
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css               # Global styles + safe areas
+│
+├── public/                     # Static assets
+│
+├── ios/                        # Capacitor iOS project (generated)
+│   ├── App/
+│   │   ├── App.xcodeproj
+│   │   └── ...
+│   └── Podfile
+│
+├── src-tauri/                  # Tauri desktop (optional)
+│   ├── src/
+│   ├── tauri.conf.json
+│   └── Cargo.toml
+│
+├── dist/                       # Build output (git-ignored)
+│
+├── package.json
+├── capacitor.config.ts         # Capacitor configuration
+├── vite.config.ts
+├── tailwind.config.js
+├── tsconfig.json
+└── README.md
+```
+
+### 6.6 State Management
 
 ```typescript
 // Context-based state management
@@ -1339,6 +1544,6 @@ Export formats supported:
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2024*
+*Document Version: 1.1*
+*Last Updated: December 2025*
 *Author: Research Tools Team*
