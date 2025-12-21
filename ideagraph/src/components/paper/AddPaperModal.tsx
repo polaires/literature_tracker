@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { X, Search, Loader2, Check, AlertCircle } from 'lucide-react';
+import { X, Search, Loader2, Check, AlertCircle, FileText, Globe, Plus, Trash2 } from 'lucide-react';
 import { fetchPaperMetadata, type PaperMetadata } from '../../services/api';
 import { useAppStore } from '../../store/useAppStore';
-import type { ThesisRole, ReadingStatus } from '../../types';
+import type { ThesisRole, ReadingStatus, Author } from '../../types';
 
 interface AddPaperModalProps {
   thesisId: string;
   onClose: () => void;
 }
 
+type InputMode = 'doi' | 'manual';
 type Step = 'input' | 'fetching' | 'review' | 'error';
 
 const THESIS_ROLES: { value: ThesisRole; label: string; color: string }[] = [
@@ -22,10 +23,19 @@ const THESIS_ROLES: { value: ThesisRole; label: string; color: string }[] = [
 export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   const { addPaper } = useAppStore();
 
+  const [inputMode, setInputMode] = useState<InputMode>('doi');
   const [step, setStep] = useState<Step>('input');
   const [doiInput, setDoiInput] = useState('');
   const [metadata, setMetadata] = useState<PaperMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Manual entry fields
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualAuthors, setManualAuthors] = useState<Author[]>([{ name: '' }]);
+  const [manualYear, setManualYear] = useState('');
+  const [manualJournal, setManualJournal] = useState('');
+  const [manualDoi, setManualDoi] = useState('');
+  const [manualAbstract, setManualAbstract] = useState('');
 
   // Form fields
   const [takeaway, setTakeaway] = useState('');
@@ -84,23 +94,42 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
     onClose();
   };
 
-  const handleManualEntry = () => {
+  const handleManualSubmit = () => {
+    if (!manualTitle.trim()) return;
+
+    const validAuthors = manualAuthors.filter((a) => a.name.trim());
     setMetadata({
-      doi: null,
-      title: '',
-      authors: [],
-      year: null,
-      journal: null,
+      doi: manualDoi.trim() || null,
+      title: manualTitle.trim(),
+      authors: validAuthors.length > 0 ? validAuthors : [{ name: 'Unknown' }],
+      year: manualYear ? parseInt(manualYear, 10) : null,
+      journal: manualJournal.trim() || null,
       volume: null,
       issue: null,
       pages: null,
-      abstract: null,
+      abstract: manualAbstract.trim() || null,
       url: null,
       pdfUrl: null,
       citationCount: null,
       tldr: null,
     });
     setStep('review');
+  };
+
+  const addAuthor = () => {
+    setManualAuthors([...manualAuthors, { name: '' }]);
+  };
+
+  const updateAuthor = (index: number, name: string) => {
+    const updated = [...manualAuthors];
+    updated[index] = { name };
+    setManualAuthors(updated);
+  };
+
+  const removeAuthor = (index: number) => {
+    if (manualAuthors.length > 1) {
+      setManualAuthors(manualAuthors.filter((_, i) => i !== index));
+    }
   };
 
   return (
@@ -128,55 +157,202 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Step 1: Input DOI */}
+          {/* Step 1: Input */}
           {(step === 'input' || step === 'error') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Enter DOI or URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={doiInput}
-                  onChange={(e) => setDoiInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
-                  placeholder="e.g., 10.1038/s41586-021-03819-2 or https://doi.org/..."
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  autoFocus
-                />
+              {/* Mode Toggle */}
+              <div className="flex items-center gap-2 mb-6 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
                 <button
-                  onClick={handleFetch}
-                  disabled={!doiInput.trim()}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  onClick={() => setInputMode('doi')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    inputMode === 'doi'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
                 >
-                  <Search size={18} />
-                  Fetch
+                  <Globe size={16} />
+                  Fetch by DOI
+                </button>
+                <button
+                  onClick={() => setInputMode('manual')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    inputMode === 'manual'
+                      ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <FileText size={16} />
+                  Manual Entry
                 </button>
               </div>
 
-              {step === 'error' && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-                  <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-                  <div>
-                    <p className="text-red-800 dark:text-red-200 font-medium">
-                      Could not fetch paper
-                    </p>
-                    <p className="text-red-600 dark:text-red-300 text-sm mt-1">
-                      {error}
-                    </p>
+              {/* DOI Mode */}
+              {inputMode === 'doi' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Enter DOI or URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={doiInput}
+                      onChange={(e) => setDoiInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
+                      placeholder="e.g., 10.1038/s41586-021-03819-2 or https://doi.org/..."
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleFetch}
+                      disabled={!doiInput.trim()}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Search size={18} />
+                      Fetch
+                    </button>
                   </div>
+
+                  {step === 'error' && (
+                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+                      <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <p className="text-red-800 dark:text-red-200 font-medium">
+                          Could not fetch paper
+                        </p>
+                        <p className="text-red-600 dark:text-red-300 text-sm mt-1">
+                          {error}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+                    We'll fetch metadata from Semantic Scholar and CrossRef
+                  </p>
                 </div>
               )}
 
-              <div className="mt-6 text-center">
-                <span className="text-gray-500 dark:text-gray-400 text-sm">or</span>
-                <button
-                  onClick={handleManualEntry}
-                  className="block mx-auto mt-2 text-indigo-600 dark:text-indigo-400 hover:underline text-sm"
-                >
-                  Enter paper details manually
-                </button>
-              </div>
+              {/* Manual Mode */}
+              {inputMode === 'manual' && (
+                <div className="space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={manualTitle}
+                      onChange={(e) => setManualTitle(e.target.value)}
+                      placeholder="Paper title..."
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Authors */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Authors
+                    </label>
+                    <div className="space-y-2">
+                      {manualAuthors.map((author, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={author.name}
+                            onChange={(e) => updateAuthor(index, e.target.value)}
+                            placeholder={`Author ${index + 1} name...`}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          />
+                          {manualAuthors.length > 1 && (
+                            <button
+                              onClick={() => removeAuthor(index)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        onClick={addAuthor}
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <Plus size={14} />
+                        Add author
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Year & Journal */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Year
+                      </label>
+                      <input
+                        type="number"
+                        value={manualYear}
+                        onChange={(e) => setManualYear(e.target.value)}
+                        placeholder="2024"
+                        min="1900"
+                        max="2100"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Journal / Venue
+                      </label>
+                      <input
+                        type="text"
+                        value={manualJournal}
+                        onChange={(e) => setManualJournal(e.target.value)}
+                        placeholder="Nature, arXiv, etc."
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* DOI (optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      DOI <span className="text-gray-400">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={manualDoi}
+                      onChange={(e) => setManualDoi(e.target.value)}
+                      placeholder="10.1038/..."
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Abstract (optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Abstract <span className="text-gray-400">(optional)</span>
+                    </label>
+                    <textarea
+                      value={manualAbstract}
+                      onChange={(e) => setManualAbstract(e.target.value)}
+                      placeholder="Paper abstract..."
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  {/* Continue Button */}
+                  <button
+                    onClick={handleManualSubmit}
+                    disabled={!manualTitle.trim()}
+                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Continue
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

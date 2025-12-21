@@ -1,12 +1,29 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, List, Network, Calendar } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  List,
+  Network,
+  Calendar,
+  SortAsc,
+  SortDesc,
+  Filter,
+  Search,
+  Settings,
+  X,
+  ChevronDown,
+} from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { AddPaperModal } from '../components/paper/AddPaperModal';
 import { PaperDetail } from '../components/paper/PaperDetail';
 import { GraphView } from '../components/visualization/GraphView';
+import { DataManager } from '../components/common/DataManager';
+import type { ThesisRole, ReadingStatus } from '../types';
 
 type ViewMode = 'list' | 'graph' | 'timeline';
+type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
+type SortOrder = 'asc' | 'desc';
 
 export function ThesisView() {
   const { thesisId } = useParams<{ thesisId: string }>();
@@ -22,6 +39,18 @@ export function ThesisView() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDataManager, setShowDataManager] = useState(false);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('addedAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Filtering state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRole, setFilterRole] = useState<ThesisRole | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<ReadingStatus | 'all'>('all');
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const thesis = theses.find((t) => t.id === thesisId);
   const papers = thesisId ? getPapersForThesis(thesisId) : [];
@@ -31,6 +60,84 @@ export function ThesisView() {
   const selectedPaperConnections = selectedPaperId
     ? getConnectionsForPaper(selectedPaperId)
     : [];
+
+  // Filter and sort papers
+  const filteredAndSortedPapers = useMemo(() => {
+    let filtered = papers;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.title.toLowerCase().includes(query) ||
+          p.takeaway.toLowerCase().includes(query) ||
+          p.authors.some((a) => a.name.toLowerCase().includes(query)) ||
+          p.tags.some((t) => t.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply role filter
+    if (filterRole !== 'all') {
+      filtered = filtered.filter((p) => p.thesisRole === filterRole);
+    }
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((p) => p.readingStatus === filterStatus);
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'year':
+          comparison = (a.year || 0) - (b.year || 0);
+          break;
+        case 'citationCount':
+          comparison = (a.citationCount || 0) - (b.citationCount || 0);
+          break;
+        case 'addedAt':
+          comparison = new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+          break;
+        case 'readingStatus': {
+          const statusOrder = { 'to-read': 0, reading: 1, 'to-revisit': 2, read: 3 };
+          comparison = statusOrder[a.readingStatus] - statusOrder[b.readingStatus];
+          break;
+        }
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [papers, searchQuery, filterRole, filterStatus, sortField, sortOrder]);
+
+  const activeFiltersCount = [
+    filterRole !== 'all',
+    filterStatus !== 'all',
+    searchQuery.trim() !== '',
+  ].filter(Boolean).length;
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+    setShowSortMenu(false);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterRole('all');
+    setFilterStatus('all');
+  };
 
   if (!thesis) {
     return (
@@ -76,7 +183,7 @@ export function ThesisView() {
 
       {/* Toolbar */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             <button
@@ -114,20 +221,199 @@ export function ThesisView() {
             </button>
           </div>
 
-          {/* Stats & Add Paper Button */}
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {papers.length} papers · {connections.length} connections
+          {/* Search, Filter, Sort (List view only) */}
+          {viewMode === 'list' && papers.length > 0 && (
+            <div className="flex-1 flex items-center gap-3 max-w-xl">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search papers..."
+                  className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Button */}
+              <button
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  showFilterPanel || activeFiltersCount > 0
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <Filter size={14} />
+                Filter
+                {activeFiltersCount > 0 && (
+                  <span className="ml-1 w-5 h-5 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Sort Button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  {sortOrder === 'asc' ? <SortAsc size={14} /> : <SortDesc size={14} />}
+                  Sort
+                  <ChevronDown size={14} />
+                </button>
+
+                {showSortMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowSortMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                      {[
+                        { field: 'addedAt' as SortField, label: 'Date Added' },
+                        { field: 'title' as SortField, label: 'Title' },
+                        { field: 'year' as SortField, label: 'Year' },
+                        { field: 'citationCount' as SortField, label: 'Citations' },
+                        { field: 'readingStatus' as SortField, label: 'Reading Status' },
+                      ].map((option) => (
+                        <button
+                          key={option.field}
+                          onClick={() => handleSort(option.field)}
+                          className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            sortField === option.field
+                              ? 'text-indigo-600 dark:text-indigo-400 font-medium'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {option.label}
+                          {sortField === option.field && (
+                            <span className="text-xs text-gray-500">
+                              {sortOrder === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Stats & Actions */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
+              {filteredAndSortedPapers.length === papers.length
+                ? `${papers.length} papers`
+                : `${filteredAndSortedPapers.length} of ${papers.length} papers`}
+              {' · '}{connections.length} connections
             </span>
+            <button
+              onClick={() => setShowDataManager(true)}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="Data & Export"
+            >
+              <Settings size={18} />
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              <Plus size={20} />
-              Add Paper
+              <Plus size={18} />
+              <span className="hidden sm:inline">Add Paper</span>
             </button>
           </div>
         </div>
+
+        {/* Filter Panel */}
+        {showFilterPanel && viewMode === 'list' && (
+          <div className="max-w-7xl mx-auto mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Role Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  Role:
+                </span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'all' as const, label: 'All' },
+                    { value: 'supports' as const, label: 'Supports', color: 'bg-green-100 text-green-800' },
+                    { value: 'contradicts' as const, label: 'Contradicts', color: 'bg-red-100 text-red-800' },
+                    { value: 'method' as const, label: 'Method', color: 'bg-blue-100 text-blue-800' },
+                    { value: 'background' as const, label: 'Background', color: 'bg-gray-200 text-gray-800' },
+                    { value: 'other' as const, label: 'Other', color: 'bg-purple-100 text-purple-800' },
+                  ].map((role) => (
+                    <button
+                      key={role.value}
+                      onClick={() => setFilterRole(role.value)}
+                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                        filterRole === role.value
+                          ? role.value === 'all'
+                            ? 'bg-indigo-600 text-white'
+                            : `${role.color} ring-2 ring-indigo-500 ring-offset-1`
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  Status:
+                </span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'all' as const, label: 'All' },
+                    { value: 'to-read' as const, label: 'To Read' },
+                    { value: 'reading' as const, label: 'Reading' },
+                    { value: 'read' as const, label: 'Read' },
+                    { value: 'to-revisit' as const, label: 'Revisit' },
+                  ].map((status) => (
+                    <button
+                      key={status.value}
+                      onClick={() => setFilterStatus(status.value)}
+                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                        filterStatus === status.value
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {status.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -154,7 +440,21 @@ export function ThesisView() {
             {/* List View */}
             {viewMode === 'list' && (
               <div className="space-y-4">
-                {papers.map((paper) => (
+                {filteredAndSortedPapers.length === 0 && (
+                  <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <Search size={32} className="mx-auto text-gray-400 mb-3" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No papers match your filters
+                    </p>
+                    <button
+                      onClick={clearFilters}
+                      className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                )}
+                {filteredAndSortedPapers.map((paper) => (
                   <div
                     key={paper.id}
                     onClick={() => setSelectedPaper(paper.id)}
@@ -284,13 +584,21 @@ export function ThesisView() {
       )}
 
       {/* Paper Detail Panel */}
-      {selectedPaper && (
+      {selectedPaper && thesisId && (
         <PaperDetail
           paper={selectedPaper}
           connections={selectedPaperConnections}
           allPapers={papers}
+          thesisId={thesisId}
           onClose={() => setSelectedPaper(null)}
-          onAddConnection={() => alert('Connection editor coming soon!')}
+        />
+      )}
+
+      {/* Data Manager Modal */}
+      {showDataManager && thesisId && (
+        <DataManager
+          thesisId={thesisId}
+          onClose={() => setShowDataManager(false)}
         />
       )}
     </div>
