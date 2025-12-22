@@ -240,6 +240,59 @@ export interface UserSettings {
   showAiSuggestions: boolean;
 }
 
+// ============================================
+// AI SETTINGS (Phase 3)
+// ============================================
+
+export type AIProviderType = 'claude' | 'openai' | 'ollama' | 'mock';
+
+export interface AISettings {
+  // Provider configuration
+  provider: AIProviderType;
+  apiKey: string | null;
+  ollamaEndpoint: string | null;
+
+  // Feature toggles
+  enableConnectionSuggestions: boolean;
+  enableTakeawaySuggestions: boolean;
+  enableArgumentExtraction: boolean;
+  enableGapAnalysis: boolean;
+  enableReviewGeneration: boolean;
+
+  // Behavior settings
+  autoSuggestOnPaperAdd: boolean;
+  suggestionConfidenceThreshold: number; // 0.0 - 1.0
+  maxSuggestionsPerRequest: number;
+
+  // Privacy settings
+  sendAbstractsToAI: boolean;
+  sendHighlightsToAI: boolean;
+
+  // Model preferences
+  preferFastModel: boolean;
+}
+
+export const DEFAULT_AI_SETTINGS: AISettings = {
+  provider: 'claude',
+  apiKey: null,
+  ollamaEndpoint: null,
+
+  enableConnectionSuggestions: true,
+  enableTakeawaySuggestions: true,
+  enableArgumentExtraction: true,
+  enableGapAnalysis: true,
+  enableReviewGeneration: true,
+
+  autoSuggestOnPaperAdd: false,
+  suggestionConfidenceThreshold: 0.6,
+  maxSuggestionsPerRequest: 5,
+
+  sendAbstractsToAI: true,
+  sendHighlightsToAI: true,
+
+  preferFastModel: false,
+};
+
 export interface AppState {
   theses: Thesis[];
   papers: Paper[];

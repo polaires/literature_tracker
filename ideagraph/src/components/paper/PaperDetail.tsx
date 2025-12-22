@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen } from 'lucide-react';
+import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen, Sparkles, Loader2, Search } from 'lucide-react';
 import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
+import { useAI } from '../../hooks/useAI';
 import { PaperEditModal } from './PaperEditModal';
 import { ConnectionEditor } from '../connection/ConnectionEditor';
+import { CitationNetworkModal } from './CitationNetworkModal';
 import { PDFViewer, PDFUpload } from '../pdf';
 import { pdfStorage } from '../../services/pdfStorage';
 import { THESIS_ROLE_COLORS, READING_STATUS_COLORS } from '../../constants/colors';
@@ -25,13 +27,25 @@ export function PaperDetail({
   onClose,
 }: PaperDetailProps) {
   const { deletePaper, deleteConnection, setSelectedPaper, updatePaper } = useAppStore();
+  const {
+    suggestConnections,
+    connectionSuggestions,
+    isConfigured: isAIConfigured,
+    settings: aiSettings,
+    isLoading: isAILoading,
+    loadingType: aiLoadingType,
+    acceptConnectionSuggestion,
+    dismissConnectionSuggestion,
+  } = useAI();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConnectionEditor, setShowConnectionEditor] = useState(false);
+  const [showCitationNetwork, setShowCitationNetwork] = useState(false);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
   const [showPDFUpload, setShowPDFUpload] = useState(false);
   const [hasPDF, setHasPDF] = useState(false);
   const [pdfMetadata, setPdfMetadata] = useState<{ filename: string; fileSize: number } | null>(null);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
 
   // Check if paper has a stored PDF
   useEffect(() => {
@@ -91,6 +105,23 @@ export function PaperDetail({
 
   const roleColors = THESIS_ROLE_COLORS[paper.thesisRole as ThesisRole];
   const statusColors = READING_STATUS_COLORS[paper.readingStatus as ReadingStatus];
+
+  // AI connection suggestion helpers
+  const canSuggestConnections = isAIConfigured && aiSettings.enableConnectionSuggestions && allPapers.length > 1;
+  const isSuggestingConnections = isAILoading && aiLoadingType === 'connection';
+
+  const handleSuggestConnections = async () => {
+    if (!canSuggestConnections || isSuggestingConnections) return;
+    setShowAISuggestions(true);
+    try {
+      await suggestConnections(paper.id);
+    } catch (err) {
+      console.error('Failed to suggest connections:', err);
+    }
+  };
+
+  // Filter suggestions for this paper
+  const paperSuggestions = connectionSuggestions.filter(s => s.targetPaperId === paper.id);
 
   return (
     <>
@@ -251,19 +282,106 @@ export function PaperDetail({
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Connections ({connectedPapers.length})
             </h3>
-            <button
-              onClick={() => setShowConnectionEditor(true)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
-              <Link2 size={14} />
-              Add connection
-            </button>
+            <div className="flex items-center gap-2">
+              {canSuggestConnections && (
+                <button
+                  onClick={handleSuggestConnections}
+                  disabled={isSuggestingConnections}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${
+                    isSuggestingConnections
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
+                      : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                  }`}
+                >
+                  {isSuggestingConnections ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={12} />
+                  )}
+                  {isSuggestingConnections ? 'Finding...' : 'AI Suggest'}
+                </button>
+              )}
+              <button
+                onClick={() => setShowConnectionEditor(true)}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                <Link2 size={14} />
+                Add
+              </button>
+            </div>
           </div>
-          {connectedPapers.length === 0 ? (
+
+          {/* AI Suggestions */}
+          {showAISuggestions && paperSuggestions.length > 0 && (
+            <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                  <Sparkles size={12} />
+                  AI Suggestions
+                </span>
+                <button
+                  onClick={() => setShowAISuggestions(false)}
+                  className="text-xs text-purple-500 hover:text-purple-700"
+                >
+                  Hide
+                </button>
+              </div>
+              <div className="space-y-2">
+                {paperSuggestions.map((suggestion) => {
+                  const suggestedPaper = allPapers.find(p => p.id === suggestion.suggestedPaperId);
+                  return (
+                    <div
+                      key={suggestion.id}
+                      className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-purple-100 dark:border-purple-900"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                            {suggestion.connectionType.replace('-', ' ')}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {Math.round(suggestion.confidence * 100)}% confident
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-900 dark:text-white truncate">
+                          {suggestedPaper?.title || suggestion.suggestedPaperTitle}
+                        </p>
+                        {suggestion.reasoning && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                            {suggestion.reasoning}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => acceptConnectionSuggestion(suggestion)}
+                          className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                          title="Accept"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => dismissConnectionSuggestion(suggestion.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Dismiss"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {connectedPapers.length === 0 && !showAISuggestions ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No connections yet. Add one to link this paper to others.
+              No connections yet. {canSuggestConnections ? 'Try AI Suggest or add manually.' : 'Add one to link this paper to others.'}
             </p>
-          ) : (
+          ) : connectedPapers.length === 0 ? null : (
             <ul className="space-y-2">
               {connectedPapers.map(({ connection, paper: otherPaper }) => {
                 const isSource = connection.fromPaperId === paper.id;
@@ -388,13 +506,25 @@ export function PaperDetail({
           <Trash2 size={16} />
           Delete
         </button>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors font-medium"
-        >
-          <Edit2 size={16} />
-          Edit Paper
-        </button>
+        <div className="flex items-center gap-2">
+          {paper.semanticScholarId && (
+            <button
+              onClick={() => setShowCitationNetwork(true)}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1.5 px-3 py-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+              title="Find related papers, citations, and references"
+            >
+              <Search size={16} />
+              Find Related
+            </button>
+          )}
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors font-medium"
+          >
+            <Edit2 size={16} />
+            Edit Paper
+          </button>
+        </div>
       </div>
 
       {/* Edit Modal */}
@@ -411,6 +541,15 @@ export function PaperDetail({
           thesisId={thesisId}
           sourcePaper={paper}
           onClose={() => setShowConnectionEditor(false)}
+        />
+      )}
+
+      {/* Citation Network Modal */}
+      {showCitationNetwork && (
+        <CitationNetworkModal
+          thesisId={thesisId}
+          paper={paper}
+          onClose={() => setShowCitationNetwork(false)}
         />
       )}
 

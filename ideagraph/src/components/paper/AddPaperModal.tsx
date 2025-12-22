@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, Search, Loader2, Check, FileText, Globe, Plus, Trash2 } from 'lucide-react';
+import { X, Search, Loader2, Check, FileText, Globe, Plus, Trash2, Sparkles } from 'lucide-react';
 import { fetchPaperMetadata, type PaperMetadata } from '../../services/api';
 import { useAppStore } from '../../store/useAppStore';
+import { useAI } from '../../hooks/useAI';
 import type { ThesisRole, ReadingStatus, Author } from '../../types';
 import { FormTextarea, ErrorMessage, Button } from '../ui';
 import { THESIS_ROLE_COLORS } from '../../constants/colors';
@@ -17,10 +18,12 @@ type Step = 'input' | 'fetching' | 'review' | 'error';
 
 export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   const { addPaper } = useAppStore();
+  const { suggestTakeaway, isConfigured: isAIConfigured, settings: aiSettings } = useAI();
 
   const [inputMode, setInputMode] = useState<InputMode>('doi');
   const [step, setStep] = useState<Step>('input');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuggestingTakeaway, setIsSuggestingTakeaway] = useState(false);
   const [doiInput, setDoiInput] = useState('');
   const [metadata, setMetadata] = useState<PaperMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +138,31 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
       setManualAuthors(manualAuthors.filter((_, i) => i !== index));
     }
   };
+
+  // Handle AI takeaway suggestion
+  const handleSuggestTakeaway = async () => {
+    if (!metadata || isSuggestingTakeaway) return;
+
+    setIsSuggestingTakeaway(true);
+    try {
+      const suggestion = await suggestTakeaway({
+        title: metadata.title,
+        abstract: metadata.abstract,
+        authors: metadata.authors,
+        year: metadata.year,
+      });
+      if (suggestion?.suggestion) {
+        setTakeaway(suggestion.suggestion);
+      }
+    } catch (err) {
+      console.error('Failed to suggest takeaway:', err);
+    } finally {
+      setIsSuggestingTakeaway(false);
+    }
+  };
+
+  // Check if AI suggestions are available
+  const canSuggestTakeaway = isAIConfigured && aiSettings.enableTakeawaySuggestions && metadata;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -406,18 +434,43 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
               </div>
 
               {/* Takeaway (Required) */}
-              <FormTextarea
-                label="Takeaway *"
-                hint="What's the key insight? (min 10 characters)"
-                value={takeaway}
-                onChange={(e) => setTakeaway(e.target.value)}
-                placeholder="One sentence that captures the main contribution or finding..."
-                rows={3}
-                showCount
-                minLength={10}
-                maxLength={500}
-                error={takeaway.length > 0 && takeaway.length < 10 ? 'Takeaway must be at least 10 characters' : undefined}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Takeaway <span className="text-red-500">*</span>
+                  </label>
+                  {canSuggestTakeaway && (
+                    <button
+                      type="button"
+                      onClick={handleSuggestTakeaway}
+                      disabled={isSuggestingTakeaway}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
+                        isSuggestingTakeaway
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
+                          : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                      }`}
+                    >
+                      {isSuggestingTakeaway ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={12} />
+                      )}
+                      {isSuggestingTakeaway ? 'Suggesting...' : 'AI Suggest'}
+                    </button>
+                  )}
+                </div>
+                <FormTextarea
+                  hint="What's the key insight? (min 10 characters)"
+                  value={takeaway}
+                  onChange={(e) => setTakeaway(e.target.value)}
+                  placeholder="One sentence that captures the main contribution or finding..."
+                  rows={3}
+                  showCount
+                  minLength={10}
+                  maxLength={500}
+                  error={takeaway.length > 0 && takeaway.length < 10 ? 'Takeaway must be at least 10 characters' : undefined}
+                />
+              </div>
 
               {/* Thesis Role */}
               <div>

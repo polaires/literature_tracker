@@ -1,0 +1,343 @@
+// AI Settings Component
+// Simplified configuration for AI provider and API key
+
+import React, { useState } from 'react';
+import {
+  Bot,
+  Key,
+  Zap,
+  Shield,
+  Check,
+  X,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { useAI } from '../../hooks/useAI';
+
+interface AISettingsProps {
+  onClose?: () => void;
+}
+
+export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
+  const {
+    settings,
+    updateSettings,
+    isConfigured,
+    testConnection,
+  } = useAI();
+
+  const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey || '');
+  const [apiBaseUrlInput, setApiBaseUrlInput] = useState(settings.apiBaseUrl || '');
+  const [customModelInput, setCustomModelInput] = useState(settings.customModelName || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Handle API key and endpoint save
+  const handleSaveApiKey = () => {
+    updateSettings({
+      apiKey: apiKeyInput,
+      apiBaseUrl: apiBaseUrlInput || null,
+      customModelName: customModelInput || null,
+    });
+    setConnectionStatus('idle');
+  };
+
+  // Handle connection test
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+
+    try {
+      // Save settings with current input (including custom endpoint and model)
+      updateSettings({
+        apiKey: apiKeyInput,
+        apiBaseUrl: apiBaseUrlInput || null,
+        customModelName: customModelInput || null,
+      });
+
+      // Wait a bit for settings to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const success = await testConnection();
+      setConnectionStatus(success ? 'success' : 'error');
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setConnectionStatus('error');
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+          <Bot className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            AI Settings
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Configure AI-powered suggestions
+          </p>
+        </div>
+      </div>
+
+      {/* API Configuration */}
+      <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Key className="w-4 h-4 text-slate-500" />
+          <h3 className="font-medium text-slate-900 dark:text-white">API Configuration</h3>
+          {isConfigured && (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              Connected
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          {/* API Key */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              API Key
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKeyInput}
+                  onChange={(e) => {
+                    setApiKeyInput(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder={apiBaseUrlInput ? 'sk-...' : 'sk-ant-api03-...'}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showApiKey ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Endpoint (Collapsible) */}
+          <details className="group">
+            <summary className="text-sm text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
+              Using a third-party provider? Click to configure
+            </summary>
+            <div className="mt-3 space-y-3 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Custom API Endpoint
+                </label>
+                <input
+                  type="text"
+                  value={apiBaseUrlInput}
+                  onChange={(e) => {
+                    setApiBaseUrlInput(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder="https://api.anthropic.com/v1/messages"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  For OneAPI, OpenRouter, or other compatible providers
+                </p>
+              </div>
+
+              {apiBaseUrlInput && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Model Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customModelInput}
+                    onChange={(e) => {
+                      setCustomModelInput(e.target.value);
+                      setConnectionStatus('idle');
+                    }}
+                    placeholder="e.g., gpt-4, claude-3-sonnet"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          </details>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              onClick={handleSaveApiKey}
+              disabled={!apiKeyInput}
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleTestConnection}
+              disabled={!apiKeyInput || isTestingConnection}
+              className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+            >
+              {isTestingConnection ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              Test
+            </button>
+
+            {connectionStatus === 'success' && (
+              <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                <Check className="w-4 h-4" />
+                Success
+              </span>
+            )}
+
+            {connectionStatus === 'error' && (
+              <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
+                <X className="w-4 h-4" />
+                Failed
+              </span>
+            )}
+          </div>
+
+          {!apiBaseUrlInput && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Get your API key from{' '}
+              <a
+                href="https://console.anthropic.com/settings/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-600 hover:underline"
+              >
+                console.anthropic.com
+              </a>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Feature Toggles */}
+      <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4 text-slate-500" />
+          <h3 className="font-medium text-slate-900 dark:text-white">AI Features</h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { key: 'enableConnectionSuggestions', label: 'Connections' },
+            { key: 'enableTakeawaySuggestions', label: 'Takeaways' },
+            { key: 'enableArgumentExtraction', label: 'Arguments' },
+            { key: 'enableGapAnalysis', label: 'Gap Analysis' },
+          ].map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+              <input
+                type="checkbox"
+                checked={settings[key as keyof typeof settings] as boolean}
+                onChange={(e) => updateSettings({ [key]: e.target.checked })}
+                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Privacy & Advanced */}
+      <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center justify-between w-full"
+        >
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-slate-500" />
+            <h3 className="font-medium text-slate-900 dark:text-white">Privacy & Advanced</h3>
+          </div>
+          {showAdvanced ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-slate-400" />
+          )}
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-4 space-y-4">
+            {/* Privacy Toggles */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.sendAbstractsToAI}
+                  onChange={(e) => updateSettings({ sendAbstractsToAI: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Send paper abstracts for better suggestions</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.sendHighlightsToAI}
+                  onChange={(e) => updateSettings({ sendHighlightsToAI: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Include PDF highlights for context</span>
+              </label>
+            </div>
+
+            <div className="p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Thesis titles and paper takeaways are always sent for context.
+                </p>
+              </div>
+            </div>
+
+            {/* Confidence Threshold */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Min. Confidence: {(settings.suggestionConfidenceThreshold * 100).toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={settings.suggestionConfidenceThreshold * 100}
+                onChange={(e) =>
+                  updateSettings({ suggestionConfidenceThreshold: parseInt(e.target.value) / 100 })
+                }
+                className="w-full"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Close Button */}
+      {onClose && (
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AISettings;

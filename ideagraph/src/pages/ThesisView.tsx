@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   FileText,
   PanelRight,
+  Bot,
 } from 'lucide-react';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
@@ -36,6 +37,7 @@ import { DataManager } from '../components/common/DataManager';
 import { SynthesisMatrix, GapAnalysis, ReviewOutlineExport } from '../components/synthesis';
 import { WorkflowProgress } from '../components/common/WorkflowProgress';
 import { WorkflowGuide } from '../components/common/WorkflowGuide';
+import { AISettings } from '../components/settings/AISettings';
 import type { WorkflowPhase } from '../components/common/WorkflowProgress';
 import type { WorkflowAction } from '../components/common/WorkflowGuide';
 import { Button } from '../components/ui';
@@ -73,6 +75,7 @@ export function ThesisView() {
   const [showGapAnalysis, setShowGapAnalysis] = useState(false);
   const [showExportOutline, setShowExportOutline] = useState(false);
   const [showWorkflowPanel, setShowWorkflowPanel] = useState(true);
+  const [showAISettings, setShowAISettings] = useState(false);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('addedAt');
@@ -632,6 +635,13 @@ export function ThesisView() {
             >
               <Settings size={18} />
             </button>
+            <button
+              onClick={() => setShowAISettings(true)}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="AI Settings"
+            >
+              <Bot size={18} />
+            </button>
 
             {/* Add Paper Dropdown */}
             <div className="relative group">
@@ -1061,6 +1071,11 @@ export function ThesisView() {
           thesisId={thesisId}
           onClose={() => setShowExportOutline(false)}
         />
+      )}
+
+      {/* AI Settings Modal */}
+      {showAISettings && (
+        <AISettings onClose={() => setShowAISettings(false)} />
       )}
 
       {/* Keyboard Shortcuts Help Modal */}
