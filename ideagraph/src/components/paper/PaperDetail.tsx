@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen } from 'lucide-react';
-import type { Paper, Connection } from '../../types';
+import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { PaperEditModal } from './PaperEditModal';
 import { ConnectionEditor } from '../connection/ConnectionEditor';
 import { PDFViewer, PDFUpload } from '../pdf';
 import { pdfStorage } from '../../services/pdfStorage';
+import { THESIS_ROLE_COLORS, READING_STATUS_COLORS } from '../../constants/colors';
 
 interface PaperDetailProps {
   paper: Paper;
@@ -14,21 +15,6 @@ interface PaperDetailProps {
   thesisId: string;
   onClose: () => void;
 }
-
-const ROLE_STYLES: Record<string, string> = {
-  supports: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  contradicts: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  method: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  background: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-  other: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  'to-read': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  reading: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  read: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  'to-revisit': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-};
 
 export function PaperDetail({
   paper,
@@ -102,14 +88,32 @@ export function PaperDetail({
     return { connection: conn, paper: otherPaper };
   });
 
+  const roleColors = THESIS_ROLE_COLORS[paper.thesisRole as ThesisRole];
+  const statusColors = READING_STATUS_COLORS[paper.readingStatus as ReadingStatus];
+
   return (
-    <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-40 flex flex-col">
-      {/* Header */}
-      <div className="flex items-start justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex-1 pr-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
-            {paper.title}
-          </h2>
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-30 md:hidden"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        className="fixed inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-gray-800 shadow-xl z-40 flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="paper-detail-title"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex-1 pr-4">
+            <h2
+              id="paper-detail-title"
+              className="text-lg font-semibold text-gray-900 dark:text-white leading-tight"
+            >
+              {paper.title}
+            </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {paper.authors.map((a) => a.name).join(', ')}
             {paper.year && ` (${paper.year})`}
@@ -131,15 +135,15 @@ export function PaperDetail({
         {/* Tags & Quick Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs px-2 py-1 rounded-full ${ROLE_STYLES[paper.thesisRole]}`}>
-              {paper.thesisRole}
+            <span className={`text-xs px-2 py-1 rounded-full ${roleColors.bg} ${roleColors.text}`}>
+              {roleColors.label}
             </span>
             <button
               onClick={handleToggleReadingStatus}
-              className={`text-xs px-2 py-1 rounded-full transition-colors hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 ${STATUS_STYLES[paper.readingStatus]}`}
+              className={`text-xs px-2 py-1 rounded-full transition-colors hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 ${statusColors.bg} ${statusColors.text}`}
               title="Click to change reading status"
             >
-              {paper.readingStatus.replace('-', ' ')}
+              {statusColors.label}
             </button>
             {paper.citationCount !== null && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -417,14 +421,15 @@ export function PaperDetail({
         />
       )}
 
-      {/* PDF Upload */}
-      {showPDFUpload && (
-        <PDFUpload
-          paperId={paper.id}
-          onUploadComplete={handlePDFUploadComplete}
-          onClose={() => setShowPDFUpload(false)}
-        />
-      )}
-    </div>
+        {/* PDF Upload */}
+        {showPDFUpload && (
+          <PDFUpload
+            paperId={paper.id}
+            onUploadComplete={handlePDFUploadComplete}
+            onClose={() => setShowPDFUpload(false)}
+          />
+        )}
+      </div>
+    </>
   );
 }

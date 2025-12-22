@@ -23,6 +23,7 @@ import { PaperDetail } from '../components/paper/PaperDetail';
 import { GraphView } from '../components/visualization/GraphView';
 import { ArgumentMapView } from '../components/visualization/ArgumentMapView';
 import { DataManager } from '../components/common/DataManager';
+import { Button } from '../components/ui';
 import type { ThesisRole, ReadingStatus } from '../types';
 
 type ViewMode = 'list' | 'graph' | 'timeline' | 'arguments';
@@ -405,14 +406,14 @@ export function ThesisView() {
             >
               <Settings size={18} />
             </button>
-            <button
+            <Button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              icon={<Plus size={18} />}
+              shortcut="⌘N"
               title="Add Paper (⌘N)"
             >
-              <Plus size={18} />
               <span className="hidden sm:inline">Add Paper</span>
-            </button>
+            </Button>
           </div>
         </div>
 

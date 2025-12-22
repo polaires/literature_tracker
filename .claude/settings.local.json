@@ -15,7 +15,8 @@
       "Bash(npx tsc -b)",
       "Bash(npx vite build)",
       "Bash(npx tsc:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)"
     ]
   }
 }

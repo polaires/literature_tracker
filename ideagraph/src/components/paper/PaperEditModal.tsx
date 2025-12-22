@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import type { Paper, ThesisRole, ReadingStatus, Argument, Evidence } from '../../types';
+import { FormInput, FormTextarea, Button } from '../ui';
+import { THESIS_ROLE_COLORS, READING_STATUS_COLORS, ARGUMENT_STRENGTH_COLORS } from '../../constants/colors';
 
 interface PaperEditModalProps {
   paper: Paper;
@@ -9,22 +11,6 @@ interface PaperEditModalProps {
   onSuccess?: () => void;
 }
 
-const THESIS_ROLES: { value: ThesisRole; label: string; color: string }[] = [
-  { value: 'supports', label: 'Supports', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
-  { value: 'contradicts', label: 'Contradicts', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300' },
-  { value: 'method', label: 'Method', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  { value: 'background', label: 'Background', color: 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300' },
-  { value: 'other', label: 'Other', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300' },
-];
-
-const READING_STATUSES: { value: ReadingStatus; label: string; icon: string }[] = [
-  { value: 'to-read', label: 'To Read', icon: '📋' },
-  { value: 'reading', label: 'Reading', icon: '📖' },
-  { value: 'read', label: 'Read', icon: '✓' },
-  { value: 'to-revisit', label: 'To Revisit', icon: '🔄' },
-];
-
-const ARGUMENT_STRENGTHS = ['strong', 'moderate', 'weak'] as const;
 const EVIDENCE_TYPES = ['experimental', 'computational', 'theoretical', 'meta-analysis', 'other'] as const;
 
 export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProps) {
@@ -143,19 +129,17 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
           </div>
 
           {/* Takeaway */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Takeaway <span className="text-rose-500">*</span>
-              <span className="font-normal text-slate-500 ml-1">(Key insight, min 10 chars)</span>
-            </label>
-            <textarea
-              value={takeaway}
-              onChange={(e) => setTakeaway(e.target.value)}
-              rows={2}
-              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
-            <p className="text-xs text-slate-500 mt-1">{takeaway.length}/500 characters</p>
-          </div>
+          <FormTextarea
+            label="Takeaway *"
+            hint="Key insight (min 10 characters)"
+            value={takeaway}
+            onChange={(e) => setTakeaway(e.target.value)}
+            rows={2}
+            showCount
+            minLength={10}
+            maxLength={500}
+            error={takeaway.length > 0 && takeaway.length < 10 ? 'Takeaway must be at least 10 characters' : undefined}
+          />
 
           {/* Thesis Role & Reading Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -165,19 +149,22 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                 Thesis Role
               </label>
               <div className="flex flex-wrap gap-2">
-                {THESIS_ROLES.map((role) => (
-                  <button
-                    key={role.value}
-                    onClick={() => setThesisRole(role.value)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      thesisRole === role.value
-                        ? `${role.color} ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-800`
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    {role.label}
-                  </button>
-                ))}
+                {(Object.keys(THESIS_ROLE_COLORS) as ThesisRole[]).map((role) => {
+                  const colors = THESIS_ROLE_COLORS[role];
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => setThesisRole(role)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        thesisRole === role
+                          ? `${colors.bg} ${colors.text} ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-800`
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      {colors.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -187,20 +174,22 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                 Reading Status
               </label>
               <div className="flex flex-wrap gap-2">
-                {READING_STATUSES.map((status) => (
-                  <button
-                    key={status.value}
-                    onClick={() => setReadingStatus(status.value)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-                      readingStatus === status.value
-                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-800'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    <span>{status.icon}</span>
-                    {status.label}
-                  </button>
-                ))}
+                {(Object.keys(READING_STATUS_COLORS) as ReadingStatus[]).map((status) => {
+                  const colors = READING_STATUS_COLORS[status];
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setReadingStatus(status)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        readingStatus === status
+                          ? `${colors.bg} ${colors.text} ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-800`
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      {colors.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -239,23 +228,26 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-500">Strength:</span>
                         <div className="flex gap-1">
-                          {ARGUMENT_STRENGTHS.map((strength) => (
-                            <button
-                              key={strength}
-                              onClick={() =>
-                                updateArgument(arg.id, {
-                                  strength: arg.strength === strength ? null : strength,
-                                })
-                              }
-                              className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                                arg.strength === strength
-                                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                                  : 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
-                              }`}
-                            >
-                              {strength}
-                            </button>
-                          ))}
+                          {(Object.keys(ARGUMENT_STRENGTH_COLORS) as (keyof typeof ARGUMENT_STRENGTH_COLORS)[]).map((strength) => {
+                            const colors = ARGUMENT_STRENGTH_COLORS[strength];
+                            return (
+                              <button
+                                key={strength}
+                                onClick={() =>
+                                  updateArgument(arg.id, {
+                                    strength: arg.strength === strength ? null : strength,
+                                  })
+                                }
+                                className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                                  arg.strength === strength
+                                    ? `${colors.bg} ${colors.text}`
+                                    : 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
+                                }`}
+                              >
+                                {colors.label}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -368,51 +360,33 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
           </div>
 
           {/* Assessment */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Your Assessment
-              <span className="font-normal text-slate-500 ml-1">(Critical evaluation)</span>
-            </label>
-            <textarea
-              value={assessment}
-              onChange={(e) => setAssessment(e.target.value)}
-              placeholder="Your critical evaluation of this paper..."
-              rows={3}
-              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
-          </div>
+          <FormTextarea
+            label="Your Assessment"
+            hint="Critical evaluation of this paper"
+            value={assessment}
+            onChange={(e) => setAssessment(e.target.value)}
+            placeholder="Your critical evaluation of this paper..."
+            rows={3}
+          />
 
           {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Tags
-              <span className="font-normal text-slate-500 ml-1">(comma-separated)</span>
-            </label>
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g., machine-learning, protein-folding, review"
-              className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
+          <FormInput
+            label="Tags"
+            hint="Comma-separated"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="e.g., machine-learning, protein-folding, review"
+          />
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-          >
+          <Button variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!isValid}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-          >
+          </Button>
+          <Button onClick={handleSave} disabled={!isValid}>
             Save Changes
-          </button>
+          </Button>
         </div>
       </div>
     </div>

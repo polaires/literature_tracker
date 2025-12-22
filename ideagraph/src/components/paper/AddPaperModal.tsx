@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { X, Search, Loader2, Check, AlertCircle, FileText, Globe, Plus, Trash2 } from 'lucide-react';
+import { X, Search, Loader2, Check, FileText, Globe, Plus, Trash2 } from 'lucide-react';
 import { fetchPaperMetadata, type PaperMetadata } from '../../services/api';
 import { useAppStore } from '../../store/useAppStore';
 import type { ThesisRole, ReadingStatus, Author } from '../../types';
+import { FormTextarea, ErrorMessage, Button } from '../ui';
+import { THESIS_ROLE_COLORS } from '../../constants/colors';
 
 interface AddPaperModalProps {
   thesisId: string;
@@ -12,19 +14,12 @@ interface AddPaperModalProps {
 type InputMode = 'doi' | 'manual';
 type Step = 'input' | 'fetching' | 'review' | 'error';
 
-const THESIS_ROLES: { value: ThesisRole; label: string; color: string }[] = [
-  { value: 'supports', label: 'Supports', color: 'bg-green-100 text-green-800' },
-  { value: 'contradicts', label: 'Contradicts', color: 'bg-red-100 text-red-800' },
-  { value: 'method', label: 'Method', color: 'bg-blue-100 text-blue-800' },
-  { value: 'background', label: 'Background', color: 'bg-gray-100 text-gray-800' },
-  { value: 'other', label: 'Other', color: 'bg-purple-100 text-purple-800' },
-];
-
 export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   const { addPaper } = useAppStore();
 
   const [inputMode, setInputMode] = useState<InputMode>('doi');
   const [step, setStep] = useState<Step>('input');
+  const [isLoading, setIsLoading] = useState(false);
   const [doiInput, setDoiInput] = useState('');
   const [metadata, setMetadata] = useState<PaperMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +38,9 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   const [readingStatus, setReadingStatus] = useState<ReadingStatus>('to-read');
 
   const handleFetch = async () => {
-    if (!doiInput.trim()) return;
+    if (!doiInput.trim() || isLoading) return;
 
+    setIsLoading(true);
     setStep('fetching');
     setError(null);
 
@@ -59,6 +55,8 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch paper');
       setStep('error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -202,27 +200,23 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       autoFocus
                     />
-                    <button
+                    <Button
                       onClick={handleFetch}
-                      disabled={!doiInput.trim()}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      disabled={!doiInput.trim() || isLoading}
+                      loading={isLoading}
+                      icon={<Search size={18} />}
                     >
-                      <Search size={18} />
-                      Fetch
-                    </button>
+                      {isLoading ? 'Fetching...' : 'Fetch'}
+                    </Button>
                   </div>
 
-                  {step === 'error' && (
-                    <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-                      <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
-                      <div>
-                        <p className="text-red-800 dark:text-red-200 font-medium">
-                          Could not fetch paper
-                        </p>
-                        <p className="text-red-600 dark:text-red-300 text-sm mt-1">
-                          {error}
-                        </p>
-                      </div>
+                  {step === 'error' && error && (
+                    <div className="mt-4">
+                      <ErrorMessage
+                        message={error}
+                        onRetry={handleFetch}
+                        retryLabel="Try Again"
+                      />
                     </div>
                   )}
 
@@ -344,13 +338,13 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                   </div>
 
                   {/* Continue Button */}
-                  <button
+                  <Button
                     onClick={handleManualSubmit}
                     disabled={!manualTitle.trim()}
-                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -406,24 +400,18 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
               </div>
 
               {/* Takeaway (Required) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Takeaway <span className="text-red-500">*</span>
-                  <span className="font-normal text-gray-500 ml-1">
-                    (What's the key insight?)
-                  </span>
-                </label>
-                <textarea
-                  value={takeaway}
-                  onChange={(e) => setTakeaway(e.target.value)}
-                  placeholder="One sentence that captures the main contribution or finding..."
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {takeaway.length}/500 characters (min 10)
-                </p>
-              </div>
+              <FormTextarea
+                label="Takeaway *"
+                hint="What's the key insight? (min 10 characters)"
+                value={takeaway}
+                onChange={(e) => setTakeaway(e.target.value)}
+                placeholder="One sentence that captures the main contribution or finding..."
+                rows={3}
+                showCount
+                minLength={10}
+                maxLength={500}
+                error={takeaway.length > 0 && takeaway.length < 10 ? 'Takeaway must be at least 10 characters' : undefined}
+              />
 
               {/* Thesis Role */}
               <div>
@@ -431,19 +419,22 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                   Role in Your Thesis
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {THESIS_ROLES.map((role) => (
-                    <button
-                      key={role.value}
-                      onClick={() => setThesisRole(role.value)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                        thesisRole === role.value
-                          ? `${role.color} ring-2 ring-offset-2 ring-indigo-500`
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {role.label}
-                    </button>
-                  ))}
+                  {(Object.keys(THESIS_ROLE_COLORS) as ThesisRole[]).map((role) => {
+                    const colors = THESIS_ROLE_COLORS[role];
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => setThesisRole(role)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          thesisRole === role
+                            ? `${colors.bg} ${colors.text} ring-2 ring-offset-2 ring-indigo-500`
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {colors.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -470,22 +461,21 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
         {/* Footer */}
         {step === 'review' && (
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <button
+            <Button
+              variant="secondary"
               onClick={() => {
                 setStep('input');
                 setMetadata(null);
               }}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Back
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={takeaway.trim().length < 10}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Save Paper
-            </button>
+            </Button>
           </div>
         )}
       </div>
