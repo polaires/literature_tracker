@@ -18,6 +18,9 @@ import {
   Globe,
   Upload,
   ClipboardCheck,
+  Grid3X3,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
@@ -29,6 +32,7 @@ import { PaperDetail } from '../components/paper/PaperDetail';
 import { GraphView } from '../components/visualization/GraphView';
 import { ArgumentMapView } from '../components/visualization/ArgumentMapView';
 import { DataManager } from '../components/common/DataManager';
+import { SynthesisMatrix, GapAnalysis, ReviewOutlineExport } from '../components/synthesis';
 import { Button } from '../components/ui';
 import type { ThesisRole, ReadingStatus, ScreeningDecision } from '../types';
 
@@ -55,6 +59,9 @@ export function ThesisView() {
   const [showBatchImport, setShowBatchImport] = useState(false);
   const [showScreeningPanel, setShowScreeningPanel] = useState(false);
   const [showDataManager, setShowDataManager] = useState(false);
+  const [showSynthesisMatrix, setShowSynthesisMatrix] = useState(false);
+  const [showGapAnalysis, setShowGapAnalysis] = useState(false);
+  const [showExportOutline, setShowExportOutline] = useState(false);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('addedAt');
@@ -426,6 +433,46 @@ export function ThesisView() {
                   {papersNeedingScreening}
                 </span>
               </button>
+            )}
+
+            {/* Synthesis Tools Dropdown */}
+            {papers.length > 0 && (
+              <div className="relative group">
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                  title="Synthesis Tools"
+                >
+                  <Grid3X3 size={16} />
+                  <span className="hidden sm:inline">Synthesis</span>
+                  <ChevronDown size={14} />
+                </button>
+
+                {/* Dropdown menu */}
+                <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                  <button
+                    onClick={() => setShowSynthesisMatrix(true)}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <Grid3X3 size={16} />
+                    Synthesis Matrix
+                  </button>
+                  <button
+                    onClick={() => setShowGapAnalysis(true)}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <AlertTriangle size={16} />
+                    Gap Analysis
+                  </button>
+                  <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                  <button
+                    onClick={() => setShowExportOutline(true)}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                  >
+                    <FileText size={16} />
+                    Export Review Outline
+                  </button>
+                </div>
+              </div>
             )}
 
             <button
@@ -811,6 +858,30 @@ export function ThesisView() {
         <DataManager
           thesisId={thesisId}
           onClose={() => setShowDataManager(false)}
+        />
+      )}
+
+      {/* Synthesis Matrix Modal */}
+      {showSynthesisMatrix && thesisId && (
+        <SynthesisMatrix
+          thesisId={thesisId}
+          onClose={() => setShowSynthesisMatrix(false)}
+        />
+      )}
+
+      {/* Gap Analysis Modal */}
+      {showGapAnalysis && thesisId && (
+        <GapAnalysis
+          thesisId={thesisId}
+          onClose={() => setShowGapAnalysis(false)}
+        />
+      )}
+
+      {/* Export Outline Modal */}
+      {showExportOutline && thesisId && (
+        <ReviewOutlineExport
+          thesisId={thesisId}
+          onClose={() => setShowExportOutline(false)}
         />
       )}
 

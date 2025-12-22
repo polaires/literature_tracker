@@ -262,3 +262,80 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const CURRENT_VERSION = '1.0.0';
+
+// ============================================
+// SYNTHESIS & REVIEW TOOLS (Phase 2.6)
+// ============================================
+
+// Review section for organizing papers
+export interface ReviewSection {
+  id: string;
+  thesisId: string;
+  title: string;                   // e.g., "Introduction", "Kinetic Framework"
+  description: string | null;      // Section purpose
+  order: number;                   // Display order
+  paperIds: string[];              // Papers assigned to this section
+  createdAt: string;
+}
+
+// Synthesis theme for cross-paper analysis
+export interface SynthesisTheme {
+  id: string;
+  thesisId: string;
+  name: string;                    // e.g., "Pocket engineering limitations"
+  description: string | null;
+  color: string;                   // For visual coding
+  paperIds: string[];              // Papers addressing this theme
+  relatedArgumentIds: string[];    // Arguments across papers on this theme
+  createdAt: string;
+}
+
+// Research gap identified in the literature
+export type GapType =
+  | 'knowledge'          // Missing empirical evidence
+  | 'methodological'     // Missing methodology/approach
+  | 'population'         // Understudied population
+  | 'theoretical'        // Missing framework/theory
+  | 'temporal'           // Outdated research
+  | 'geographic'         // Geographic limitation
+  | 'contradictory';     // Conflicting findings need resolution
+
+export type GapPriority = 'high' | 'medium' | 'low';
+
+export interface ResearchGap {
+  id: string;
+  thesisId: string;
+  title: string;                   // Brief description
+  description: string;             // Detailed explanation
+  type: GapType;
+  priority: GapPriority;
+  evidenceSource: 'user' | 'inferred';  // User-identified or system-detected
+  relatedPaperIds: string[];       // Papers that expose or mention this gap
+  futureResearchNote: string | null;  // How this could be addressed
+  createdAt: string;
+}
+
+// Evidence synthesis across papers
+export interface EvidenceSynthesis {
+  id: string;
+  thesisId: string;
+  claim: string;                   // The synthesized claim
+  supportingPaperIds: string[];    // Papers that support this claim
+  contradictingPaperIds: string[]; // Papers that contradict this claim
+  evidenceStrength: 'strong' | 'moderate' | 'weak' | 'conflicting';
+  consensusNote: string | null;    // Summary of agreement/disagreement
+  createdAt: string;
+}
+
+// Export format options
+export type ExportFormat = 'markdown' | 'docx' | 'latex' | 'csv';
+
+export interface ExportOptions {
+  format: ExportFormat;
+  includeSections: boolean;
+  includeThemes: boolean;
+  includeGaps: boolean;
+  includeEvidenceTable: boolean;
+  includeCitations: boolean;
+  citationStyle: 'apa' | 'mla' | 'chicago' | 'ieee';
+}

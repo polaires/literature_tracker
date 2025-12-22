@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Thesis, Paper, Connection, UserSettings, PDFAnnotation, ScreeningDecision, ExclusionReason } from '../types';
+import type {
+  Thesis,
+  Paper,
+  Connection,
+  UserSettings,
+  PDFAnnotation,
+  ScreeningDecision,
+  ExclusionReason,
+  ReviewSection,
+  SynthesisTheme,
+  ResearchGap,
+  EvidenceSynthesis,
+} from '../types';
 
 interface AppStore {
   // Data
@@ -8,6 +20,12 @@ interface AppStore {
   papers: Paper[];
   connections: Connection[];
   annotations: PDFAnnotation[];
+
+  // Synthesis data (Phase 2.6)
+  reviewSections: ReviewSection[];
+  synthesisThemes: SynthesisTheme[];
+  researchGaps: ResearchGap[];
+  evidenceSyntheses: EvidenceSynthesis[];
 
   // Active state
   activeThesisId: string | null;
@@ -62,6 +80,47 @@ interface AppStore {
   exportData: () => string;
   importData: (json: string) => void;
   clearAllData: () => void;
+
+  // Review Section actions (Phase 2.6)
+  createSection: (section: Omit<ReviewSection, 'id' | 'createdAt'>) => ReviewSection;
+  updateSection: (id: string, updates: Partial<ReviewSection>) => void;
+  deleteSection: (id: string) => void;
+  assignPaperToSection: (paperId: string, sectionId: string) => void;
+  removePaperFromSection: (paperId: string, sectionId: string) => void;
+  getSectionsForThesis: (thesisId: string) => ReviewSection[];
+
+  // Synthesis Theme actions
+  createTheme: (theme: Omit<SynthesisTheme, 'id' | 'createdAt'>) => SynthesisTheme;
+  updateTheme: (id: string, updates: Partial<SynthesisTheme>) => void;
+  deleteTheme: (id: string) => void;
+  assignPaperToTheme: (paperId: string, themeId: string) => void;
+  removePaperFromTheme: (paperId: string, themeId: string) => void;
+  getThemesForThesis: (thesisId: string) => SynthesisTheme[];
+
+  // Research Gap actions
+  createGap: (gap: Omit<ResearchGap, 'id' | 'createdAt'>) => ResearchGap;
+  updateGap: (id: string, updates: Partial<ResearchGap>) => void;
+  deleteGap: (id: string) => void;
+  getGapsForThesis: (thesisId: string) => ResearchGap[];
+  detectGaps: (thesisId: string) => ResearchGap[];  // Auto-detect potential gaps
+
+  // Evidence Synthesis actions
+  createEvidenceSynthesis: (synthesis: Omit<EvidenceSynthesis, 'id' | 'createdAt'>) => EvidenceSynthesis;
+  updateEvidenceSynthesis: (id: string, updates: Partial<EvidenceSynthesis>) => void;
+  deleteEvidenceSynthesis: (id: string) => void;
+  getEvidenceSynthesesForThesis: (thesisId: string) => EvidenceSynthesis[];
+
+  // Synthesis Utilities
+  getSynthesisMatrix: (thesisId: string) => {
+    themes: SynthesisTheme[];
+    papers: Paper[];
+    matrix: Record<string, Record<string, boolean>>;  // themeId -> paperId -> hasContent
+  };
+  getArgumentClusters: (thesisId: string) => {
+    claim: string;
+    papers: Paper[];
+    agreement: 'consensus' | 'partial' | 'conflicting';
+  }[];
 }
 
 const generateId = () => crypto.randomUUID();
@@ -82,6 +141,10 @@ export const useAppStore = create<AppStore>()(
       papers: [],
       connections: [],
       annotations: [],
+      reviewSections: [],
+      synthesisThemes: [],
+      researchGaps: [],
+      evidenceSyntheses: [],
       activeThesisId: null,
       selectedPaperId: null,
       settings: defaultSettings,
@@ -434,10 +497,349 @@ export const useAppStore = create<AppStore>()(
           theses: [],
           papers: [],
           connections: [],
+          annotations: [],
+          reviewSections: [],
+          synthesisThemes: [],
+          researchGaps: [],
+          evidenceSyntheses: [],
           activeThesisId: null,
           selectedPaperId: null,
           settings: defaultSettings,
         });
+      },
+
+      // Review Section actions (Phase 2.6)
+      createSection: (sectionData) => {
+        const section: ReviewSection = {
+          ...sectionData,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          reviewSections: [...state.reviewSections, section],
+        }));
+        return section;
+      },
+
+      updateSection: (id, updates) => {
+        set((state) => ({
+          reviewSections: state.reviewSections.map((s) =>
+            s.id === id ? { ...s, ...updates } : s
+          ),
+        }));
+      },
+
+      deleteSection: (id) => {
+        set((state) => ({
+          reviewSections: state.reviewSections.filter((s) => s.id !== id),
+        }));
+      },
+
+      assignPaperToSection: (paperId, sectionId) => {
+        set((state) => ({
+          reviewSections: state.reviewSections.map((s) =>
+            s.id === sectionId && !s.paperIds.includes(paperId)
+              ? { ...s, paperIds: [...s.paperIds, paperId] }
+              : s
+          ),
+        }));
+      },
+
+      removePaperFromSection: (paperId, sectionId) => {
+        set((state) => ({
+          reviewSections: state.reviewSections.map((s) =>
+            s.id === sectionId
+              ? { ...s, paperIds: s.paperIds.filter((id) => id !== paperId) }
+              : s
+          ),
+        }));
+      },
+
+      getSectionsForThesis: (thesisId) => {
+        return get().reviewSections
+          .filter((s) => s.thesisId === thesisId)
+          .sort((a, b) => a.order - b.order);
+      },
+
+      // Synthesis Theme actions
+      createTheme: (themeData) => {
+        const theme: SynthesisTheme = {
+          ...themeData,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          synthesisThemes: [...state.synthesisThemes, theme],
+        }));
+        return theme;
+      },
+
+      updateTheme: (id, updates) => {
+        set((state) => ({
+          synthesisThemes: state.synthesisThemes.map((t) =>
+            t.id === id ? { ...t, ...updates } : t
+          ),
+        }));
+      },
+
+      deleteTheme: (id) => {
+        set((state) => ({
+          synthesisThemes: state.synthesisThemes.filter((t) => t.id !== id),
+        }));
+      },
+
+      assignPaperToTheme: (paperId, themeId) => {
+        set((state) => ({
+          synthesisThemes: state.synthesisThemes.map((t) =>
+            t.id === themeId && !t.paperIds.includes(paperId)
+              ? { ...t, paperIds: [...t.paperIds, paperId] }
+              : t
+          ),
+        }));
+      },
+
+      removePaperFromTheme: (paperId, themeId) => {
+        set((state) => ({
+          synthesisThemes: state.synthesisThemes.map((t) =>
+            t.id === themeId
+              ? { ...t, paperIds: t.paperIds.filter((id) => id !== paperId) }
+              : t
+          ),
+        }));
+      },
+
+      getThemesForThesis: (thesisId) => {
+        return get().synthesisThemes.filter((t) => t.thesisId === thesisId);
+      },
+
+      // Research Gap actions
+      createGap: (gapData) => {
+        const gap: ResearchGap = {
+          ...gapData,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          researchGaps: [...state.researchGaps, gap],
+        }));
+        return gap;
+      },
+
+      updateGap: (id, updates) => {
+        set((state) => ({
+          researchGaps: state.researchGaps.map((g) =>
+            g.id === id ? { ...g, ...updates } : g
+          ),
+        }));
+      },
+
+      deleteGap: (id) => {
+        set((state) => ({
+          researchGaps: state.researchGaps.filter((g) => g.id !== id),
+        }));
+      },
+
+      getGapsForThesis: (thesisId) => {
+        return get().researchGaps.filter((g) => g.thesisId === thesisId);
+      },
+
+      detectGaps: (thesisId) => {
+        const papers = get().papers.filter((p) => p.thesisId === thesisId && p.screeningDecision === 'include');
+        const connections = get().connections.filter((c) => c.thesisId === thesisId);
+        const existingGaps = get().researchGaps.filter((g) => g.thesisId === thesisId);
+        const detectedGaps: ResearchGap[] = [];
+
+        // Detect contradictory findings
+        const contradictions = connections.filter((c) => c.type === 'contradicts');
+        if (contradictions.length > 0) {
+          const contradictingPaperIds = new Set<string>();
+          contradictions.forEach((c) => {
+            contradictingPaperIds.add(c.fromPaperId);
+            contradictingPaperIds.add(c.toPaperId);
+          });
+
+          const existingContradictoryGap = existingGaps.find((g) => g.type === 'contradictory');
+          if (!existingContradictoryGap) {
+            detectedGaps.push({
+              id: generateId(),
+              thesisId,
+              title: 'Conflicting findings need resolution',
+              description: `${contradictions.length} contradictory relationships identified between papers. These conflicting findings suggest an opportunity for resolution through meta-analysis or new research.`,
+              type: 'contradictory',
+              priority: 'high',
+              evidenceSource: 'inferred',
+              relatedPaperIds: Array.from(contradictingPaperIds),
+              futureResearchNote: null,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+
+        // Detect temporal gaps (papers older than 5 years with no recent updates)
+        const currentYear = new Date().getFullYear();
+        const oldPapers = papers.filter((p) => p.year && p.year < currentYear - 5);
+        const recentPapers = papers.filter((p) => p.year && p.year >= currentYear - 3);
+        if (oldPapers.length > papers.length * 0.5 && recentPapers.length < 3) {
+          const existingTemporalGap = existingGaps.find((g) => g.type === 'temporal');
+          if (!existingTemporalGap) {
+            detectedGaps.push({
+              id: generateId(),
+              thesisId,
+              title: 'Limited recent research',
+              description: `More than half of the papers are over 5 years old, with few recent publications. Consider searching for more current literature or note this as a gap.`,
+              type: 'temporal',
+              priority: 'medium',
+              evidenceSource: 'inferred',
+              relatedPaperIds: oldPapers.map((p) => p.id),
+              futureResearchNote: null,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+
+        // Detect methodological gaps
+        const evidenceTypes = new Set<string>();
+        papers.forEach((p) => {
+          p.evidence.forEach((e) => evidenceTypes.add(e.type));
+        });
+        const missingTypes = ['experimental', 'computational', 'theoretical', 'meta-analysis'].filter(
+          (t) => !evidenceTypes.has(t)
+        );
+        if (missingTypes.length >= 2 && papers.length >= 5) {
+          const existingMethodGap = existingGaps.find((g) => g.type === 'methodological');
+          if (!existingMethodGap) {
+            detectedGaps.push({
+              id: generateId(),
+              thesisId,
+              title: `Missing ${missingTypes.join(' and ')} evidence`,
+              description: `The literature lacks ${missingTypes.join(' and ')} studies. This methodological gap could be addressed with future research.`,
+              type: 'methodological',
+              priority: 'medium',
+              evidenceSource: 'inferred',
+              relatedPaperIds: [],
+              futureResearchNote: null,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+
+        // Detect knowledge gaps from weak arguments
+        const weakArguments = papers.flatMap((p) =>
+          p.arguments.filter((a) => a.strength === 'weak').map((a) => ({ paper: p, argument: a }))
+        );
+        if (weakArguments.length >= 3) {
+          const existingKnowledgeGap = existingGaps.find((g) => g.type === 'knowledge');
+          if (!existingKnowledgeGap) {
+            detectedGaps.push({
+              id: generateId(),
+              thesisId,
+              title: 'Weak evidence for key claims',
+              description: `${weakArguments.length} arguments across papers have been marked as weakly supported. These represent potential knowledge gaps requiring stronger empirical evidence.`,
+              type: 'knowledge',
+              priority: 'high',
+              evidenceSource: 'inferred',
+              relatedPaperIds: [...new Set(weakArguments.map((wa) => wa.paper.id))],
+              futureResearchNote: null,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+
+        return detectedGaps;
+      },
+
+      // Evidence Synthesis actions
+      createEvidenceSynthesis: (synthesisData) => {
+        const synthesis: EvidenceSynthesis = {
+          ...synthesisData,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          evidenceSyntheses: [...state.evidenceSyntheses, synthesis],
+        }));
+        return synthesis;
+      },
+
+      updateEvidenceSynthesis: (id, updates) => {
+        set((state) => ({
+          evidenceSyntheses: state.evidenceSyntheses.map((s) =>
+            s.id === id ? { ...s, ...updates } : s
+          ),
+        }));
+      },
+
+      deleteEvidenceSynthesis: (id) => {
+        set((state) => ({
+          evidenceSyntheses: state.evidenceSyntheses.filter((s) => s.id !== id),
+        }));
+      },
+
+      getEvidenceSynthesesForThesis: (thesisId) => {
+        return get().evidenceSyntheses.filter((s) => s.thesisId === thesisId);
+      },
+
+      // Synthesis Utilities
+      getSynthesisMatrix: (thesisId) => {
+        const themes = get().synthesisThemes.filter((t) => t.thesisId === thesisId);
+        const papers = get().papers.filter((p) => p.thesisId === thesisId && p.screeningDecision === 'include');
+
+        const matrix: Record<string, Record<string, boolean>> = {};
+        themes.forEach((theme) => {
+          matrix[theme.id] = {};
+          papers.forEach((paper) => {
+            matrix[theme.id][paper.id] = theme.paperIds.includes(paper.id);
+          });
+        });
+
+        return { themes, papers, matrix };
+      },
+
+      getArgumentClusters: (thesisId) => {
+        const papers = get().papers.filter((p) => p.thesisId === thesisId && p.screeningDecision === 'include');
+        // Note: connections can be used in future to enhance clustering based on paper relationships
+
+        // Group papers by similar arguments (simplified clustering)
+        const clusters: { claim: string; papers: Paper[]; agreement: 'consensus' | 'partial' | 'conflicting' }[] = [];
+
+        // Extract all claims
+        const claimsToPapers = new Map<string, { supporting: Paper[]; contradicting: Paper[] }>();
+
+        papers.forEach((paper) => {
+          paper.arguments.forEach((arg) => {
+            const normalizedClaim = arg.claim.toLowerCase().trim();
+            if (!claimsToPapers.has(normalizedClaim)) {
+              claimsToPapers.set(normalizedClaim, { supporting: [], contradicting: [] });
+            }
+            if (arg.yourAssessment === 'agree' || arg.yourAssessment === null) {
+              claimsToPapers.get(normalizedClaim)!.supporting.push(paper);
+            } else if (arg.yourAssessment === 'disagree') {
+              claimsToPapers.get(normalizedClaim)!.contradicting.push(paper);
+            }
+          });
+        });
+
+        // Create clusters from claims with multiple papers
+        claimsToPapers.forEach((data, claim) => {
+          const allPapers = [...data.supporting, ...data.contradicting];
+          if (allPapers.length >= 2) {
+            let agreement: 'consensus' | 'partial' | 'conflicting' = 'consensus';
+            if (data.contradicting.length > 0 && data.supporting.length > 0) {
+              agreement = data.contradicting.length >= data.supporting.length ? 'conflicting' : 'partial';
+            } else if (data.contradicting.length > 0) {
+              agreement = 'conflicting';
+            }
+
+            clusters.push({
+              claim,
+              papers: [...new Set(allPapers)],
+              agreement,
+            });
+          }
+        });
+
+        // Sort by number of papers (most discussed first)
+        return clusters.sort((a, b) => b.papers.length - a.papers.length);
       },
     }),
     {
