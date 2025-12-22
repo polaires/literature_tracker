@@ -1,7 +1,7 @@
 // AI Settings Component
 // Simplified configuration for AI provider and API key
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Bot,
   Key,
@@ -13,8 +13,17 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Database,
+  Brain,
+  Search,
+  AlertTriangle,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useAI } from '../../hooks/useAI';
+import { getSimilarityCacheStats, clearSimilarityCache } from '../../services/api/semanticScholar';
+import { getEmbeddingCacheStats, clearEmbeddingCache } from '../../services/api/semanticScholar';
+import { getRetractionCheckStats, clearRetractionCache } from '../../services/intake/retractionCheck';
 
 interface AISettingsProps {
   onClose?: () => void;
@@ -234,23 +243,81 @@ export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
           <h3 className="font-medium text-slate-900 dark:text-white">AI Features</h3>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { key: 'enableConnectionSuggestions', label: 'Connections' },
-            { key: 'enableTakeawaySuggestions', label: 'Takeaways' },
-            { key: 'enableArgumentExtraction', label: 'Arguments' },
-            { key: 'enableGapAnalysis', label: 'Gap Analysis' },
-          ].map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
-              <input
-                type="checkbox"
-                checked={settings[key as keyof typeof settings] as boolean}
-                onChange={(e) => updateSettings({ [key]: e.target.checked })}
-                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
-            </label>
-          ))}
+        <div className="space-y-3">
+          {/* Core AI Features */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { key: 'enableConnectionSuggestions', label: 'Connections', icon: Sparkles },
+              { key: 'enableTakeawaySuggestions', label: 'Takeaways', icon: Sparkles },
+              { key: 'enableArgumentExtraction', label: 'Arguments', icon: Brain },
+              { key: 'enableGapAnalysis', label: 'Gap Analysis', icon: Search },
+            ].map(({ key, label, icon: Icon }) => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings[key as keyof typeof settings] as boolean}
+                  onChange={(e) => updateSettings({ [key]: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <Icon className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* New Phase 3 Features */}
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">Enhanced Features</p>
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings.enableRetractionChecking ?? true}
+                  onChange={(e) => updateSettings({ enableRetractionChecking: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Retraction checking</span>
+                <span className="text-xs text-slate-400 ml-auto">via OpenAlex</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings.enableSemanticSearch ?? false}
+                  onChange={(e) => updateSettings({ enableSemanticSearch: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <Search className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Semantic search</span>
+                <span className="text-xs text-slate-400 ml-auto">SPECTER embeddings</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings.enableFeedbackLearning ?? true}
+                  onChange={(e) => updateSettings({ enableFeedbackLearning: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <Brain className="w-3.5 h-3.5 text-green-500" />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Learn from corrections</span>
+                <span className="text-xs text-slate-400 ml-auto">Improves suggestions</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings.enablePlanBasedGaps ?? false}
+                  onChange={(e) => updateSettings({ enablePlanBasedGaps: e.target.checked })}
+                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                />
+                <Database className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-sm text-slate-700 dark:text-slate-300">Plan-based gap analysis</span>
+                <span className="text-xs text-slate-400 ml-auto">More accurate</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -325,6 +392,9 @@ export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
         )}
       </div>
 
+      {/* Cache Management */}
+      <CacheManagement />
+
       {/* Close Button */}
       {onClose && (
         <div className="flex justify-end">
@@ -339,5 +409,130 @@ export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
     </div>
   );
 };
+
+/**
+ * Cache Management Component
+ */
+function CacheManagement() {
+  const [showCaches, setShowCaches] = useState(false);
+
+  // Get cache stats
+  const similarityStats = useMemo(() => getSimilarityCacheStats(), [showCaches]);
+  const embeddingStats = useMemo(() => getEmbeddingCacheStats(), [showCaches]);
+  const retractionStats = useMemo(() => getRetractionCheckStats(), [showCaches]);
+
+  const handleClearAll = () => {
+    clearSimilarityCache();
+    clearEmbeddingCache();
+    clearRetractionCache();
+    // Force re-render
+    setShowCaches(false);
+    setTimeout(() => setShowCaches(true), 0);
+  };
+
+  return (
+    <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <button
+        onClick={() => setShowCaches(!showCaches)}
+        className="flex items-center justify-between w-full"
+      >
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-slate-500" />
+          <h3 className="font-medium text-slate-900 dark:text-white">Cache Management</h3>
+        </div>
+        {showCaches ? (
+          <ChevronUp className="w-4 h-4 text-slate-400" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        )}
+      </button>
+
+      {showCaches && (
+        <div className="mt-4 space-y-3">
+          {/* Similarity Cache */}
+          <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-700/50">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Similar Papers</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {similarityStats.entries} entries
+                {similarityStats.entries > 0 && ` (${similarityStats.oldestDays}d old)`}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                clearSimilarityCache();
+                setShowCaches(false);
+                setTimeout(() => setShowCaches(true), 0);
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+              title="Clear similarity cache"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Embedding Cache */}
+          <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-700/50">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Paper Embeddings</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {embeddingStats.entryCount} papers (~{embeddingStats.estimatedSizeKB}KB)
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                clearEmbeddingCache();
+                setShowCaches(false);
+                setTimeout(() => setShowCaches(true), 0);
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+              title="Clear embedding cache"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Retraction Cache */}
+          <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-700/50">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Retraction Checks</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {retractionStats.cacheEntries} checked
+                {retractionStats.retractedCount > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {' '}({retractionStats.retractedCount} retracted)
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                clearRetractionCache();
+                setShowCaches(false);
+                setTimeout(() => setShowCaches(true), 0);
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+              title="Clear retraction cache"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Clear All */}
+          <button
+            onClick={handleClearAll}
+            className="w-full py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+          >
+            Clear All Caches
+          </button>
+
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+            Caches improve performance. Clearing forces fresh API calls.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default AISettings;

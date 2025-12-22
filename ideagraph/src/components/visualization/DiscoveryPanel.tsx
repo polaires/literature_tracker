@@ -1,5 +1,12 @@
-import { X, Plus, Search, FileText, Loader2 } from 'lucide-react';
+import { X, Plus, Search, FileText, Loader2, Brain, Target, Sparkles } from 'lucide-react';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
+
+interface SimilarityInfo {
+  embeddingScore?: number;
+  keywordScore?: number;
+  combinedScore?: number;
+  source?: 'keyword' | 'embedding' | 'both';
+}
 
 interface DiscoveryPanelProps {
   papers: SemanticScholarPaper[];
@@ -9,6 +16,10 @@ interface DiscoveryPanelProps {
   onPaperClick: (paper: SemanticScholarPaper) => void;
   onSearchMore: () => void;
   onClose: () => void;
+  // Optional similarity info for each paper
+  similarityMap?: Map<string, SimilarityInfo>;
+  // Show this is semantic-based discovery
+  isSemanticSearch?: boolean;
 }
 
 export function DiscoveryPanel({
@@ -19,6 +30,8 @@ export function DiscoveryPanel({
   onPaperClick,
   onSearchMore,
   onClose,
+  similarityMap,
+  isSemanticSearch = false,
 }: DiscoveryPanelProps) {
   if (loading) {
     return (
@@ -67,10 +80,19 @@ export function DiscoveryPanel({
       <div className="p-3 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            {isSemanticSearch ? (
+              <Brain size={14} className="text-purple-500" />
+            ) : (
+              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            )}
             <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Similar Papers
+              {isSemanticSearch ? 'Semantically Similar' : 'Similar Papers'}
             </h4>
+            {isSemanticSearch && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
+                AI
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -89,42 +111,66 @@ export function DiscoveryPanel({
 
       {/* Paper List */}
       <div className="max-h-96 overflow-y-auto">
-        {newPapers.map((paper) => (
-          <button
-            key={paper.paperId}
-            onClick={() => onPaperClick(paper)}
-            className="w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors group"
-          >
-            <div className="flex items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <h5 className="text-sm font-medium text-slate-700 dark:text-slate-200 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {paper.title}
-                </h5>
-                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
-                  {paper.authors?.slice(0, 2).map((a) => a.name).join(', ')}
-                  {paper.authors && paper.authors.length > 2 && ' et al.'}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  {paper.year && (
-                    <span className="text-xs text-slate-400">{paper.year}</span>
+        {newPapers.map((paper) => {
+          const similarity = similarityMap?.get(paper.paperId);
+          return (
+            <button
+              key={paper.paperId}
+              onClick={() => onPaperClick(paper)}
+              className="w-full p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors group"
+            >
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  {/* Similarity score badge */}
+                  {similarity && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded text-[10px] text-purple-700 dark:text-purple-300">
+                        <Target size={10} />
+                        {Math.round((similarity.combinedScore || similarity.embeddingScore || 0) * 100)}%
+                      </div>
+                      {similarity.source === 'both' && (
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 rounded text-[10px] text-green-700 dark:text-green-300 flex items-center gap-0.5">
+                          <Sparkles size={8} />
+                          Both
+                        </span>
+                      )}
+                      {similarity.source === 'embedding' && (
+                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-[10px] text-blue-700 dark:text-blue-300 flex items-center gap-0.5">
+                          <Brain size={8} />
+                          Semantic
+                        </span>
+                      )}
+                    </div>
                   )}
-                  {paper.citationCount !== null && paper.citationCount > 0 && (
-                    <span className="text-xs text-slate-400">
-                      {paper.citationCount.toLocaleString()} cites
-                    </span>
-                  )}
-                  {paper.openAccessPdf && (
-                    <FileText size={12} className="text-emerald-500" />
-                  )}
+                  <h5 className="text-sm font-medium text-slate-700 dark:text-slate-200 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {paper.title}
+                  </h5>
+                  <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                    {paper.authors?.slice(0, 2).map((a) => a.name).join(', ')}
+                    {paper.authors && paper.authors.length > 2 && ' et al.'}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {paper.year && (
+                      <span className="text-xs text-slate-400">{paper.year}</span>
+                    )}
+                    {paper.citationCount !== null && paper.citationCount > 0 && (
+                      <span className="text-xs text-slate-400">
+                        {paper.citationCount.toLocaleString()} cites
+                      </span>
+                    )}
+                    {paper.openAccessPdf && (
+                      <FileText size={12} className="text-emerald-500" />
+                    )}
+                  </div>
                 </div>
+                <Plus
+                  size={16}
+                  className="text-slate-300 group-hover:text-indigo-500 transition-colors flex-shrink-0 mt-0.5"
+                />
               </div>
-              <Plus
-                size={16}
-                className="text-slate-300 group-hover:text-indigo-500 transition-colors flex-shrink-0 mt-0.5"
-              />
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* Footer */}

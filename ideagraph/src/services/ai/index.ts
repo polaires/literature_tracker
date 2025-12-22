@@ -117,6 +117,13 @@ export {
   estimateContextTokens,
   trimContextToBudget,
   getRelevantPapers,
+  // Adaptive context
+  getCollectionTier,
+  getAdaptivePromptEnhancements,
+  shouldAutoTriggerAI,
+  getColdStartMessage,
+  type CollectionTier,
+  type AdaptiveConfig,
 } from './context';
 
 // Suggestion Manager
@@ -143,4 +150,10 @@ export {
   GAP_ANALYSIS_SYSTEM_PROMPT,
   buildGapAnalysisPrompt,
   parseGapSuggestions,
+  // Unified paper intake
+  PAPER_INTAKE_SYSTEM_PROMPT,
+  buildPaperIntakePrompt,
+  parsePaperIntakeAnalysis,
+  getRelevanceLabel,
+  type PaperIntakeAnalysis,
 } from './prompts';

@@ -9,3 +9,12 @@ export {
   trimContextToBudget,
   getRelevantPapers,
 } from './assembler';
+
+export {
+  getCollectionTier,
+  getAdaptivePromptEnhancements,
+  shouldAutoTriggerAI,
+  getColdStartMessage,
+  type CollectionTier,
+  type AdaptiveConfig,
+} from './adaptive';

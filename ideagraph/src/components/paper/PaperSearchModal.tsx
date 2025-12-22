@@ -15,6 +15,9 @@ import {
   Sparkles,
   FileText,
   AlertCircle,
+  Zap,
+  Target,
+  Brain,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -25,6 +28,7 @@ import {
   type SemanticScholarPaper,
   type SearchFilters,
 } from '../../services/api/semanticScholar';
+import { getHybridSearchService, type HybridSearchResult } from '../../services/discovery/hybridSearch';
 import { cleanAbstract } from '../../utils/textCleaner';
 import type { Paper, ThesisRole } from '../../types';
 
@@ -90,6 +94,11 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
   const [selectedPapers, setSelectedPapers] = useState<Set<string>>(new Set());
   const [addingPapers, setAddingPapers] = useState<Set<string>>(new Set());
 
+  // Hybrid search mode
+  const [useHybridSearch, setUseHybridSearch] = useState(false);
+  const [hybridResults, setHybridResults] = useState<HybridSearchResult[]>([]);
+  const [hybridProgress, setHybridProgress] = useState<string>('');
+
   // Keyword suggestions from existing papers
   const suggestedKeywords = useMemo(() => {
     const allText = existingPapers
@@ -133,32 +142,55 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
 
     setIsLoading(true);
     setError(null);
+    setHybridProgress('');
 
     try {
-      const searchOffset = newSearch ? 0 : offset + RESULTS_PER_PAGE;
-      const result = await searchPapers(query, {
-        limit: RESULTS_PER_PAGE,
-        offset: searchOffset,
-        filters: buildFilters(),
-      });
+      if (useHybridSearch && existingPapers.length > 0) {
+        // Hybrid search with embeddings
+        const hybridService = getHybridSearchService();
+        const hybridRes = await hybridService.search({
+          query,
+          seedPapers: existingPapers.slice(0, 5), // Use up to 5 existing papers as seeds
+          limit: RESULTS_PER_PAGE,
+          onProgress: (status, progress) => {
+            setHybridProgress(`${status} (${Math.round(progress * 100)}%)`);
+          },
+        });
 
-      if (newSearch) {
-        setResults(result.papers);
+        setHybridResults(hybridRes);
+        setResults(hybridRes.map(r => r.paper));
+        setTotal(hybridRes.length);
+        setHasMore(false); // Hybrid search doesn't paginate
         setOffset(0);
       } else {
-        setResults((prev) => [...prev, ...result.papers]);
-        setOffset(searchOffset);
-      }
+        // Standard keyword search
+        const searchOffset = newSearch ? 0 : offset + RESULTS_PER_PAGE;
+        const result = await searchPapers(query, {
+          limit: RESULTS_PER_PAGE,
+          offset: searchOffset,
+          filters: buildFilters(),
+        });
 
-      setTotal(result.total);
-      setHasMore(result.next !== undefined);
+        if (newSearch) {
+          setResults(result.papers);
+          setHybridResults([]);
+          setOffset(0);
+        } else {
+          setResults((prev) => [...prev, ...result.papers]);
+          setOffset(searchOffset);
+        }
+
+        setTotal(result.total);
+        setHasMore(result.next !== undefined);
+      }
       setHasSearched(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Search failed');
     } finally {
       setIsLoading(false);
+      setHybridProgress('');
     }
-  }, [query, offset, buildFilters]);
+  }, [query, offset, buildFilters, useHybridSearch, existingPapers]);
 
   // Check if paper already exists
   const isPaperAdded = useCallback((paper: SemanticScholarPaper): boolean => {
@@ -262,6 +294,11 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
     setQuery((prev) => (prev ? `${prev} ${keyword}` : keyword));
   }, []);
 
+  // Get hybrid search info for a paper
+  const getHybridInfo = useCallback((paperId: string): HybridSearchResult | undefined => {
+    return hybridResults.find(r => r.paper.paperId === paperId);
+  }, [hybridResults]);
+
   // Handle enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -348,6 +385,37 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
             {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>
+
+        {/* Hybrid Search Toggle */}
+        {existingPapers.length > 0 && (
+          <div className="mt-3 flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useHybridSearch}
+                onChange={(e) => setUseHybridSearch(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <Brain size={14} className="text-purple-500" />
+                Semantic Search
+              </span>
+            </label>
+            {useHybridSearch && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Uses {Math.min(5, existingPapers.length)} papers as seeds
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Hybrid search progress */}
+        {hybridProgress && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+            <Loader2 size={12} className="animate-spin" />
+            {hybridProgress}
+          </div>
+        )}
 
         {/* Keyword suggestions */}
         {suggestedKeywords.length > 0 && !hasSearched && (
@@ -579,6 +647,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
               const isAdded = isPaperAdded(paper);
               const isSelected = selectedPapers.has(paper.paperId);
               const isAdding = addingPapers.has(paper.paperId);
+              const hybridInfo = getHybridInfo(paper.paperId);
 
               return (
                 <div
@@ -607,6 +676,34 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                     )}
 
                     <div className="flex-1 min-w-0">
+                      {/* Hybrid search score indicator */}
+                      {hybridInfo && (
+                        <div className="flex items-center gap-2 mb-2 text-xs">
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                            <Target size={10} />
+                            <span>Match: {Math.round(hybridInfo.combinedScore * 100)}%</span>
+                          </div>
+                          {hybridInfo.source === 'both' && (
+                            <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
+                              <Zap size={10} />
+                              Both
+                            </span>
+                          )}
+                          {hybridInfo.source === 'embedding' && (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                              <Brain size={10} />
+                              Semantic
+                            </span>
+                          )}
+                          {hybridInfo.source === 'keyword' && (
+                            <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                              <Search size={10} />
+                              Keyword
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Title */}
                       <h3 className="font-medium text-gray-900 dark:text-white line-clamp-2">
                         {paper.title}

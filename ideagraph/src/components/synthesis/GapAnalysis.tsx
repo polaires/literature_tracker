@@ -16,11 +16,41 @@ import {
   ChevronDown,
   ChevronRight,
   Sparkles,
+  Brain,
+  CheckCircle2,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useAppStore } from '../../store/useAppStore';
+import { getPlanBasedGapAnalyzer, type GapAnalysisPlan } from '../../services/ai/gap/planBased';
+import { DEFAULT_AI_SETTINGS, DEFAULT_TASK_MODELS, type AISettings } from '../../services/ai';
 import type { ResearchGap, GapType, GapPriority } from '../../types';
+import type { GapSuggestion } from '../../services/ai/types';
+
+// Local storage key for AI settings (same as useAI hook)
+const AI_SETTINGS_KEY = 'ideagraph_ai_settings';
+
+function loadAISettings(): AISettings {
+  try {
+    const stored = localStorage.getItem(AI_SETTINGS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        ...DEFAULT_AI_SETTINGS,
+        ...parsed,
+        taskModels: {
+          ...DEFAULT_TASK_MODELS,
+          ...(parsed.taskModels || {}),
+        },
+      };
+    }
+  } catch (e) {
+    console.warn('[GapAnalysis] Failed to load AI settings:', e);
+  }
+  return { ...DEFAULT_AI_SETTINGS };
+}
 
 interface GapAnalysisProps {
   thesisId: string;
@@ -62,6 +92,14 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
   const [filterType, setFilterType] = useState<GapType | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<GapPriority | 'all'>('all');
 
+  // Plan-based gap analysis state
+  const [usePlanBased, setUsePlanBased] = useState(false);
+  const [isPlanAnalyzing, setIsPlanAnalyzing] = useState(false);
+  const [planProgress, setPlanProgress] = useState<string>('');
+  const [currentPlan, setCurrentPlan] = useState<GapAnalysisPlan | null>(null);
+  const [aiGapSuggestions, setAiGapSuggestions] = useState<GapSuggestion[]>([]);
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
+
   // Form state for adding/editing
   const [formData, setFormData] = useState({
     title: '',
@@ -73,16 +111,54 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
   });
 
   const papers = getPapersForThesis(thesisId).filter((p) => p.screeningDecision === 'include');
+  const { theses, getConnectionsForThesis } = useAppStore();
+  const thesis = theses.find(t => t.id === thesisId);
+  const connections = getConnectionsForThesis(thesisId);
 
   // Load gaps on mount
   useEffect(() => {
     setGaps(getGapsForThesis(thesisId));
   }, [thesisId, getGapsForThesis]);
 
-  // Detect gaps
+  // Detect gaps (basic rule-based)
   const handleDetectGaps = () => {
     const detected = detectGaps(thesisId);
     setDetectedGaps(detected);
+  };
+
+  // Plan-based AI gap analysis
+  const handlePlanBasedAnalysis = async () => {
+    if (!thesis || papers.length === 0) {
+      console.warn('[GapAnalysis] Cannot run plan-based analysis: missing thesis or papers');
+      return;
+    }
+
+    setIsPlanAnalyzing(true);
+    setPlanProgress('Initializing...');
+    setCurrentPlan(null);
+    setAiGapSuggestions([]);
+
+    try {
+      const settings = loadAISettings();
+      const analyzer = getPlanBasedGapAnalyzer(settings);
+
+      const result = await analyzer.analyze({
+        thesis,
+        papers,
+        connections,
+        onProgress: (step, progress) => {
+          setPlanProgress(`${step} (${Math.round(progress * 100)}%)`);
+        },
+      });
+
+      setCurrentPlan(result.plan);
+      setAiGapSuggestions(result.gaps);
+    } catch (error) {
+      console.error('[GapAnalysis] Plan-based analysis failed:', error);
+    } finally {
+      setIsPlanAnalyzing(false);
+      setPlanProgress('');
+    }
   };
 
   // Save detected gap
@@ -99,6 +175,27 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
     });
     setDetectedGaps((prev) => prev.filter((g) => g.id !== gap.id));
     setGaps(getGapsForThesis(thesisId));
+  };
+
+  // Save AI-suggested gap
+  const handleSaveAiGap = (suggestion: GapSuggestion) => {
+    createGap({
+      thesisId,
+      title: suggestion.title,
+      description: suggestion.description,
+      type: suggestion.type,
+      priority: suggestion.priority,
+      evidenceSource: 'inferred',
+      relatedPaperIds: suggestion.relatedPaperIds,
+      futureResearchNote: suggestion.futureResearchQuestion || null,
+    });
+    setAiGapSuggestions((prev) => prev.filter((g) => g.id !== suggestion.id));
+    setGaps(getGapsForThesis(thesisId));
+  };
+
+  // Dismiss AI-suggested gap
+  const handleDismissAiGap = (suggestionId: string) => {
+    setAiGapSuggestions((prev) => prev.filter((g) => g.id !== suggestionId));
   };
 
   // Dismiss detected gap
@@ -238,13 +335,28 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Toggle between rule-based and AI-based */}
+            <label className="flex items-center gap-2 mr-2">
+              <input
+                type="checkbox"
+                checked={usePlanBased}
+                onChange={(e) => setUsePlanBased(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                <Brain size={14} className="text-purple-500" />
+                AI Analysis
+              </span>
+            </label>
+
             <Button
               variant="secondary"
               size="sm"
-              onClick={handleDetectGaps}
-              icon={<Sparkles size={16} />}
+              onClick={usePlanBased ? handlePlanBasedAnalysis : handleDetectGaps}
+              disabled={isPlanAnalyzing}
+              icon={isPlanAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             >
-              Auto-Detect Gaps
+              {isPlanAnalyzing ? 'Analyzing...' : usePlanBased ? 'AI Gap Analysis' : 'Auto-Detect'}
             </Button>
             <Button
               size="sm"
@@ -265,6 +377,14 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
             </Button>
           </div>
         </div>
+
+        {/* AI Analysis Progress */}
+        {isPlanAnalyzing && planProgress && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+            <Loader2 size={14} className="animate-spin" />
+            {planProgress}
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -302,6 +422,137 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 space-y-4">
+        {/* Plan Details (collapsible) */}
+        {currentPlan && currentPlan.observations.length > 0 && (
+          <div className="mb-6">
+            <button
+              onClick={() => setShowPlanDetails(!showPlanDetails)}
+              className="w-full flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Brain size={16} className="text-purple-600 dark:text-purple-400" />
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                  Analysis Plan ({currentPlan.observations.length} observations)
+                </span>
+              </div>
+              {showPlanDetails ? (
+                <ChevronDown size={16} className="text-purple-500" />
+              ) : (
+                <ChevronRight size={16} className="text-purple-500" />
+              )}
+            </button>
+
+            {showPlanDetails && (
+              <div className="mt-2 p-4 bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50 rounded-lg space-y-3">
+                {currentPlan.observations.map((obs, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="px-2 py-0.5 text-xs bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 rounded capitalize">
+                      {obs.category}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        {obs.finding}
+                      </p>
+                      {obs.supportingPapers.length > 0 && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <FileText size={10} className="inline mr-1" />
+                          Based on {obs.supportingPapers.length} paper(s)
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {Math.round(obs.confidence * 100)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI-Suggested Gaps */}
+        {aiGapSuggestions.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+              <Brain size={16} />
+              AI-Suggested Gaps (Review & Save)
+              <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
+                {aiGapSuggestions.length} verified
+              </span>
+            </h3>
+            <div className="space-y-3">
+              {aiGapSuggestions.map((suggestion) => {
+                const typeConfig = GAP_TYPE_CONFIG[suggestion.type];
+                const relatedPapersList = papers.filter(p => suggestion.relatedPaperIds.includes(p.id));
+                return (
+                  <div
+                    key={suggestion.id}
+                    className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className={`p-1.5 rounded ${typeConfig.color}`}>
+                          {typeConfig.icon}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">
+                              {suggestion.title}
+                            </h4>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              suggestion.priority === 'high'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : suggestion.priority === 'medium'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                              {suggestion.priority}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {Math.round(suggestion.confidence * 100)}% confidence
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {suggestion.description}
+                          </p>
+                          {suggestion.futureResearchQuestion && (
+                            <p className="text-xs text-green-700 dark:text-green-400 mt-2 italic">
+                              Research question: {suggestion.futureResearchQuestion}
+                            </p>
+                          )}
+                          {relatedPapersList.length > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Related papers: {relatedPapersList.slice(0, 2).map(p => p.title.substring(0, 30) + '...').join(', ')}
+                              {relatedPapersList.length > 2 && ` +${relatedPapersList.length - 2} more`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveAiGap(suggestion)}
+                          icon={<CheckCircle2 size={14} />}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleDismissAiGap(suggestion.id)}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Detected Gaps (unsaved) */}
         {detectedGaps.length > 0 && (
           <div className="mb-6">

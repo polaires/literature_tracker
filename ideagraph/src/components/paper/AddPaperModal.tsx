@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Search, Loader2, Check, FileText, Globe, Plus, Trash2, Sparkles } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Search, Loader2, Check, FileText, Globe, Plus, Trash2 } from 'lucide-react';
 import { fetchPaperMetadata, type PaperMetadata } from '../../services/api';
 import { useAppStore } from '../../store/useAppStore';
 import { useAI } from '../../hooks/useAI';
@@ -7,6 +7,16 @@ import type { ThesisRole, ReadingStatus, Author } from '../../types';
 import { FormTextarea, ErrorMessage, Button } from '../ui';
 import { THESIS_ROLE_COLORS } from '../../constants/colors';
 import { cleanAbstract } from '../../utils/textCleaner';
+import {
+  InlineRoleSuggestion,
+  InlineTakeawaySuggestion,
+  InlineRelevanceIndicator,
+  InlineConnectionPreview,
+  AIAnalysisStatus,
+} from './InlineAISuggestion';
+import { RetractionWarningBanner } from './RetractionWarningBanner';
+import { getCollectionTier, getColdStartMessage } from '../../services/ai/context';
+import { checkIntakePaper } from '../../services/intake/retractionCheck';
 
 interface AddPaperModalProps {
   thesisId: string;
@@ -17,13 +27,30 @@ type InputMode = 'doi' | 'manual';
 type Step = 'input' | 'fetching' | 'review' | 'error';
 
 export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
-  const { addPaper } = useAppStore();
-  const { suggestTakeaway, isConfigured: isAIConfigured, settings: aiSettings } = useAI();
+  const { addPaper, papers } = useAppStore();
+  const {
+    isConfigured: isAIConfigured,
+    analyzePaperForIntake,
+    intakeAnalysis,
+    isLoading: isAILoading,
+    loadingType,
+    error: aiError,
+    clearIntakeAnalysis,
+  } = useAI();
+
+  // Get collection tier for adaptive behavior
+  const thesisPapers = useMemo(
+    () => papers.filter(p => p.thesisId === thesisId),
+    [papers, thesisId]
+  );
+  const collectionTier = useMemo(
+    () => getCollectionTier(thesisPapers.length),
+    [thesisPapers.length]
+  );
 
   const [inputMode, setInputMode] = useState<InputMode>('doi');
   const [step, setStep] = useState<Step>('input');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSuggestingTakeaway, setIsSuggestingTakeaway] = useState(false);
   const [doiInput, setDoiInput] = useState('');
   const [metadata, setMetadata] = useState<PaperMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +68,21 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   const [thesisRole, setThesisRole] = useState<ThesisRole>('background');
   const [readingStatus, setReadingStatus] = useState<ReadingStatus>('to-read');
 
+  // Retraction checking
+  const [retractionCheck, setRetractionCheck] = useState<{
+    isRetracted: boolean;
+    details: { citationCount?: number; isOpenAccess?: boolean; concepts?: string[] } | null;
+  } | null>(null);
+  const [showRetractionWarning, setShowRetractionWarning] = useState(false);
+
   const handleFetch = async () => {
     if (!doiInput.trim() || isLoading) return;
 
     setIsLoading(true);
     setStep('fetching');
     setError(null);
+    setRetractionCheck(null);
+    setShowRetractionWarning(false);
 
     try {
       const data = await fetchPaperMetadata(doiInput);
@@ -55,6 +91,24 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
       if (data.tldr) {
         setTakeaway(data.tldr);
       }
+
+      // Check for retraction status via OpenAlex
+      if (data.doi) {
+        try {
+          const retractionResult = await checkIntakePaper({
+            doi: data.doi,
+            title: data.title,
+          });
+          setRetractionCheck(retractionResult);
+          if (retractionResult.isRetracted) {
+            setShowRetractionWarning(true);
+          }
+        } catch (retractionError) {
+          console.warn('Retraction check failed:', retractionError);
+          // Continue without retraction check - non-blocking
+        }
+      }
+
       setStep('review');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch paper');
@@ -139,30 +193,45 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
     }
   };
 
-  // Handle AI takeaway suggestion
-  const handleSuggestTakeaway = async () => {
-    if (!metadata || isSuggestingTakeaway) return;
+  // Handle AI paper intake analysis
+  const handleAnalyzePaper = async () => {
+    if (!metadata) return;
 
-    setIsSuggestingTakeaway(true);
     try {
-      const suggestion = await suggestTakeaway({
+      await analyzePaperForIntake({
         title: metadata.title,
         abstract: metadata.abstract,
         authors: metadata.authors,
         year: metadata.year,
+        journal: metadata.journal,
+        tldr: metadata.tldr,
       });
-      if (suggestion?.suggestion) {
-        setTakeaway(suggestion.suggestion);
-      }
     } catch (err) {
-      console.error('Failed to suggest takeaway:', err);
-    } finally {
-      setIsSuggestingTakeaway(false);
+      console.error('Failed to analyze paper:', err);
     }
   };
 
-  // Check if AI suggestions are available
-  const canSuggestTakeaway = isAIConfigured && aiSettings.enableTakeawaySuggestions && metadata;
+  // Check if AI analysis is available
+  const canAnalyzePaper = isAIConfigured && metadata;
+  const isAnalyzing = isAILoading && loadingType === 'intake';
+
+  // Auto-trigger AI analysis for growing/established collections when we have an abstract
+  useEffect(() => {
+    if (
+      step === 'review' &&
+      metadata?.abstract &&
+      isAIConfigured &&
+      !intakeAnalysis &&
+      !isAnalyzing &&
+      (collectionTier === 'growing' || collectionTier === 'established')
+    ) {
+      handleAnalyzePaper();
+    }
+  }, [step, metadata?.abstract, isAIConfigured, collectionTier]);
+
+  // Get cold start messages for features
+  const roleColdStartMsg = getColdStartMessage(collectionTier, 'role');
+  const connectionColdStartMsg = getColdStartMessage(collectionTier, 'connection');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -397,6 +466,16 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
           {/* Step 3: Review & Add */}
           {step === 'review' && metadata && (
             <div className="space-y-6">
+              {/* Retraction Warning */}
+              {showRetractionWarning && retractionCheck?.isRetracted && (
+                <RetractionWarningBanner
+                  paperTitle={metadata.title}
+                  onDismiss={onClose}
+                  onAddAnyway={() => setShowRetractionWarning(false)}
+                  details={retractionCheck.details || undefined}
+                />
+              )}
+
               {/* Fetched Metadata */}
               <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <div className="flex items-start justify-between">
@@ -433,32 +512,36 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                 )}
               </div>
 
+              {/* AI Analysis Status - shows at top of form */}
+              <AIAnalysisStatus
+                isAnalyzing={isAnalyzing}
+                hasAnalysis={!!intakeAnalysis}
+                error={aiError}
+                onAnalyze={handleAnalyzePaper}
+                onClear={clearIntakeAnalysis}
+                disabled={!canAnalyzePaper}
+                tier={collectionTier}
+              />
+
+              {/* Relevance Score - shown prominently when available */}
+              {intakeAnalysis && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Relevance to Thesis
+                  </span>
+                  <InlineRelevanceIndicator
+                    score={intakeAnalysis.relevanceScore}
+                    reasoning={intakeAnalysis.relevanceReasoning}
+                    isLoading={isAnalyzing}
+                  />
+                </div>
+              )}
+
               {/* Takeaway (Required) */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Takeaway <span className="text-red-500">*</span>
-                  </label>
-                  {canSuggestTakeaway && (
-                    <button
-                      type="button"
-                      onClick={handleSuggestTakeaway}
-                      disabled={isSuggestingTakeaway}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                        isSuggestingTakeaway
-                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
-                          : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                      }`}
-                    >
-                      {isSuggestingTakeaway ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Sparkles size={12} />
-                      )}
-                      {isSuggestingTakeaway ? 'Suggesting...' : 'AI Suggest'}
-                    </button>
-                  )}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Takeaway <span className="text-red-500">*</span>
+                </label>
                 <FormTextarea
                   hint="What's the key insight? (min 10 characters)"
                   value={takeaway}
@@ -469,6 +552,17 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                   minLength={10}
                   maxLength={500}
                   error={takeaway.length > 0 && takeaway.length < 10 ? 'Takeaway must be at least 10 characters' : undefined}
+                />
+                {/* Inline takeaway suggestion */}
+                <InlineTakeawaySuggestion
+                  suggestedTakeaway={intakeAnalysis?.takeaway || null}
+                  alternatives={intakeAnalysis?.alternativeTakeaways || []}
+                  confidence={intakeAnalysis?.takeawayConfidence || 0}
+                  isLoading={isAnalyzing}
+                  disabled={!canAnalyzePaper}
+                  onApply={(text) => setTakeaway(text)}
+                  onAnalyze={handleAnalyzePaper}
+                  currentTakeaway={takeaway}
                 />
               </div>
 
@@ -495,7 +589,41 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                     );
                   })}
                 </div>
+                {/* Inline role suggestion */}
+                <InlineRoleSuggestion
+                  suggestedRole={intakeAnalysis?.thesisRole || null}
+                  confidence={intakeAnalysis?.roleConfidence || 0}
+                  reasoning={intakeAnalysis?.roleReasoning || null}
+                  isLoading={isAnalyzing}
+                  disabled={!canAnalyzePaper}
+                  coldStartMessage={roleColdStartMsg}
+                  onApply={(role) => setThesisRole(role)}
+                  onAnalyze={handleAnalyzePaper}
+                  currentRole={thesisRole}
+                />
               </div>
+
+              {/* Potential Connections Preview */}
+              {intakeAnalysis?.potentialConnections && intakeAnalysis.potentialConnections.length > 0 && (
+                <InlineConnectionPreview
+                  connections={intakeAnalysis.potentialConnections.map(c => ({
+                    paperId: c.paperId,
+                    paperTitle: thesisPapers.find(p => p.id === c.paperId)?.title || c.paperId,
+                    connectionType: c.connectionType,
+                    reasoning: c.reasoning,
+                  }))}
+                  isLoading={isAnalyzing}
+                  onViewConnections={() => {
+                    // Could open a modal or navigate to connections view
+                    console.log('View connections', intakeAnalysis.potentialConnections);
+                  }}
+                />
+              )}
+              {connectionColdStartMsg && !intakeAnalysis && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                  {connectionColdStartMsg}
+                </p>
+              )}
 
               {/* Reading Status */}
               <div>
@@ -525,6 +653,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
               onClick={() => {
                 setStep('input');
                 setMetadata(null);
+                clearIntakeAnalysis();
               }}
             >
               Back

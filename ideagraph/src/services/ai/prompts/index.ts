@@ -27,3 +27,28 @@ export {
   buildGapAnalysisPrompt,
   parseGapSuggestions,
 } from './gap';
+
+export {
+  PAPER_INTAKE_SYSTEM_PROMPT,
+  buildPaperIntakePrompt,
+  parsePaperIntakeAnalysis,
+  getRelevanceLabel,
+  type PaperIntakeAnalysis,
+} from './intake';
+
+export {
+  DISCOVERY_SYSTEM_PROMPT,
+  buildSearchStrategyPrompt,
+  buildRelevanceScoringPrompt,
+  parseSearchStrategies,
+  parseRelevanceScores,
+  type SearchStrategy,
+  type PaperRelevanceScore,
+} from './discovery';
+
+export {
+  SCREENING_SYSTEM_PROMPT,
+  buildScreeningPrompt,
+  parseScreeningSuggestions,
+  type ScreeningSuggestion,
+} from './screening';

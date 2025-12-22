@@ -257,6 +257,12 @@ export interface AISettings {
   enableGapAnalysis: boolean;
   enableReviewGeneration: boolean;
 
+  // Phase 3 feature toggles
+  enableRetractionChecking: boolean;
+  enableSemanticSearch: boolean;
+  enableFeedbackLearning: boolean;
+  enablePlanBasedGaps: boolean;
+
   // Behavior settings
   autoSuggestOnPaperAdd: boolean;
   suggestionConfidenceThreshold: number; // 0.0 - 1.0, default 0.6
@@ -284,6 +290,11 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   enableArgumentExtraction: true,
   enableGapAnalysis: true,
   enableReviewGeneration: true,
+
+  enableRetractionChecking: true,
+  enableSemanticSearch: false,
+  enableFeedbackLearning: true,
+  enablePlanBasedGaps: false,
 
   autoSuggestOnPaperAdd: false,
   suggestionConfidenceThreshold: 0.6,

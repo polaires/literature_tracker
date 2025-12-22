@@ -32,6 +32,14 @@ import {
   GAP_ANALYSIS_SYSTEM_PROMPT,
   buildGapAnalysisPrompt,
   parseGapSuggestions,
+  PAPER_INTAKE_SYSTEM_PROMPT,
+  buildPaperIntakePrompt,
+  parsePaperIntakeAnalysis,
+  type PaperIntakeAnalysis,
+  SCREENING_SYSTEM_PROMPT,
+  buildScreeningPrompt,
+  parseScreeningSuggestions,
+  type ScreeningSuggestion,
 } from '../prompts';
 import type { Thesis, Paper, Connection, PDFAnnotation } from '../../../types';
 
@@ -41,6 +49,8 @@ const MAX_CONTEXT_TOKENS = {
   takeaway: 4000,
   argument: 4000,
   gap: 12000,
+  intake: 6000,
+  screening: 8000,
 };
 
 /**
@@ -341,6 +351,135 @@ export class SuggestionManager {
     gaps = gaps.filter(g => g.confidence >= this.settings.suggestionConfidenceThreshold);
 
     return gaps;
+  }
+
+  // ===========================================================================
+  // UNIFIED PAPER INTAKE
+  // ===========================================================================
+
+  /**
+   * Analyze a new paper comprehensively: role, takeaway, arguments, relevance
+   * This is the recommended entry point for adding new papers with AI assistance
+   */
+  async analyzePaperForIntake(params: {
+    thesis: Thesis;
+    existingPapers: Paper[];
+    newPaper: {
+      id?: string;
+      title: string;
+      abstract: string | null;
+      authors?: { name: string }[];
+      year?: number | null;
+      journal?: string | null;
+      tldr?: string | null;
+    };
+  }): Promise<PaperIntakeAnalysis> {
+    const { thesis, existingPapers, newPaper } = params;
+
+    // Build the intake prompt
+    const prompt = buildPaperIntakePrompt({
+      thesis: {
+        title: thesis.title,
+        description: thesis.description,
+      },
+      newPaper: {
+        id: newPaper.id,
+        title: newPaper.title,
+        abstract: this.settings.sendAbstractsToAI ? newPaper.abstract : null,
+        authors: newPaper.authors,
+        year: newPaper.year,
+        journal: newPaper.journal,
+        tldr: newPaper.tldr,
+      },
+      existingPapers: existingPapers.map(p => ({
+        id: p.id,
+        title: p.title,
+        takeaway: p.takeaway,
+        thesisRole: p.thesisRole,
+        year: p.year,
+      })),
+    });
+
+    // Use standard model for comprehensive analysis
+    const options: CompletionOptions = {
+      systemPrompt: PAPER_INTAKE_SYSTEM_PROMPT,
+      maxTokens: AI_MODELS.standard.maxTokens,
+      temperature: AI_MODELS.standard.temperature,
+    };
+
+    const { data } = await this.provider.completeJSON<Record<string, unknown>>(prompt, options);
+
+    return parsePaperIntakeAnalysis(
+      data,
+      newPaper.id || `temp-${Date.now()}`,
+      existingPapers.map(p => ({ id: p.id, title: p.title }))
+    );
+  }
+
+  // ===========================================================================
+  // SCREENING SUGGESTIONS
+  // ===========================================================================
+
+  /**
+   * Get screening suggestions for a batch of candidate papers
+   */
+  async suggestScreeningDecisions(params: {
+    thesis: Thesis;
+    existingPapers: Paper[];
+    candidatePapers: Array<{
+      id: string;
+      title: string;
+      abstract: string | null;
+      authors?: string;
+      year?: number | null;
+    }>;
+  }): Promise<ScreeningSuggestion[]> {
+    const { thesis, existingPapers, candidatePapers } = params;
+
+    if (candidatePapers.length === 0) {
+      return [];
+    }
+
+    // Build the screening prompt
+    const prompt = buildScreeningPrompt({
+      thesis: {
+        title: thesis.title,
+        description: thesis.description,
+      },
+      existingPapers: existingPapers.map(p => ({
+        title: p.title,
+        takeaway: p.takeaway,
+        thesisRole: p.thesisRole,
+      })),
+      candidatePapers: candidatePapers.map(p => ({
+        id: p.id,
+        title: p.title,
+        abstract: this.settings.sendAbstractsToAI ? p.abstract : null,
+        authors: p.authors,
+        year: p.year,
+      })),
+    });
+
+    // Use standard model for screening
+    const options: CompletionOptions = {
+      systemPrompt: SCREENING_SYSTEM_PROMPT,
+      maxTokens: AI_MODELS.standard.maxTokens,
+      temperature: AI_MODELS.fast.temperature, // Lower temp for consistent decisions
+    };
+
+    const { data } = await this.provider.completeJSON<unknown[]>(prompt, options);
+
+    let suggestions = parseScreeningSuggestions(
+      data,
+      candidatePapers.map(p => p.id)
+    );
+
+    // Apply confidence threshold
+    suggestions = suggestions.filter(
+      s => s.confidence >= this.settings.suggestionConfidenceThreshold
+    );
+
+    return suggestions;
   }
 
   // ===========================================================================

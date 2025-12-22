@@ -13,6 +13,8 @@ import {
   type ArgumentSuggestion,
   type GapSuggestion,
   type AIError,
+  type PaperIntakeAnalysis,
+  getRelevanceLabel,
 } from '../services/ai';
 
 // Local storage key for AI settings
@@ -57,7 +59,7 @@ function saveAISettings(settings: AISettings): void {
 interface UseAIState {
   // Loading states
   isLoading: boolean;
-  loadingType: 'connection' | 'takeaway' | 'argument' | 'gap' | null;
+  loadingType: 'connection' | 'takeaway' | 'argument' | 'gap' | 'intake' | null;
 
   // Error state
   error: AIError | Error | null;
@@ -67,6 +69,7 @@ interface UseAIState {
   takeawaySuggestion: TakeawaySuggestion | null;
   argumentSuggestions: ArgumentSuggestion[];
   gapSuggestions: GapSuggestion[];
+  intakeAnalysis: PaperIntakeAnalysis | null;
 }
 
 interface UseAIReturn extends UseAIState {
@@ -87,8 +90,23 @@ interface UseAIReturn extends UseAIState {
   analyzeGaps: () => Promise<GapSuggestion[]>;
   testConnection: () => Promise<boolean>;
 
+  // Unified paper intake (role + takeaway + arguments + relevance)
+  analyzePaperForIntake: (paperData: {
+    id?: string;
+    title: string;
+    abstract: string | null;
+    authors?: { name: string }[];
+    year?: number | null;
+    journal?: string | null;
+    tldr?: string | null;
+  }) => Promise<PaperIntakeAnalysis>;
+
+  // Helper for relevance score display
+  getRelevanceLabel: typeof getRelevanceLabel;
+
   // Suggestion management
   clearSuggestions: () => void;
+  clearIntakeAnalysis: () => void;
   dismissConnectionSuggestion: (suggestionId: string) => void;
   acceptConnectionSuggestion: (suggestion: ConnectionSuggestion) => void;
 }
@@ -109,6 +127,7 @@ export function useAI(): UseAIReturn {
     takeawaySuggestion: null,
     argumentSuggestions: [],
     gapSuggestions: [],
+    intakeAnalysis: null,
   });
 
   // Get store data
@@ -339,6 +358,54 @@ export function useAI(): UseAIReturn {
     return manager.testConnection();
   }, [manager]);
 
+  // Unified paper intake analysis
+  const analyzePaperForIntake = useCallback(async (paperData: {
+    id?: string;
+    title: string;
+    abstract: string | null;
+    authors?: { name: string }[];
+    year?: number | null;
+    journal?: string | null;
+    tldr?: string | null;
+  }) => {
+    if (!activeThesis) {
+      throw new Error('No active thesis');
+    }
+
+    setState(prev => ({
+      ...prev,
+      isLoading: true,
+      loadingType: 'intake',
+      error: null,
+      intakeAnalysis: null,
+    }));
+
+    try {
+      const analysis = await manager.analyzePaperForIntake({
+        thesis: activeThesis,
+        existingPapers: thesisPapers,
+        newPaper: paperData,
+      });
+
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadingType: null,
+        intakeAnalysis: analysis,
+      }));
+
+      return analysis;
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        loadingType: null,
+        error: error as Error,
+      }));
+      throw error;
+    }
+  }, [activeThesis, thesisPapers, manager]);
+
   // Clear all suggestions
   const clearSuggestions = useCallback(() => {
     setState(prev => ({
@@ -347,7 +414,16 @@ export function useAI(): UseAIReturn {
       takeawaySuggestion: null,
       argumentSuggestions: [],
       gapSuggestions: [],
+      intakeAnalysis: null,
       error: null,
+    }));
+  }, []);
+
+  // Clear intake analysis specifically
+  const clearIntakeAnalysis = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      intakeAnalysis: null,
     }));
   }, []);
 
@@ -407,11 +483,16 @@ export function useAI(): UseAIReturn {
     analyzeGaps,
     testConnection,
 
+    // Unified paper intake
+    analyzePaperForIntake,
+    getRelevanceLabel,
+
     // Suggestion management
     clearSuggestions,
+    clearIntakeAnalysis,
     dismissConnectionSuggestion,
     acceptConnectionSuggestion,
   };
 }
 
-export type { UseAIReturn };
+export type { UseAIReturn, PaperIntakeAnalysis };
