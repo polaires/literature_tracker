@@ -87,6 +87,11 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
       readAt: null,
       source: 'doi',
       rawBibtex: null,
+      screeningDecision: 'pending',
+      exclusionReason: null,
+      exclusionNote: null,
+      screenedAt: null,
+      semanticScholarId: null,
     });
 
     onClose();

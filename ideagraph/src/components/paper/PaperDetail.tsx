@@ -72,7 +72,7 @@ export function PaperDetail({
   };
 
   const handleToggleReadingStatus = () => {
-    const statusOrder = ['to-read', 'reading', 'read', 'to-revisit'] as const;
+    const statusOrder = ['screening', 'to-read', 'reading', 'read', 'to-revisit'] as const;
     const currentIndex = statusOrder.indexOf(paper.readingStatus);
     const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
     updatePaper(paper.id, {

@@ -174,6 +174,11 @@ export const ANNOTATION_COLORS: Record<AnnotationColor, {
 
 // Reading Status Colors
 export const READING_STATUS_COLORS = {
+  screening: {
+    bg: 'bg-purple-100 dark:bg-purple-900/30',
+    text: 'text-purple-700 dark:text-purple-300',
+    label: 'Screening',
+  },
   'to-read': {
     bg: 'bg-gray-100 dark:bg-gray-700',
     text: 'text-gray-700 dark:text-gray-300',

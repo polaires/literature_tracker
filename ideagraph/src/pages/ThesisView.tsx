@@ -15,16 +15,22 @@ import {
   X,
   ChevronDown,
   Keyboard,
+  Globe,
+  Upload,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
 import { AddPaperModal } from '../components/paper/AddPaperModal';
+import { PaperSearchModal } from '../components/paper/PaperSearchModal';
+import { BatchImportModal } from '../components/paper/BatchImportModal';
+import { ScreeningPanel } from '../components/paper/ScreeningPanel';
 import { PaperDetail } from '../components/paper/PaperDetail';
 import { GraphView } from '../components/visualization/GraphView';
 import { ArgumentMapView } from '../components/visualization/ArgumentMapView';
 import { DataManager } from '../components/common/DataManager';
 import { Button } from '../components/ui';
-import type { ThesisRole, ReadingStatus } from '../types';
+import type { ThesisRole, ReadingStatus, ScreeningDecision } from '../types';
 
 type ViewMode = 'list' | 'graph' | 'timeline' | 'arguments';
 type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
@@ -38,12 +44,16 @@ export function ThesisView() {
     getPapersForThesis,
     getConnectionsForThesis,
     getConnectionsForPaper,
+    getScreeningStats,
     selectedPaperId,
     setSelectedPaper,
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showBatchImport, setShowBatchImport] = useState(false);
+  const [showScreeningPanel, setShowScreeningPanel] = useState(false);
   const [showDataManager, setShowDataManager] = useState(false);
 
   // Sorting state
@@ -55,6 +65,7 @@ export function ThesisView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<ThesisRole | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<ReadingStatus | 'all'>('all');
+  const [filterScreening, setFilterScreening] = useState<ScreeningDecision | 'all'>('all');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
@@ -64,6 +75,8 @@ export function ThesisView() {
   const thesis = theses.find((t) => t.id === thesisId);
   const papers = thesisId ? getPapersForThesis(thesisId) : [];
   const connections = thesisId ? getConnectionsForThesis(thesisId) : [];
+  const screeningStats = thesisId ? getScreeningStats(thesisId) : { pending: 0, include: 0, exclude: 0, maybe: 0 };
+  const papersNeedingScreening = screeningStats.pending + screeningStats.maybe;
 
   const selectedPaper = papers.find((p) => p.id === selectedPaperId);
   const selectedPaperConnections = selectedPaperId
@@ -96,6 +109,11 @@ export function ThesisView() {
       filtered = filtered.filter((p) => p.readingStatus === filterStatus);
     }
 
+    // Apply screening filter
+    if (filterScreening !== 'all') {
+      filtered = filtered.filter((p) => p.screeningDecision === filterScreening);
+    }
+
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0;
@@ -114,7 +132,7 @@ export function ThesisView() {
           comparison = new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
           break;
         case 'readingStatus': {
-          const statusOrder = { 'to-read': 0, reading: 1, 'to-revisit': 2, read: 3 };
+          const statusOrder = { screening: 0, 'to-read': 1, reading: 2, 'to-revisit': 3, read: 4 };
           comparison = statusOrder[a.readingStatus] - statusOrder[b.readingStatus];
           break;
         }
@@ -124,11 +142,12 @@ export function ThesisView() {
     });
 
     return sorted;
-  }, [papers, searchQuery, filterRole, filterStatus, sortField, sortOrder]);
+  }, [papers, searchQuery, filterRole, filterStatus, filterScreening, sortField, sortOrder]);
 
   const activeFiltersCount = [
     filterRole !== 'all',
     filterStatus !== 'all',
+    filterScreening !== 'all',
     searchQuery.trim() !== '',
   ].filter(Boolean).length;
 
@@ -146,6 +165,7 @@ export function ThesisView() {
     setSearchQuery('');
     setFilterRole('all');
     setFilterStatus('all');
+    setFilterScreening('all');
   };
 
   // Keyboard navigation
@@ -392,6 +412,22 @@ export function ThesisView() {
                 : `${filteredAndSortedPapers.length} of ${papers.length} papers`}
               {' · '}{connections.length} connections
             </span>
+
+            {/* Screening button with badge */}
+            {papersNeedingScreening > 0 && (
+              <button
+                onClick={() => setShowScreeningPanel(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                title="Screen Papers"
+              >
+                <ClipboardCheck size={16} />
+                <span className="hidden sm:inline">Screen</span>
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-amber-500 text-white rounded-full">
+                  {papersNeedingScreening}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowKeyboardHelp(true)}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden md:flex"
@@ -406,14 +442,44 @@ export function ThesisView() {
             >
               <Settings size={18} />
             </button>
-            <Button
-              onClick={() => setShowAddModal(true)}
-              icon={<Plus size={18} />}
-              shortcut="⌘N"
-              title="Add Paper (⌘N)"
-            >
-              <span className="hidden sm:inline">Add Paper</span>
-            </Button>
+
+            {/* Add Paper Dropdown */}
+            <div className="relative group">
+              <Button
+                onClick={() => setShowAddModal(true)}
+                icon={<Plus size={18} />}
+                shortcut="⌘N"
+                title="Add Paper (⌘N)"
+              >
+                <span className="hidden sm:inline">Add</span>
+                <ChevronDown size={14} className="ml-1" />
+              </Button>
+
+              {/* Dropdown menu */}
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  Add by DOI
+                </button>
+                <button
+                  onClick={() => setShowSearchModal(true)}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Globe size={16} />
+                  Search Semantic Scholar
+                </button>
+                <button
+                  onClick={() => setShowBatchImport(true)}
+                  className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <Upload size={16} />
+                  Batch Import DOIs
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -460,6 +526,7 @@ export function ThesisView() {
                 <div className="flex gap-1">
                   {[
                     { value: 'all' as const, label: 'All' },
+                    { value: 'screening' as const, label: 'Screening' },
                     { value: 'to-read' as const, label: 'To Read' },
                     { value: 'reading' as const, label: 'Reading' },
                     { value: 'read' as const, label: 'Read' },
@@ -475,6 +542,36 @@ export function ThesisView() {
                       }`}
                     >
                       {status.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Screening Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                  Screening:
+                </span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'all' as const, label: 'All' },
+                    { value: 'pending' as const, label: 'Pending', color: 'bg-gray-200 text-gray-800' },
+                    { value: 'include' as const, label: 'Include', color: 'bg-green-100 text-green-800' },
+                    { value: 'exclude' as const, label: 'Exclude', color: 'bg-red-100 text-red-800' },
+                    { value: 'maybe' as const, label: 'Maybe', color: 'bg-amber-100 text-amber-800' },
+                  ].map((screening) => (
+                    <button
+                      key={screening.value}
+                      onClick={() => setFilterScreening(screening.value)}
+                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                        filterScreening === screening.value
+                          ? screening.value === 'all'
+                            ? 'bg-indigo-600 text-white'
+                            : `${screening.color} ring-2 ring-indigo-500 ring-offset-1`
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {screening.label}
                     </button>
                   ))}
                 </div>
@@ -671,6 +768,30 @@ export function ThesisView() {
         <AddPaperModal
           thesisId={thesisId}
           onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Search Modal */}
+      {showSearchModal && thesisId && (
+        <PaperSearchModal
+          thesisId={thesisId}
+          onClose={() => setShowSearchModal(false)}
+        />
+      )}
+
+      {/* Batch Import Modal */}
+      {showBatchImport && thesisId && (
+        <BatchImportModal
+          thesisId={thesisId}
+          onClose={() => setShowBatchImport(false)}
+        />
+      )}
+
+      {/* Screening Panel */}
+      {showScreeningPanel && thesisId && (
+        <ScreeningPanel
+          thesisId={thesisId}
+          onClose={() => setShowScreeningPanel(false)}
         />
       )}
 

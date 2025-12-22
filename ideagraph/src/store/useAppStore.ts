@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Thesis, Paper, Connection, UserSettings, PDFAnnotation } from '../types';
+import type { Thesis, Paper, Connection, UserSettings, PDFAnnotation, ScreeningDecision, ExclusionReason } from '../types';
 
 interface AppStore {
   // Data
@@ -24,9 +24,17 @@ interface AppStore {
 
   // Paper actions
   addPaper: (paper: Omit<Paper, 'id' | 'addedAt' | 'lastAccessedAt'>) => Paper;
+  addPapersBatch: (papers: Omit<Paper, 'id' | 'addedAt' | 'lastAccessedAt'>[]) => Paper[];
   updatePaper: (id: string, updates: Partial<Paper>) => void;
   deletePaper: (id: string) => void;
+  deletePapersBatch: (ids: string[]) => void;
   setSelectedPaper: (id: string | null) => void;
+
+  // Screening actions (Phase 2.5)
+  setScreeningDecision: (paperId: string, decision: ScreeningDecision, reason?: ExclusionReason, note?: string) => void;
+  setScreeningDecisionBatch: (paperIds: string[], decision: ScreeningDecision, reason?: ExclusionReason) => void;
+  getScreeningStats: (thesisId: string) => { pending: number; include: number; exclude: number; maybe: number };
+  getPapersForScreening: (thesisId: string) => Paper[];
 
   // Connection actions
   createConnection: (connection: Omit<Connection, 'id' | 'createdAt'>) => Connection;
@@ -44,6 +52,8 @@ interface AppStore {
   getPapersForThesis: (thesisId: string) => Paper[];
   getConnectionsForThesis: (thesisId: string) => Connection[];
   getConnectionsForPaper: (paperId: string) => Connection[];
+  getPaperBySemanticScholarId: (semanticScholarId: string) => Paper | undefined;
+  hasPaperWithDOI: (thesisId: string, doi: string) => boolean;
 
   // Settings
   updateSettings: (updates: Partial<UserSettings>) => void;
@@ -132,6 +142,39 @@ export const useAppStore = create<AppStore>()(
         return paper;
       },
 
+      addPapersBatch: (papersData) => {
+        const now = new Date().toISOString();
+        const newPapers: Paper[] = papersData.map((paperData) => ({
+          ...paperData,
+          id: generateId(),
+          addedAt: now,
+          lastAccessedAt: now,
+        }));
+
+        set((state) => {
+          // Group papers by thesis
+          const papersByThesis = new Map<string, string[]>();
+          for (const paper of newPapers) {
+            const existing = papersByThesis.get(paper.thesisId) || [];
+            existing.push(paper.id);
+            papersByThesis.set(paper.thesisId, existing);
+          }
+
+          return {
+            papers: [...state.papers, ...newPapers],
+            theses: state.theses.map((t) => {
+              const newPaperIds = papersByThesis.get(t.id);
+              if (newPaperIds) {
+                return { ...t, paperIds: [...t.paperIds, ...newPaperIds], updatedAt: now };
+              }
+              return t;
+            }),
+          };
+        });
+
+        return newPapers;
+      },
+
       updatePaper: (id, updates) => {
         set((state) => ({
           papers: state.papers.map((p) =>
@@ -156,6 +199,26 @@ export const useAppStore = create<AppStore>()(
               : t
           ),
           selectedPaperId: state.selectedPaperId === id ? null : state.selectedPaperId,
+        }));
+      },
+
+      deletePapersBatch: (ids) => {
+        const idsSet = new Set(ids);
+        const papersToDelete = get().papers.filter((p) => idsSet.has(p.id));
+        const thesisIds = new Set(papersToDelete.map((p) => p.thesisId));
+
+        set((state) => ({
+          papers: state.papers.filter((p) => !idsSet.has(p.id)),
+          connections: state.connections.filter(
+            (c) => !idsSet.has(c.fromPaperId) && !idsSet.has(c.toPaperId)
+          ),
+          annotations: state.annotations.filter((a) => !idsSet.has(a.paperId)),
+          theses: state.theses.map((t) =>
+            thesisIds.has(t.id)
+              ? { ...t, paperIds: t.paperIds.filter((pid) => !idsSet.has(pid)) }
+              : t
+          ),
+          selectedPaperId: idsSet.has(state.selectedPaperId || '') ? null : state.selectedPaperId,
         }));
       },
 
@@ -258,6 +321,63 @@ export const useAppStore = create<AppStore>()(
         }));
       },
 
+      // Screening actions (Phase 2.5)
+      setScreeningDecision: (paperId, decision, reason, note) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          papers: state.papers.map((p) =>
+            p.id === paperId
+              ? {
+                  ...p,
+                  screeningDecision: decision,
+                  exclusionReason: decision === 'exclude' ? (reason || null) : null,
+                  exclusionNote: decision === 'exclude' && reason === 'other' ? (note || null) : null,
+                  screenedAt: now,
+                  // Auto-update reading status based on decision
+                  readingStatus: decision === 'include' ? 'to-read' : decision === 'exclude' ? 'screening' : p.readingStatus,
+                  lastAccessedAt: now,
+                }
+              : p
+          ),
+        }));
+      },
+
+      setScreeningDecisionBatch: (paperIds, decision, reason) => {
+        const now = new Date().toISOString();
+        const idsSet = new Set(paperIds);
+        set((state) => ({
+          papers: state.papers.map((p) =>
+            idsSet.has(p.id)
+              ? {
+                  ...p,
+                  screeningDecision: decision,
+                  exclusionReason: decision === 'exclude' ? (reason || null) : null,
+                  exclusionNote: null,
+                  screenedAt: now,
+                  readingStatus: decision === 'include' ? 'to-read' : decision === 'exclude' ? 'screening' : p.readingStatus,
+                  lastAccessedAt: now,
+                }
+              : p
+          ),
+        }));
+      },
+
+      getScreeningStats: (thesisId) => {
+        const papers = get().papers.filter((p) => p.thesisId === thesisId);
+        return {
+          pending: papers.filter((p) => p.screeningDecision === 'pending').length,
+          include: papers.filter((p) => p.screeningDecision === 'include').length,
+          exclude: papers.filter((p) => p.screeningDecision === 'exclude').length,
+          maybe: papers.filter((p) => p.screeningDecision === 'maybe').length,
+        };
+      },
+
+      getPapersForScreening: (thesisId) => {
+        return get().papers.filter(
+          (p) => p.thesisId === thesisId && (p.screeningDecision === 'pending' || p.screeningDecision === 'maybe')
+        );
+      },
+
       // Utilities
       getPapersForThesis: (thesisId) => {
         return get().papers.filter((p) => p.thesisId === thesisId);
@@ -271,6 +391,14 @@ export const useAppStore = create<AppStore>()(
         return get().connections.filter(
           (c) => c.fromPaperId === paperId || c.toPaperId === paperId
         );
+      },
+
+      getPaperBySemanticScholarId: (semanticScholarId) => {
+        return get().papers.find((p) => p.semanticScholarId === semanticScholarId);
+      },
+
+      hasPaperWithDOI: (thesisId, doi) => {
+        return get().papers.some((p) => p.thesisId === thesisId && p.doi === doi);
       },
 
       // Settings

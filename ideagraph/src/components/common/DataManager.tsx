@@ -246,6 +246,11 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
           readAt: null,
           source: 'bibtex',
           rawBibtex: text,
+          screeningDecision: 'pending',
+          exclusionReason: null,
+          exclusionNote: null,
+          screenedAt: null,
+          semanticScholarId: null,
         });
         imported++;
       }
@@ -317,6 +322,11 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
           readAt: null,
           source: 'bibtex', // Using bibtex as source type for imports
           rawBibtex: null,
+          screeningDecision: 'pending',
+          exclusionReason: null,
+          exclusionNote: null,
+          screenedAt: null,
+          semanticScholarId: null,
         });
         imported++;
       }

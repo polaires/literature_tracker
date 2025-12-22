@@ -2,12 +2,13 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   showCloseButton?: boolean;
+  className?: string; // For custom sizing
 }
 
 const sizeClasses = {
@@ -19,12 +20,13 @@ const sizeClasses = {
 };
 
 export function Modal({
-  isOpen,
+  isOpen = true,
   onClose,
   title,
   children,
   size = 'md',
   showCloseButton = true,
+  className,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -99,33 +101,35 @@ export function Modal({
         className={`
           relative bg-white dark:bg-gray-800
           rounded-xl shadow-2xl
-          w-full ${sizeClasses[size]}
+          w-full ${className || sizeClasses[size]}
           max-h-[90vh] overflow-hidden
           flex flex-col
           animate-in fade-in zoom-in-95 duration-200
         `}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2
-            id="modal-title"
-            className="text-lg font-semibold text-gray-900 dark:text-white"
-          >
-            {title}
-          </h2>
-          {showCloseButton && (
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              aria-label="Close modal"
+        {/* Header - only show if title is provided */}
+        {title && (
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              id="modal-title"
+              className="text-lg font-semibold text-gray-900 dark:text-white"
             >
-              <X size={20} />
-            </button>
-          )}
-        </div>
+              {title}
+            </h2>
+            {showCloseButton && (
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={title ? "flex-1 overflow-y-auto" : ""}>
           {children}
         </div>
       </div>

@@ -20,10 +20,31 @@ export type ConnectionType =
   | 'critiques';    // Critical commentary
 
 export type ReadingStatus =
+  | 'screening'     // In screening queue (new!)
   | 'to-read'       // Added but not read
   | 'reading'       // Currently reading
   | 'read'          // Finished reading
   | 'to-revisit';   // Need to re-read
+
+// Screening decision for PRISMA workflow
+export type ScreeningDecision =
+  | 'pending'       // Not yet screened
+  | 'include'       // Include in review
+  | 'exclude'       // Exclude from review
+  | 'maybe';        // Uncertain, revisit later
+
+// Exclusion reasons for documentation
+export type ExclusionReason =
+  | 'not-relevant'      // Topic doesn't match
+  | 'wrong-study-type'  // Not the right type of study
+  | 'duplicate'         // Already have this paper
+  | 'no-full-text'      // Can't access full text
+  | 'wrong-population'  // Wrong population/sample
+  | 'wrong-outcome'     // Wrong outcome measure
+  | 'low-quality'       // Quality doesn't meet criteria
+  | 'language'          // Not in acceptable language
+  | 'date-range'        // Outside date range
+  | 'other';            // Other reason
 
 // ============================================
 // THESIS
@@ -98,8 +119,15 @@ export interface Paper {
   lastAccessedAt: string;        // For "forgotten papers" feature
 
   // Source tracking
-  source: 'doi' | 'url' | 'bibtex' | 'zotero' | 'manual';
+  source: 'doi' | 'url' | 'bibtex' | 'zotero' | 'manual' | 'search';
   rawBibtex: string | null;      // Original if imported
+
+  // Screening workflow (Phase 2.5)
+  screeningDecision: ScreeningDecision;
+  exclusionReason: ExclusionReason | null;
+  exclusionNote: string | null;  // Custom reason if 'other'
+  screenedAt: string | null;     // When screening decision was made
+  semanticScholarId: string | null; // For citation network exploration
 }
 
 // ============================================

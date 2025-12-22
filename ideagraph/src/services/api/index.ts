@@ -3,6 +3,19 @@ import * as semanticScholar from './semanticScholar';
 import * as crossref from './crossref';
 import type { Author } from '../../types';
 
+// Re-export for convenience
+export {
+  searchPapers,
+  getCitingPapers,
+  getReferencedPapers,
+  getRecommendedPapers,
+  extractKeywords,
+  generateSearchSuggestions,
+  type SemanticScholarPaper,
+  type SearchFilters,
+  type SearchResult,
+} from './semanticScholar';
+
 export interface PaperMetadata {
   doi: string | null;
   title: string;
