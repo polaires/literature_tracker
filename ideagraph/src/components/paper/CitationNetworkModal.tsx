@@ -24,6 +24,7 @@ import {
   getRecommendedPapers,
   type SemanticScholarPaper,
 } from '../../services/api/semanticScholar';
+import { cleanAbstract } from '../../utils/textCleaner';
 import type { Paper, ThesisRole } from '../../types';
 
 interface CitationNetworkModalProps {
@@ -503,7 +504,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
                       {/* Abstract snippet */}
                       {p.abstract && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
-                          {p.abstract}
+                          {cleanAbstract(p.abstract)}
                         </p>
                       )}
                     </div>

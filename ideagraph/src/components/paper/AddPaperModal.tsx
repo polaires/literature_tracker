@@ -5,6 +5,7 @@ import { useAppStore } from '../../store/useAppStore';
 import type { ThesisRole, ReadingStatus, Author } from '../../types';
 import { FormTextarea, ErrorMessage, Button } from '../ui';
 import { THESIS_ROLE_COLORS } from '../../constants/colors';
+import { cleanAbstract } from '../../utils/textCleaner';
 
 interface AddPaperModalProps {
   thesisId: string;
@@ -398,7 +399,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       Show abstract
                     </summary>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                      {metadata.abstract}
+                      {cleanAbstract(metadata.abstract)}
                     </p>
                   </details>
                 )}

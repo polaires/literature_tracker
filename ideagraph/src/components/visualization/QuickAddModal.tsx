@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, FileText, ExternalLink } from 'lucide-react';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import type { ThesisRole } from '../../types';
+import { cleanAbstract } from '../../utils/textCleaner';
 
 interface QuickAddModalProps {
   paper: SemanticScholarPaper;
@@ -109,7 +110,7 @@ export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddMod
           {paper.abstract && (
             <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3">
               <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3">
-                {paper.abstract}
+                {cleanAbstract(paper.abstract)}
               </p>
             </div>
           )}

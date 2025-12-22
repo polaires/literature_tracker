@@ -260,8 +260,11 @@ export function PDFViewer({ paper, onClose }: PDFViewerProps) {
           </div>
         </div>
 
-        {/* PDF Content */}
-        <div className="flex-1 overflow-hidden">
+        {/* PDF Content - Container must be relative for absolute positioned PdfHighlighter */}
+        <div
+          className="flex-1 min-h-0 overflow-hidden"
+          style={{ position: 'relative', width: '100%', height: '100%' }}
+        >
           <PdfLoader url={pdfUrl} beforeLoad={<div className="text-white p-4">Loading PDF...</div>}>
             {(pdfDocument) => (
               <PdfHighlighter

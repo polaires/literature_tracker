@@ -25,6 +25,7 @@ import {
   type SemanticScholarPaper,
   type SearchFilters,
 } from '../../services/api/semanticScholar';
+import { cleanAbstract } from '../../utils/textCleaner';
 import type { Paper, ThesisRole } from '../../types';
 
 interface PaperSearchModalProps {
@@ -655,7 +656,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                       {/* Abstract snippet */}
                       {!paper.tldr?.text && paper.abstract && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
-                          {paper.abstract}
+                          {cleanAbstract(paper.abstract)}
                         </p>
                       )}
                     </div>

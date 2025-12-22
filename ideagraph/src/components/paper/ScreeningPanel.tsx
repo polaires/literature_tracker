@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useAppStore } from '../../store/useAppStore';
+import { cleanAbstract } from '../../utils/textCleaner';
 import type { ExclusionReason } from '../../types';
 
 interface ScreeningPanelProps {
@@ -305,7 +306,7 @@ export function ScreeningPanel({ thesisId, onClose }: ScreeningPanelProps) {
                     Abstract
                   </h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {currentPaper.abstract}
+                    {cleanAbstract(currentPaper.abstract)}
                   </p>
                 </div>
               ) : (

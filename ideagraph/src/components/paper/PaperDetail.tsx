@@ -7,6 +7,7 @@ import { ConnectionEditor } from '../connection/ConnectionEditor';
 import { PDFViewer, PDFUpload } from '../pdf';
 import { pdfStorage } from '../../services/pdfStorage';
 import { THESIS_ROLE_COLORS, READING_STATUS_COLORS } from '../../constants/colors';
+import { cleanAbstract } from '../../utils/textCleaner';
 
 interface PaperDetailProps {
   paper: Paper;
@@ -227,7 +228,7 @@ export function PaperDetail({
               Abstract
             </summary>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              {paper.abstract}
+              {cleanAbstract(paper.abstract)}
             </p>
           </details>
         )}
