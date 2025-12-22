@@ -21,6 +21,7 @@ import {
   Grid3X3,
   AlertTriangle,
   FileText,
+  PanelRight,
 } from 'lucide-react';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
@@ -33,6 +34,10 @@ import { GraphView } from '../components/visualization/GraphView';
 import { ArgumentMapView } from '../components/visualization/ArgumentMapView';
 import { DataManager } from '../components/common/DataManager';
 import { SynthesisMatrix, GapAnalysis, ReviewOutlineExport } from '../components/synthesis';
+import { WorkflowProgress } from '../components/common/WorkflowProgress';
+import { WorkflowGuide } from '../components/common/WorkflowGuide';
+import type { WorkflowPhase } from '../components/common/WorkflowProgress';
+import type { WorkflowAction } from '../components/common/WorkflowGuide';
 import { Button } from '../components/ui';
 import type { ThesisRole, ReadingStatus, ScreeningDecision } from '../types';
 
@@ -62,6 +67,7 @@ export function ThesisView() {
   const [showSynthesisMatrix, setShowSynthesisMatrix] = useState(false);
   const [showGapAnalysis, setShowGapAnalysis] = useState(false);
   const [showExportOutline, setShowExportOutline] = useState(false);
+  const [showWorkflowPanel, setShowWorkflowPanel] = useState(true);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('addedAt');
@@ -173,6 +179,72 @@ export function ThesisView() {
     setFilterRole('all');
     setFilterStatus('all');
     setFilterScreening('all');
+  };
+
+  // Handle workflow activity clicks
+  const handleWorkflowPhaseClick = (phase: WorkflowPhase) => {
+    switch (phase) {
+      case 'collect':
+        setShowAddModal(true);
+        break;
+      case 'screen':
+        setShowScreeningPanel(true);
+        break;
+      case 'read': {
+        // Select first unread paper or first paper
+        const unreadPaper = papers.find(
+          (p) => p.screeningDecision === 'include' && p.readingStatus !== 'read'
+        );
+        if (unreadPaper) {
+          setSelectedPaper(unreadPaper.id);
+        } else if (papers.length > 0) {
+          setSelectedPaper(papers[0].id);
+        }
+        break;
+      }
+      case 'organize':
+        setShowSynthesisMatrix(true);
+        break;
+      case 'gaps':
+        setShowGapAnalysis(true);
+        break;
+      case 'export':
+        setShowExportOutline(true);
+        break;
+    }
+  };
+
+  // Handle workflow guide actions
+  const handleWorkflowAction = (action: WorkflowAction) => {
+    switch (action) {
+      case 'add-paper':
+        setShowAddModal(true);
+        break;
+      case 'search-papers':
+        setShowSearchModal(true);
+        break;
+      case 'open-screening':
+        setShowScreeningPanel(true);
+        break;
+      case 'continue-reading':
+        const unreadPaper = papers.find(
+          (p) => p.screeningDecision === 'include' && p.readingStatus !== 'read'
+        );
+        if (unreadPaper) {
+          setSelectedPaper(unreadPaper.id);
+        }
+        break;
+      case 'open-matrix':
+        setShowSynthesisMatrix(true);
+        break;
+      case 'open-gaps':
+      case 'detect-gaps':
+        setShowGapAnalysis(true);
+        break;
+      case 'export-outline':
+        setShowExportOutline(true);
+        break;
+    }
   };
 
   // Keyboard navigation
@@ -475,6 +547,18 @@ export function ThesisView() {
               </div>
             )}
 
+            {/* Workflow Panel Toggle */}
+            <button
+              onClick={() => setShowWorkflowPanel(!showWorkflowPanel)}
+              className={`p-2 rounded-lg transition-colors hidden lg:flex ${
+                showWorkflowPanel
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+              title={showWorkflowPanel ? 'Hide Workflow Guide' : 'Show Workflow Guide'}
+            >
+              <PanelRight size={18} />
+            </button>
             <button
               onClick={() => setShowKeyboardHelp(true)}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden md:flex"
@@ -641,169 +725,199 @@ export function ThesisView() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto p-6">
         {papers.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <Network size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No papers yet
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Add your first paper to start building your knowledge graph.
-            </p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus size={20} />
-              Add Your First Paper
-            </button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Empty state */}
+            <div className="lg:col-span-2 text-center py-16 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
+              <Network size={48} className="mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No papers yet
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                Add your first paper to start building your knowledge graph.
+              </p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <Plus size={20} />
+                Add Your First Paper
+              </button>
+            </div>
+
+            {/* Workflow panel for empty state */}
+            {thesisId && showWorkflowPanel && (
+              <div className="space-y-4">
+                <WorkflowProgress
+                  thesisId={thesisId}
+                  onPhaseClick={handleWorkflowPhaseClick}
+                />
+              </div>
+            )}
           </div>
         ) : (
-          <div>
-            {/* List View */}
-            {viewMode === 'list' && (
-              <div className="space-y-4">
-                {filteredAndSortedPapers.length === 0 && (
-                  <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <Search size={32} className="mx-auto text-gray-400 mb-3" />
-                    <p className="text-gray-600 dark:text-gray-400">
-                      No papers match your filters
-                    </p>
-                    <button
-                      onClick={clearFilters}
-                      className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      Clear filters
-                    </button>
-                  </div>
-                )}
-                {filteredAndSortedPapers.map((paper) => (
-                  <div
-                    key={paper.id}
-                    onClick={() => setSelectedPaper(paper.id)}
-                    className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border cursor-pointer transition-all ${
-                      selectedPaperId === paper.id
-                        ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {paper.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {paper.authors.map((a) => a.name).join(', ')}
-                      {paper.year && ` (${paper.year})`}
-                    </p>
-                    <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
-                      Takeaway: {paper.takeaway}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          paper.thesisRole === 'supports'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : paper.thesisRole === 'contradicts'
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            : paper.thesisRole === 'method'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                        }`}
+          <div className="flex gap-6">
+            {/* Main content area */}
+            <div className="flex-1 min-w-0">
+              {/* List View */}
+              {viewMode === 'list' && (
+                <div className="space-y-4">
+                  {filteredAndSortedPapers.length === 0 && (
+                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <Search size={32} className="mx-auto text-gray-400 mb-3" />
+                      <p className="text-gray-600 dark:text-gray-400">
+                        No papers match your filters
+                      </p>
+                      <button
+                        onClick={clearFilters}
+                        className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
                       >
-                        {paper.thesisRole}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {paper.readingStatus.replace('-', ' ')}
-                      </span>
-                      {paper.citationCount !== null && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          · {paper.citationCount} citations
+                        Clear filters
+                      </button>
+                    </div>
+                  )}
+                  {filteredAndSortedPapers.map((paper) => (
+                    <div
+                      key={paper.id}
+                      onClick={() => setSelectedPaper(paper.id)}
+                      className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border cursor-pointer transition-all ${
+                        selectedPaperId === paper.id
+                          ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <h3 className="font-medium text-gray-900 dark:text-white">
+                        {paper.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {paper.authors.map((a) => a.name).join(', ')}
+                        {paper.year && ` (${paper.year})`}
+                      </p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
+                        Takeaway: {paper.takeaway}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            paper.thesisRole === 'supports'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : paper.thesisRole === 'contradicts'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : paper.thesisRole === 'method'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                          }`}
+                        >
+                          {paper.thesisRole}
                         </span>
-                      )}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {paper.readingStatus.replace('-', ' ')}
+                        </span>
+                        {paper.citationCount !== null && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            · {paper.citationCount} citations
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Graph View */}
+              {viewMode === 'graph' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="h-[600px]">
+                    <GraphView
+                      thesis={thesis}
+                      papers={papers}
+                      connections={connections}
+                      onPaperSelect={(id) => setSelectedPaper(id)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline View */}
+              {viewMode === 'timeline' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
+
+                    {/* Papers sorted by year */}
+                    <div className="space-y-6">
+                      {papers
+                        .filter((p) => p.year)
+                        .sort((a, b) => (b.year || 0) - (a.year || 0))
+                        .map((paper) => (
+                          <div
+                            key={paper.id}
+                            onClick={() => setSelectedPaper(paper.id)}
+                            className="relative pl-10 cursor-pointer"
+                          >
+                            {/* Year dot */}
+                            <div
+                              className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 ${
+                                paper.thesisRole === 'supports'
+                                  ? 'bg-green-500'
+                                  : paper.thesisRole === 'contradicts'
+                                  ? 'bg-red-500'
+                                  : paper.thesisRole === 'method'
+                                  ? 'bg-blue-500'
+                                  : 'bg-gray-400'
+                              }`}
+                            />
+
+                            {/* Content */}
+                            <div
+                              className={`p-3 rounded-lg transition-all ${
+                                selectedPaperId === paper.id
+                                  ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                              }`}
+                            >
+                              <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                                {paper.year}
+                              </div>
+                              <h4 className="font-medium text-gray-900 dark:text-white mt-1">
+                                {paper.title}
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                {paper.takeaway}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Graph View */}
-            {viewMode === 'graph' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="h-[600px]">
-                  <GraphView
-                    thesis={thesis}
-                    papers={papers}
-                    connections={connections}
-                    onPaperSelect={(id) => setSelectedPaper(id)}
-                  />
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Timeline View */}
-            {viewMode === 'timeline' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="relative">
-                  {/* Timeline line */}
-                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
-
-                  {/* Papers sorted by year */}
-                  <div className="space-y-6">
-                    {papers
-                      .filter((p) => p.year)
-                      .sort((a, b) => (b.year || 0) - (a.year || 0))
-                      .map((paper) => (
-                        <div
-                          key={paper.id}
-                          onClick={() => setSelectedPaper(paper.id)}
-                          className="relative pl-10 cursor-pointer"
-                        >
-                          {/* Year dot */}
-                          <div
-                            className={`absolute left-2 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 ${
-                              paper.thesisRole === 'supports'
-                                ? 'bg-green-500'
-                                : paper.thesisRole === 'contradicts'
-                                ? 'bg-red-500'
-                                : paper.thesisRole === 'method'
-                                ? 'bg-blue-500'
-                                : 'bg-gray-400'
-                            }`}
-                          />
-
-                          {/* Content */}
-                          <div
-                            className={`p-3 rounded-lg transition-all ${
-                              selectedPaperId === paper.id
-                                ? 'bg-indigo-50 dark:bg-indigo-900/20'
-                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                            }`}
-                          >
-                            <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                              {paper.year}
-                            </div>
-                            <h4 className="font-medium text-gray-900 dark:text-white mt-1">
-                              {paper.title}
-                            </h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {paper.takeaway}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+              {/* Arguments Map View */}
+              {viewMode === 'arguments' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="h-[calc(100vh-300px)] min-h-[500px]">
+                    <ArgumentMapView
+                      thesis={thesis}
+                      papers={papers}
+                      onPaperSelect={(id) => setSelectedPaper(id)}
+                    />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Arguments Map View */}
-            {viewMode === 'arguments' && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="h-[calc(100vh-300px)] min-h-[500px]">
-                  <ArgumentMapView
-                    thesis={thesis}
-                    papers={papers}
-                    onPaperSelect={(id) => setSelectedPaper(id)}
-                  />
-                </div>
+            {/* Workflow Sidebar - only visible in list view on larger screens */}
+            {viewMode === 'list' && showWorkflowPanel && thesisId && (
+              <div className="hidden lg:block w-80 flex-shrink-0 space-y-4">
+                <WorkflowProgress
+                  thesisId={thesisId}
+                  onPhaseClick={handleWorkflowPhaseClick}
+                />
+                <WorkflowGuide
+                  thesisId={thesisId}
+                  onAction={handleWorkflowAction}
+                />
               </div>
             )}
           </div>
