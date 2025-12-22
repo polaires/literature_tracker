@@ -17,7 +17,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm install:*)",
       "Bash(npm run dev:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(tree:*)"
     ]
   }
 }

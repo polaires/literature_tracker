@@ -330,6 +330,32 @@ export interface EvidenceSynthesis {
 // Export format options
 export type ExportFormat = 'markdown' | 'docx' | 'latex' | 'csv';
 
+// ============================================
+// PAPER CLUSTERING (Phase 4)
+// ============================================
+
+export interface PaperCluster {
+  id: string;
+  thesisId: string;
+  name: string;                    // User-defined cluster name
+  paperIds: string[];              // Papers in this cluster
+  color: string;                   // Hex color for visual coding
+  isCollapsed: boolean;            // Whether to show as single node in graph
+  createdAt: string;
+}
+
+// Cluster preset colors
+export const CLUSTER_COLORS = [
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#f97316', // Orange
+  '#eab308', // Yellow
+  '#22c55e', // Green
+  '#06b6d4', // Cyan
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+] as const;
+
 export interface ExportOptions {
   format: ExportFormat;
   includeSections: boolean;

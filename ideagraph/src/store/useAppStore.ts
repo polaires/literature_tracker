@@ -12,7 +12,9 @@ import type {
   SynthesisTheme,
   ResearchGap,
   EvidenceSynthesis,
+  PaperCluster,
 } from '../types';
+import { CLUSTER_COLORS } from '../types';
 
 interface AppStore {
   // Data
@@ -26,6 +28,9 @@ interface AppStore {
   synthesisThemes: SynthesisTheme[];
   researchGaps: ResearchGap[];
   evidenceSyntheses: EvidenceSynthesis[];
+
+  // Clustering data (Phase 4)
+  clusters: PaperCluster[];
 
   // Active state
   activeThesisId: string | null;
@@ -121,6 +126,16 @@ interface AppStore {
     papers: Paper[];
     agreement: 'consensus' | 'partial' | 'conflicting';
   }[];
+
+  // Cluster actions (Phase 4)
+  createCluster: (name: string, thesisId: string, paperIds: string[]) => PaperCluster;
+  updateCluster: (id: string, updates: Partial<PaperCluster>) => void;
+  deleteCluster: (id: string) => void;
+  toggleClusterCollapse: (id: string) => void;
+  addPaperToCluster: (paperId: string, clusterId: string) => void;
+  removePaperFromCluster: (paperId: string, clusterId: string) => void;
+  getClustersForThesis: (thesisId: string) => PaperCluster[];
+  getClusterForPaper: (paperId: string) => PaperCluster | undefined;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -145,6 +160,7 @@ export const useAppStore = create<AppStore>()(
       synthesisThemes: [],
       researchGaps: [],
       evidenceSyntheses: [],
+      clusters: [],
       activeThesisId: null,
       selectedPaperId: null,
       settings: defaultSettings,
@@ -502,6 +518,7 @@ export const useAppStore = create<AppStore>()(
           synthesisThemes: [],
           researchGaps: [],
           evidenceSyntheses: [],
+          clusters: [],
           activeThesisId: null,
           selectedPaperId: null,
           settings: defaultSettings,
@@ -840,6 +857,78 @@ export const useAppStore = create<AppStore>()(
 
         // Sort by number of papers (most discussed first)
         return clusters.sort((a, b) => b.papers.length - a.papers.length);
+      },
+
+      // Cluster actions (Phase 4)
+      createCluster: (name, thesisId, paperIds) => {
+        const existingClusters = get().clusters.filter((c) => c.thesisId === thesisId);
+        const colorIndex = existingClusters.length % CLUSTER_COLORS.length;
+
+        const cluster: PaperCluster = {
+          id: generateId(),
+          thesisId,
+          name,
+          paperIds,
+          color: CLUSTER_COLORS[colorIndex],
+          isCollapsed: false,
+          createdAt: new Date().toISOString(),
+        };
+
+        set((state) => ({
+          clusters: [...state.clusters, cluster],
+        }));
+
+        return cluster;
+      },
+
+      updateCluster: (id, updates) => {
+        set((state) => ({
+          clusters: state.clusters.map((c) =>
+            c.id === id ? { ...c, ...updates } : c
+          ),
+        }));
+      },
+
+      deleteCluster: (id) => {
+        set((state) => ({
+          clusters: state.clusters.filter((c) => c.id !== id),
+        }));
+      },
+
+      toggleClusterCollapse: (id) => {
+        set((state) => ({
+          clusters: state.clusters.map((c) =>
+            c.id === id ? { ...c, isCollapsed: !c.isCollapsed } : c
+          ),
+        }));
+      },
+
+      addPaperToCluster: (paperId, clusterId) => {
+        set((state) => ({
+          clusters: state.clusters.map((c) =>
+            c.id === clusterId && !c.paperIds.includes(paperId)
+              ? { ...c, paperIds: [...c.paperIds, paperId] }
+              : c
+          ),
+        }));
+      },
+
+      removePaperFromCluster: (paperId, clusterId) => {
+        set((state) => ({
+          clusters: state.clusters.map((c) =>
+            c.id === clusterId
+              ? { ...c, paperIds: c.paperIds.filter((id) => id !== paperId) }
+              : c
+          ),
+        }));
+      },
+
+      getClustersForThesis: (thesisId) => {
+        return get().clusters.filter((c) => c.thesisId === thesisId);
+      },
+
+      getClusterForPaper: (paperId) => {
+        return get().clusters.find((c) => c.paperIds.includes(paperId));
       },
     }),
     {

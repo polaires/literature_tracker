@@ -40,6 +40,7 @@ import type { WorkflowPhase } from '../components/common/WorkflowProgress';
 import type { WorkflowAction } from '../components/common/WorkflowGuide';
 import { Button } from '../components/ui';
 import type { ThesisRole, ReadingStatus, ScreeningDecision } from '../types';
+import type { SemanticScholarPaper } from '../services/api/semanticScholar';
 
 type ViewMode = 'list' | 'graph' | 'timeline' | 'arguments';
 type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
@@ -54,6 +55,10 @@ export function ThesisView() {
     getConnectionsForThesis,
     getConnectionsForPaper,
     getScreeningStats,
+    getClustersForThesis,
+    createCluster,
+    toggleClusterCollapse,
+    addPaper,
     selectedPaperId,
     setSelectedPaper,
   } = useAppStore();
@@ -88,8 +93,62 @@ export function ThesisView() {
   const thesis = theses.find((t) => t.id === thesisId);
   const papers = thesisId ? getPapersForThesis(thesisId) : [];
   const connections = thesisId ? getConnectionsForThesis(thesisId) : [];
+  const clusters = thesisId ? getClustersForThesis(thesisId) : [];
   const screeningStats = thesisId ? getScreeningStats(thesisId) : { pending: 0, include: 0, exclude: 0, maybe: 0 };
   const papersNeedingScreening = screeningStats.pending + screeningStats.maybe;
+
+  // Handler for adding discovered papers from GraphView
+  const handleAddDiscoveredPaper = useCallback(
+    (data: {
+      paper: SemanticScholarPaper;
+      role: ThesisRole;
+      takeaway: string;
+      addAsScreening: boolean;
+    }) => {
+      if (!thesisId) return;
+
+      addPaper({
+        thesisId,
+        doi: data.paper.externalIds?.DOI || null,
+        title: data.paper.title,
+        authors: data.paper.authors?.map((a) => ({ name: a.name })) || [],
+        year: data.paper.year || null,
+        journal: data.paper.venue || null,
+        volume: null,
+        issue: null,
+        pages: null,
+        abstract: data.paper.abstract || null,
+        url: null,
+        pdfUrl: data.paper.openAccessPdf?.url || null,
+        citationCount: data.paper.citationCount || null,
+        takeaway: data.addAsScreening ? '' : data.takeaway,
+        arguments: [],
+        evidence: [],
+        assessment: null,
+        thesisRole: data.role,
+        readingStatus: data.addAsScreening ? 'screening' : 'to-read',
+        tags: [],
+        readAt: null,
+        source: 'search',
+        rawBibtex: null,
+        screeningDecision: 'pending',
+        exclusionReason: null,
+        exclusionNote: null,
+        screenedAt: null,
+        semanticScholarId: data.paper.paperId,
+      });
+    },
+    [thesisId, addPaper]
+  );
+
+  // Handler for creating clusters from GraphView
+  const handleCreateCluster = useCallback(
+    (name: string, paperIds: string[]) => {
+      if (!thesisId) return;
+      createCluster(name, thesisId, paperIds);
+    },
+    [thesisId, createCluster]
+  );
 
   const selectedPaper = papers.find((p) => p.id === selectedPaperId);
   const selectedPaperConnections = selectedPaperId
@@ -831,7 +890,12 @@ export function ThesisView() {
                       thesis={thesis}
                       papers={papers}
                       connections={connections}
+                      clusters={clusters}
                       onPaperSelect={(id) => setSelectedPaper(id)}
+                      onAddPaper={handleAddDiscoveredPaper}
+                      onOpenSearch={() => setShowSearchModal(true)}
+                      onCreateCluster={handleCreateCluster}
+                      onToggleClusterCollapse={toggleClusterCollapse}
                     />
                   </div>
                 </div>
