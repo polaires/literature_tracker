@@ -2,3 +2,4 @@ export { AppShell, AppShellHeader, AppShellBody, AppShellMain, ModalBackdrop } f
 export { TopHeader, type ViewMode } from './TopHeader';
 export { LeftSidebar } from './LeftSidebar';
 export { RightPanel, RightPanelContainer } from './RightPanel';
+export { ResizeHandle } from './ResizeHandle';

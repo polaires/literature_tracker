@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef } from 'react';
 import { X, FileText, ClipboardCheck, Compass } from 'lucide-react';
 import { usePanelContext, Z_INDEX } from '../../contexts/PanelContext';
+import { ResizeHandle } from './ResizeHandle';
 
 interface RightPanelProps {
   children: React.ReactNode;
@@ -23,7 +24,7 @@ export const RightPanel = memo(function RightPanel({
   icon = 'detail',
   onClose,
 }: RightPanelProps) {
-  const { rightPanel, closeRightPanel } = usePanelContext();
+  const { rightPanel, closeRightPanel, rightWidth, resizeRightPanel } = usePanelContext();
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handleClose = onClose || closeRightPanel;
@@ -42,9 +43,11 @@ export const RightPanel = memo(function RightPanel({
     <aside
       ref={panelRef}
       tabIndex={-1}
-      className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden animate-in slide-in-from-right duration-200"
-      style={{ zIndex: Z_INDEX.RIGHT_PANEL }}
+      className="relative bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden animate-in slide-in-from-right duration-200"
+      style={{ zIndex: Z_INDEX.RIGHT_PANEL, width: rightWidth }}
     >
+      {/* Resize handle */}
+      <ResizeHandle position="right" onResize={resizeRightPanel} />
       {/* Header */}
       {title && (
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">

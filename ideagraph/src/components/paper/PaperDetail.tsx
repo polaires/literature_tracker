@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen, Sparkles, Loader2, Search } from 'lucide-react';
+import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen, Sparkles, Loader2, Search, CircleDot, Circle, CircleDashed, ThumbsUp, ThumbsDown, HelpCircle, MessageSquareQuote } from 'lucide-react';
 import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { useAI } from '../../hooks/useAI';
@@ -8,8 +8,22 @@ import { ConnectionEditor } from '../connection/ConnectionEditor';
 import { CitationNetworkModal } from './CitationNetworkModal';
 import { PDFViewer, PDFUpload } from '../pdf';
 import { pdfStorage } from '../../services/pdfStorage';
-import { THESIS_ROLE_COLORS, READING_STATUS_COLORS } from '../../constants/colors';
+import { THESIS_ROLE_COLORS, READING_STATUS_COLORS, ARGUMENT_STRENGTH_COLORS, ARGUMENT_ASSESSMENT_COLORS } from '../../constants/colors';
 import { cleanAbstract } from '../../utils/textCleaner';
+
+// Icon mapping for argument strength
+const STRENGTH_ICONS = {
+  strong: CircleDot,
+  moderate: Circle,
+  weak: CircleDashed,
+} as const;
+
+// Icon mapping for argument assessment
+const ASSESSMENT_ICONS = {
+  agree: ThumbsUp,
+  disagree: ThumbsDown,
+  uncertain: HelpCircle,
+} as const;
 
 interface PaperDetailProps {
   paper: Paper;
@@ -213,22 +227,45 @@ export function PaperDetail({
         {/* Arguments */}
         {paper.arguments.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Arguments
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <MessageSquareQuote size={16} className="text-indigo-500" />
+              Arguments ({paper.arguments.length})
             </h3>
-            <ul className="space-y-2">
-              {paper.arguments.map((arg) => (
-                <li
-                  key={arg.id}
-                  className="text-sm text-gray-600 dark:text-gray-400 pl-4 border-l-2 border-gray-300 dark:border-gray-600"
-                >
-                  {arg.claim}
-                  {arg.strength && (
-                    <span className="ml-2 text-xs text-gray-500">({arg.strength})</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              {paper.arguments.map((arg) => {
+                const strengthColors = arg.strength ? ARGUMENT_STRENGTH_COLORS[arg.strength] : null;
+                const assessmentColors = arg.yourAssessment ? ARGUMENT_ASSESSMENT_COLORS[arg.yourAssessment] : null;
+                const StrengthIcon = arg.strength ? STRENGTH_ICONS[arg.strength] : null;
+                const AssessmentIcon = arg.yourAssessment ? ASSESSMENT_ICONS[arg.yourAssessment] : null;
+
+                return (
+                  <div
+                    key={arg.id}
+                    className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600/50"
+                  >
+                    <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
+                      {arg.claim}
+                    </p>
+                    {(arg.strength || arg.yourAssessment) && (
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {strengthColors && StrengthIcon && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${strengthColors.bg} ${strengthColors.text}`}>
+                            <StrengthIcon size={12} />
+                            {strengthColors.label}
+                          </span>
+                        )}
+                        {assessmentColors && AssessmentIcon && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${assessmentColors.bg} ${assessmentColors.text}`}>
+                            <AssessmentIcon size={12} />
+                            {assessmentColors.label}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

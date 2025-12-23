@@ -776,15 +776,12 @@ export function GraphView({
           'text-halign': 'center',
           'text-margin-y': 8,
           color: '#1e293b',
-          // Strong text outline for readability over other nodes
+          // Strong text outline for readability over other nodes (no background)
           'text-outline-color': '#ffffff',
           'text-outline-width': 3,
-          'text-outline-opacity': 1,
-          // Add background to labels for better visibility
-          'text-background-color': '#ffffff',
-          'text-background-opacity': 0.85,
-          'text-background-padding': '2px',
-          'text-background-shape': 'roundrectangle',
+          'text-outline-opacity': 0.9,
+          // Transparent background - rely on outline for visibility
+          'text-background-opacity': 0,
           'border-width': 2.5,
           'border-color': '#ffffff',
           'border-opacity': 0.9,

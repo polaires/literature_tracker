@@ -1,10 +1,24 @@
 import { useState } from 'react';
-import { X, Plus, Trash2, GripVertical, Sparkles, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, Sparkles, Loader2, CircleDot, Circle, CircleDashed, ThumbsUp, ThumbsDown, HelpCircle } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useAI } from '../../hooks/useAI';
 import type { Paper, ThesisRole, ReadingStatus, Argument, Evidence } from '../../types';
 import { FormInput, FormTextarea, Button } from '../ui';
-import { THESIS_ROLE_COLORS, READING_STATUS_COLORS, ARGUMENT_STRENGTH_COLORS } from '../../constants/colors';
+import { THESIS_ROLE_COLORS, READING_STATUS_COLORS, ARGUMENT_STRENGTH_COLORS, ARGUMENT_ASSESSMENT_COLORS } from '../../constants/colors';
+
+// Icon mapping for argument strength
+const STRENGTH_ICONS = {
+  strong: CircleDot,
+  moderate: Circle,
+  weak: CircleDashed,
+} as const;
+
+// Icon mapping for argument assessment
+const ASSESSMENT_ICONS = {
+  agree: ThumbsUp,
+  disagree: ThumbsDown,
+  uncertain: HelpCircle,
+} as const;
 
 interface PaperEditModalProps {
   paper: Paper;
@@ -249,100 +263,122 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
 
           {/* Arguments */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Arguments
                 <span className="font-normal text-slate-500 ml-1">(Claims the paper makes)</span>
               </label>
               <button
                 onClick={addArgument}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1"
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 px-2 py-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
               >
                 <Plus size={16} />
                 Add Argument
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {arguments_.map((arg, index) => (
                 <div
                   key={arg.id}
-                  className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl"
+                  className="group relative p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600/50 hover:border-slate-300 dark:hover:border-slate-500 transition-colors"
                 >
-                  <GripVertical size={16} className="text-slate-400 mt-3 flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={arg.claim}
-                      onChange={(e) => updateArgument(arg.id, { claim: e.target.value })}
-                      placeholder={`Argument ${index + 1}...`}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">Strength:</span>
-                        <div className="flex gap-1">
+                  <div className="flex items-start gap-3">
+                    <GripVertical size={16} className="text-slate-400 mt-3 flex-shrink-0 cursor-grab" />
+                    <div className="flex-1 space-y-4">
+                      {/* Claim input */}
+                      <input
+                        type="text"
+                        value={arg.claim}
+                        onChange={(e) => updateArgument(arg.id, { claim: e.target.value })}
+                        placeholder={`Argument ${index + 1}: What claim does the paper make?`}
+                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+
+                      {/* Strength section */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                          Argument Strength
+                        </span>
+                        <div className="flex flex-wrap gap-2">
                           {(Object.keys(ARGUMENT_STRENGTH_COLORS) as (keyof typeof ARGUMENT_STRENGTH_COLORS)[]).map((strength) => {
                             const colors = ARGUMENT_STRENGTH_COLORS[strength];
+                            const IconComponent = STRENGTH_ICONS[strength];
+                            const isSelected = arg.strength === strength;
                             return (
                               <button
                                 key={strength}
                                 onClick={() =>
                                   updateArgument(arg.id, {
-                                    strength: arg.strength === strength ? null : strength,
+                                    strength: isSelected ? null : strength,
                                   })
                                 }
-                                className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                                  arg.strength === strength
-                                    ? `${colors.bg} ${colors.text}`
-                                    : 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${
+                                  isSelected
+                                    ? `${colors.bg} ${colors.text} ring-2 ring-offset-1 ring-current dark:ring-offset-slate-700`
+                                    : 'bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
                                 }`}
                               >
+                                <IconComponent size={14} />
                                 {colors.label}
                               </button>
                             );
                           })}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">Your view:</span>
-                        <div className="flex gap-1">
-                          {(['agree', 'disagree', 'uncertain'] as const).map((assessment) => (
-                            <button
-                              key={assessment}
-                              onClick={() =>
-                                updateArgument(arg.id, {
-                                  yourAssessment: arg.yourAssessment === assessment ? null : assessment,
-                                })
-                              }
-                              className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                                arg.yourAssessment === assessment
-                                  ? assessment === 'agree'
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                    : assessment === 'disagree'
-                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                  : 'bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
-                              }`}
-                            >
-                              {assessment}
-                            </button>
-                          ))}
+
+                      {/* Assessment section */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                          Your Assessment
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {(Object.keys(ARGUMENT_ASSESSMENT_COLORS) as (keyof typeof ARGUMENT_ASSESSMENT_COLORS)[]).map((assessment) => {
+                            const colors = ARGUMENT_ASSESSMENT_COLORS[assessment];
+                            const IconComponent = ASSESSMENT_ICONS[assessment];
+                            const isSelected = arg.yourAssessment === assessment;
+                            return (
+                              <button
+                                key={assessment}
+                                onClick={() =>
+                                  updateArgument(arg.id, {
+                                    yourAssessment: isSelected ? null : assessment,
+                                  })
+                                }
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${
+                                  isSelected
+                                    ? `${colors.bg} ${colors.text} ring-2 ring-offset-1 ring-current dark:ring-offset-slate-700`
+                                    : 'bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-500'
+                                }`}
+                              >
+                                <IconComponent size={14} />
+                                {colors.label}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
+
+                    {/* Delete button */}
+                    <button
+                      onClick={() => removeArgument(arg.id)}
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Remove argument"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => removeArgument(arg.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               ))}
               {arguments_.length === 0 && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 italic py-3">
-                  No arguments added yet. Click "Add Argument" to capture claims this paper makes.
-                </p>
+                <div className="text-center py-6 border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    No arguments added yet.
+                  </p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    Click "Add Argument" to capture claims this paper makes.
+                  </p>
+                </div>
               )}
             </div>
           </div>

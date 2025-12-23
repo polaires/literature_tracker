@@ -5,14 +5,27 @@ export type RightPanelType = 'detail' | 'screening' | 'workflow' | null;
 export type ModalType = 'addPaper' | 'searchPaper' | 'batchImport' | 'dataManager' | 'synthesisMatrix' | 'gapAnalysis' | 'exportOutline' | 'aiSettings' | 'keyboardHelp' | 'citationNetwork' | null;
 export type FullScreenType = 'pdf' | null;
 
+// Default panel widths
+export const PANEL_DEFAULTS = {
+  leftWidth: 256, // 16rem = 256px
+  leftMinWidth: 200,
+  leftMaxWidth: 480,
+  leftCollapsedWidth: 48, // 3rem = 48px
+  rightWidth: 384, // 24rem = 384px
+  rightMinWidth: 320,
+  rightMaxWidth: 640,
+} as const;
+
 interface PanelState {
   // Left sidebar
   leftCollapsed: boolean;
   leftSection: 'papers' | 'filters' | 'ai';
+  leftWidth: number;
 
   // Right panel
   rightPanel: RightPanelType;
   rightPanelData: Record<string, unknown>;
+  rightWidth: number;
 
   // Modal layer
   activeModal: ModalType;
@@ -28,10 +41,14 @@ interface PanelContextValue extends PanelState {
   toggleLeftSidebar: () => void;
   setLeftCollapsed: (collapsed: boolean) => void;
   setLeftSection: (section: 'papers' | 'filters' | 'ai') => void;
+  setLeftWidth: (width: number) => void;
+  resizeLeftPanel: (delta: number) => void;
 
   // Right panel actions
   openRightPanel: (panel: RightPanelType, data?: Record<string, unknown>) => void;
   closeRightPanel: () => void;
+  setRightWidth: (width: number) => void;
+  resizeRightPanel: (delta: number) => void;
 
   // Modal actions
   openModal: (modal: ModalType, data?: Record<string, unknown>) => void;
@@ -55,8 +72,10 @@ export function PanelProvider({ children }: PanelProviderProps) {
   const [state, setState] = useState<PanelState>({
     leftCollapsed: false,
     leftSection: 'papers',
+    leftWidth: PANEL_DEFAULTS.leftWidth,
     rightPanel: null,
     rightPanelData: {},
+    rightWidth: PANEL_DEFAULTS.rightWidth,
     activeModal: null,
     modalData: {},
     fullScreenView: null,
@@ -76,6 +95,24 @@ export function PanelProvider({ children }: PanelProviderProps) {
     setState(prev => ({ ...prev, leftSection: section, leftCollapsed: false }));
   }, []);
 
+  const setLeftWidth = useCallback((width: number) => {
+    const clampedWidth = Math.min(
+      Math.max(width, PANEL_DEFAULTS.leftMinWidth),
+      PANEL_DEFAULTS.leftMaxWidth
+    );
+    setState(prev => ({ ...prev, leftWidth: clampedWidth }));
+  }, []);
+
+  const resizeLeftPanel = useCallback((delta: number) => {
+    setState(prev => {
+      const newWidth = Math.min(
+        Math.max(prev.leftWidth + delta, PANEL_DEFAULTS.leftMinWidth),
+        PANEL_DEFAULTS.leftMaxWidth
+      );
+      return { ...prev, leftWidth: newWidth };
+    });
+  }, []);
+
   // Right panel actions
   const openRightPanel = useCallback((panel: RightPanelType, data: Record<string, unknown> = {}) => {
     setState(prev => ({ ...prev, rightPanel: panel, rightPanelData: data }));
@@ -83,6 +120,24 @@ export function PanelProvider({ children }: PanelProviderProps) {
 
   const closeRightPanel = useCallback(() => {
     setState(prev => ({ ...prev, rightPanel: null, rightPanelData: {} }));
+  }, []);
+
+  const setRightWidth = useCallback((width: number) => {
+    const clampedWidth = Math.min(
+      Math.max(width, PANEL_DEFAULTS.rightMinWidth),
+      PANEL_DEFAULTS.rightMaxWidth
+    );
+    setState(prev => ({ ...prev, rightWidth: clampedWidth }));
+  }, []);
+
+  const resizeRightPanel = useCallback((delta: number) => {
+    setState(prev => {
+      const newWidth = Math.min(
+        Math.max(prev.rightWidth + delta, PANEL_DEFAULTS.rightMinWidth),
+        PANEL_DEFAULTS.rightMaxWidth
+      );
+      return { ...prev, rightWidth: newWidth };
+    });
   }, []);
 
   // Modal actions
@@ -126,8 +181,12 @@ export function PanelProvider({ children }: PanelProviderProps) {
     toggleLeftSidebar,
     setLeftCollapsed,
     setLeftSection,
+    setLeftWidth,
+    resizeLeftPanel,
     openRightPanel,
     closeRightPanel,
+    setRightWidth,
+    resizeRightPanel,
     openModal,
     closeModal,
     openFullScreen,

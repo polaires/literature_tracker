@@ -17,7 +17,8 @@ import {
   PanelLeftClose,
   Sparkles,
 } from 'lucide-react';
-import { usePanelContext } from '../../contexts/PanelContext';
+import { usePanelContext, PANEL_DEFAULTS } from '../../contexts/PanelContext';
+import { ResizeHandle } from './ResizeHandle';
 import type { Paper, ThesisRole, ReadingStatus, ScreeningDecision } from '../../types';
 
 type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
@@ -93,7 +94,7 @@ export const LeftSidebar = memo(function LeftSidebar({
   sortOrder,
   onSortChange,
 }: LeftSidebarProps) {
-  const { leftCollapsed, setLeftCollapsed, openRightPanel, openModal } = usePanelContext();
+  const { leftCollapsed, setLeftCollapsed, leftWidth, resizeLeftPanel, openRightPanel, openModal } = usePanelContext();
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
@@ -119,7 +120,10 @@ export const LeftSidebar = memo(function LeftSidebar({
   // Collapsed state - show only icons
   if (leftCollapsed) {
     return (
-      <aside className="w-12 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col items-center py-3 gap-2 flex-shrink-0">
+      <aside
+        className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col items-center py-3 gap-2 flex-shrink-0"
+        style={{ width: PANEL_DEFAULTS.leftCollapsedWidth }}
+      >
         <button
           onClick={() => setLeftCollapsed(false)}
           className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -172,7 +176,13 @@ export const LeftSidebar = memo(function LeftSidebar({
   }
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden">
+    <aside
+      className="relative bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden"
+      style={{ width: leftWidth }}
+    >
+      {/* Resize handle */}
+      <ResizeHandle position="left" onResize={resizeLeftPanel} />
+
       {/* Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
