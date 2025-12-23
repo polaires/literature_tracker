@@ -895,47 +895,66 @@ export function GraphView({
           };
         }
 
-        case 'temporal':
+        case 'temporal': {
           // Arrange papers by publication year (left=older, right=newer)
-          // eslint-disable-next-line no-case-declarations
+          // Use preset layout for reliability - fcose with fixedNodeConstraint can crash
           const papersWithYear = visiblePapers.filter((p) => p.year);
-          // eslint-disable-next-line no-case-declarations
           const years = papersWithYear.map((p) => p.year!);
-          // eslint-disable-next-line no-case-declarations
-          const minYear = Math.min(...years, new Date().getFullYear() - 10);
-          // eslint-disable-next-line no-case-declarations
-          const maxYear = Math.max(...years, new Date().getFullYear());
-          // eslint-disable-next-line no-case-declarations
+
+          // Handle empty years array safely
+          const currentYear = new Date().getFullYear();
+          const minYear = years.length > 0 ? Math.min(...years) : currentYear - 10;
+          const maxYear = years.length > 0 ? Math.max(...years) : currentYear;
           const yearRange = maxYear - minYear || 1;
 
+          // Calculate positions for all papers
+          const graphWidth = 700;
+          const graphHeight = 400;
+          const marginX = 80;
+          const marginY = 60;
+
+          // Group papers by year for Y distribution
+          const papersByYear = new Map<number, string[]>();
+          visiblePapers.forEach((p) => {
+            const year = p.year || currentYear;
+            const existing = papersByYear.get(year) || [];
+            existing.push(p.id);
+            papersByYear.set(year, existing);
+          });
+
+          // Track position index within each year
+          const yearIndex = new Map<string, number>();
+          papersByYear.forEach((ids) => {
+            ids.forEach((id, idx) => yearIndex.set(id, idx));
+          });
+
           return {
-            name: 'fcose',
+            name: 'preset',
             ...baseConfig,
-            quality: 'proof',
-            randomize: false,
-            // Fix X positions based on year, let Y be free
-            fixedNodeConstraint: papersWithYear.map((p) => ({
-              nodeId: p.id,
-              position: {
-                x: 100 + ((p.year! - minYear) / yearRange) * 600,
-                y: undefined, // Let fcose decide Y position
-              },
-            })),
-            nodeRepulsion: (): number => 4000,
-            idealEdgeLength: (): number => 80,
-            edgeElasticity: (): number => 0.4,
-            gravity: 0.2,
-            gravityRange: 2,
-            numIter: 2000,
-            tile: false,
-            nodeDimensionsIncludeLabels: true,
+            positions: (node: { id: () => string }) => {
+              const id = node.id();
+              const paper = visiblePapers.find((p) => p.id === id);
+              const year = paper?.year || currentYear;
+              const papersInYear = papersByYear.get(year) || [id];
+              const indexInYear = yearIndex.get(id) || 0;
+
+              // X based on year (older left, newer right)
+              const xNorm = (year - minYear) / yearRange;
+              const x = marginX + xNorm * graphWidth;
+
+              // Y distributed within year group
+              const ySpacing = Math.min(60, graphHeight / (papersInYear.length + 1));
+              const yOffset = (papersInYear.length - 1) * ySpacing / 2;
+              const y = marginY + graphHeight / 2 - yOffset + indexInYear * ySpacing;
+
+              return { x, y };
+            },
           };
+        }
 
         case 'scatter': {
           // Configurable scatter plot: X and Y axes based on user selection
-          // eslint-disable-next-line no-case-declarations
           const xNormalized = normalizeAxisValues(visiblePapers, scatterXAxis);
-          // eslint-disable-next-line no-case-declarations
           const yNormalized = normalizeAxisValues(visiblePapers, scatterYAxis);
 
           // Graph dimensions
