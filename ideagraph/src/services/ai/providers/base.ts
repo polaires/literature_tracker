@@ -31,15 +31,45 @@ export abstract class BaseAIProvider implements AIProvider {
     const completion = await this.complete(prompt, options);
 
     try {
-      // Extract JSON from the response
-      const jsonMatch = completion.text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-      if (!jsonMatch) {
+      // Log the raw response for debugging
+      console.log('[BaseProvider] Raw response text:', completion.text.substring(0, 500));
+
+      // Try to extract JSON from the response
+      // First, try to find a JSON array (common for suggestions)
+      let jsonString: string | null = null;
+
+      // Method 1: Try direct parse (if response is pure JSON)
+      const trimmedText = completion.text.trim();
+      if (trimmedText.startsWith('[') || trimmedText.startsWith('{')) {
+        try {
+          const data = JSON.parse(trimmedText) as T;
+          return { data, completion };
+        } catch {
+          // Not pure JSON, continue with extraction
+        }
+      }
+
+      // Method 2: Look for JSON code block (```json ... ```)
+      const codeBlockMatch = completion.text.match(/```(?:json)?\s*([\[\{][\s\S]*?[\]\}])\s*```/);
+      if (codeBlockMatch) {
+        jsonString = codeBlockMatch[1];
+      }
+
+      // Method 3: Find JSON by bracket matching
+      if (!jsonString) {
+        jsonString = this.extractValidJSON(completion.text);
+      }
+
+      if (!jsonString) {
+        console.error('[BaseProvider] No JSON found in response:', completion.text);
         throw new Error('No JSON found in response');
       }
 
-      const data = JSON.parse(jsonMatch[0]) as T;
+      const data = JSON.parse(jsonString) as T;
       return { data, completion };
     } catch (error) {
+      console.error('[BaseProvider] JSON parse error:', error);
+      console.error('[BaseProvider] Response text:', completion.text);
       throw this.createError(
         'PARSE_ERROR',
         `Failed to parse JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -165,5 +195,87 @@ export abstract class BaseAIProvider implements AIProvider {
   estimateTokens(text: string): number {
     // Rough estimate: ~4 characters per token for English text
     return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Extract valid JSON from text using bracket matching
+   * Handles nested arrays and objects properly
+   */
+  private extractValidJSON(text: string): string | null {
+    // Find the first [ or { and try to match to completion
+    const startArray = text.indexOf('[');
+    const startObject = text.indexOf('{');
+
+    // Determine which comes first
+    let startIndex = -1;
+    let openBracket = '';
+    let closeBracket = '';
+
+    if (startArray === -1 && startObject === -1) {
+      return null;
+    } else if (startArray === -1) {
+      startIndex = startObject;
+      openBracket = '{';
+      closeBracket = '}';
+    } else if (startObject === -1) {
+      startIndex = startArray;
+      openBracket = '[';
+      closeBracket = ']';
+    } else {
+      // Both found, use whichever comes first
+      if (startArray < startObject) {
+        startIndex = startArray;
+        openBracket = '[';
+        closeBracket = ']';
+      } else {
+        startIndex = startObject;
+        openBracket = '{';
+        closeBracket = '}';
+      }
+    }
+
+    // Count brackets to find the matching close bracket
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+
+    for (let i = startIndex; i < text.length; i++) {
+      const char = text[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === openBracket || char === '{' || char === '[') {
+        depth++;
+      } else if (char === closeBracket || char === '}' || char === ']') {
+        depth--;
+        if (depth === 0) {
+          const jsonCandidate = text.substring(startIndex, i + 1);
+          try {
+            JSON.parse(jsonCandidate);
+            return jsonCandidate;
+          } catch {
+            // Not valid JSON, continue searching
+            return null;
+          }
+        }
+      }
+    }
+
+    return null;
   }
 }

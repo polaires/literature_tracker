@@ -252,8 +252,10 @@ export class ClaudeProvider extends BaseAIProvider {
         headers['anthropic-version'] = ANTHROPIC_VERSION;
         headers['anthropic-dangerous-direct-browser-access'] = 'true';
       } else {
-        // Third-party API (OneAPI, etc.) typically uses Bearer token
+        // Third-party API (OneAPI, etc.) - send both header formats for compatibility
+        // Some providers use Bearer token, others use x-api-key
         headers['Authorization'] = `Bearer ${this.apiKey}`;
+        headers['x-api-key'] = this.apiKey!;
       }
 
       // Debug logging

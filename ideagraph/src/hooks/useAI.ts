@@ -1,12 +1,11 @@
 // useAI Hook
 // React hook for AI-powered suggestions in IdeaGraph
+// AI settings are now managed in the Zustand store for centralization and persistence
 
 import { useState, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import {
   getSuggestionManager,
-  DEFAULT_AI_SETTINGS,
-  DEFAULT_TASK_MODELS,
   type AISettings,
   type ConnectionSuggestion,
   type TakeawaySuggestion,
@@ -16,45 +15,6 @@ import {
   type PaperIntakeAnalysis,
   getRelevanceLabel,
 } from '../services/ai';
-
-// Local storage key for AI settings
-const AI_SETTINGS_KEY = 'ideagraph_ai_settings';
-
-/**
- * Load AI settings from localStorage
- */
-function loadAISettings(): AISettings {
-  try {
-    const stored = localStorage.getItem(AI_SETTINGS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Merge with defaults to handle new fields
-      return {
-        ...DEFAULT_AI_SETTINGS,
-        ...parsed,
-        // Ensure taskModels is properly merged
-        taskModels: {
-          ...DEFAULT_TASK_MODELS,
-          ...(parsed.taskModels || {}),
-        },
-      };
-    }
-  } catch (e) {
-    console.warn('[useAI] Failed to load AI settings:', e);
-  }
-  return { ...DEFAULT_AI_SETTINGS };
-}
-
-/**
- * Save AI settings to localStorage
- */
-function saveAISettings(settings: AISettings): void {
-  try {
-    localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(settings));
-  } catch (e) {
-    console.warn('[useAI] Failed to save AI settings:', e);
-  }
-}
 
 interface UseAIState {
   // Loading states
@@ -113,10 +73,13 @@ interface UseAIReturn extends UseAIState {
 
 /**
  * React hook for AI-powered features
+ * AI settings are now stored in Zustand for centralization and automatic persistence
  */
 export function useAI(): UseAIReturn {
-  // AI settings state
-  const [settings, setSettings] = useState<AISettings>(loadAISettings);
+  // AI settings from Zustand store (centralized)
+  const settings = useAppStore(s => s.aiSettings);
+  const updateAISettings = useAppStore(s => s.updateAISettings);
+  const isAIConfigured = useAppStore(s => s.isAIConfigured);
 
   // Loading and error states
   const [state, setState] = useState<UseAIState>({
@@ -156,15 +119,8 @@ export function useAI(): UseAIReturn {
     [connections, activeThesisId]
   );
 
-  // Check if AI is configured
-  const isConfigured = useMemo(() => {
-    if (settings.provider === 'mock') return true;
-    // Accept any sk- key for Claude (official sk-ant- or third-party sk-)
-    if (settings.provider === 'claude' && settings.apiKey?.startsWith('sk-')) return true;
-    if (settings.provider === 'openai' && settings.apiKey?.startsWith('sk-')) return true;
-    if (settings.provider === 'ollama' && settings.ollamaEndpoint) return true;
-    return false;
-  }, [settings]);
+  // Check if AI is configured (use store method)
+  const isConfigured = isAIConfigured();
 
   // Get suggestion manager
   const manager = useMemo(
@@ -172,14 +128,10 @@ export function useAI(): UseAIReturn {
     [settings]
   );
 
-  // Update settings
+  // Update settings (delegates to store)
   const updateSettings = useCallback((updates: Partial<AISettings>) => {
-    setSettings(prev => {
-      const newSettings = { ...prev, ...updates };
-      saveAISettings(newSettings);
-      return newSettings;
-    });
-  }, []);
+    updateAISettings(updates);
+  }, [updateAISettings]);
 
   // Suggest connections for a paper
   const suggestConnections = useCallback(async (targetPaperId: string) => {

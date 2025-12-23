@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type {
   Thesis,
   Paper,
@@ -15,6 +15,7 @@ import type {
   PaperCluster,
 } from '../types';
 import { CLUSTER_COLORS } from '../types';
+import type { AISettings, AITaskModelAssignment, ClaudeModelId } from '../services/ai/types';
 
 interface AppStore {
   // Data
@@ -38,6 +39,9 @@ interface AppStore {
 
   // Settings
   settings: UserSettings;
+
+  // AI Settings (consolidated from useAI hook)
+  aiSettings: AISettings;
 
   // Thesis actions
   createThesis: (thesis: Omit<Thesis, 'id' | 'createdAt' | 'updatedAt' | 'paperIds' | 'connectionIds'>) => Thesis;
@@ -80,6 +84,10 @@ interface AppStore {
 
   // Settings
   updateSettings: (updates: Partial<UserSettings>) => void;
+
+  // AI Settings actions
+  updateAISettings: (updates: Partial<AISettings>) => void;
+  isAIConfigured: () => boolean;
 
   // Import/Export
   exportData: () => string;
@@ -148,6 +156,45 @@ const defaultSettings: UserSettings = {
   showAiSuggestions: true,
 };
 
+// Default AI settings (moved from useAI hook for centralization)
+const DEFAULT_TASK_MODELS: AITaskModelAssignment = {
+  connectionSuggestions: 'claude-3-5-sonnet-20241022' as ClaudeModelId,
+  takeawaySuggestions: 'claude-3-haiku-20240307' as ClaudeModelId,
+  argumentExtraction: 'claude-3-haiku-20240307' as ClaudeModelId,
+  gapAnalysis: 'claude-3-5-sonnet-20241022' as ClaudeModelId,
+  reviewGeneration: 'claude-3-5-sonnet-20241022' as ClaudeModelId,
+};
+
+const defaultAISettings: AISettings = {
+  provider: 'claude',
+  apiKey: null,
+  apiBaseUrl: null,
+  customModelName: null,
+  ollamaEndpoint: null,
+
+  enableConnectionSuggestions: true,
+  enableTakeawaySuggestions: true,
+  enableArgumentExtraction: true,
+  enableGapAnalysis: true,
+  enableReviewGeneration: true,
+
+  enableRetractionChecking: true,
+  enableSemanticSearch: false,
+  enableFeedbackLearning: true,
+  enablePlanBasedGaps: false,
+
+  autoSuggestOnPaperAdd: false,
+  suggestionConfidenceThreshold: 0.6,
+  maxSuggestionsPerRequest: 5,
+
+  sendAbstractsToAI: true,
+  sendHighlightsToAI: true,
+
+  preferFastModel: false,
+  defaultModel: 'claude-3-5-sonnet-20241022' as ClaudeModelId,
+  taskModels: { ...DEFAULT_TASK_MODELS },
+};
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
@@ -164,6 +211,7 @@ export const useAppStore = create<AppStore>()(
       activeThesisId: null,
       selectedPaperId: null,
       settings: defaultSettings,
+      aiSettings: defaultAISettings,
 
       // Thesis actions
       createThesis: (thesisData) => {
@@ -487,6 +535,29 @@ export const useAppStore = create<AppStore>()(
         }));
       },
 
+      // AI Settings actions
+      updateAISettings: (updates) => {
+        set((state) => ({
+          aiSettings: {
+            ...state.aiSettings,
+            ...updates,
+            // Ensure taskModels is properly merged if provided
+            taskModels: updates.taskModels
+              ? { ...state.aiSettings.taskModels, ...updates.taskModels }
+              : state.aiSettings.taskModels,
+          },
+        }));
+      },
+
+      isAIConfigured: () => {
+        const { aiSettings } = get();
+        if (aiSettings.provider === 'mock') return true;
+        if (aiSettings.provider === 'claude' && aiSettings.apiKey?.startsWith('sk-')) return true;
+        if (aiSettings.provider === 'openai' && aiSettings.apiKey?.startsWith('sk-')) return true;
+        if (aiSettings.provider === 'ollama' && aiSettings.ollamaEndpoint) return true;
+        return false;
+      },
+
       // Import/Export
       exportData: () => {
         const { theses, papers, connections, settings } = get();
@@ -522,6 +593,7 @@ export const useAppStore = create<AppStore>()(
           activeThesisId: null,
           selectedPaperId: null,
           settings: defaultSettings,
+          aiSettings: defaultAISettings,
         });
       },
 
@@ -933,6 +1005,87 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'ideagraph-storage',
+      // Merge function for handling state updates (used by multi-tab sync)
+      merge: (persistedState, currentState) => {
+        // Deep merge persisted state with current state
+        return {
+          ...currentState,
+          ...(persistedState as object),
+        };
+      },
     }
   )
 );
+
+// =============================================================================
+// Multi-Tab Synchronization
+// =============================================================================
+
+// Initialize multi-tab sync if in browser environment
+if (typeof window !== 'undefined') {
+  import('../services/storage/multiTabSync').then(({ multiTabSync }) => {
+    multiTabSync.init();
+
+    // Listen for state updates from other tabs
+    multiTabSync.on('state-update', (message) => {
+      if (message.payload) {
+        try {
+          const externalState = typeof message.payload === 'string'
+            ? JSON.parse(message.payload)
+            : message.payload;
+
+          // Extract state from Zustand persist format
+          const actualState = externalState.state || externalState;
+
+          // Merge external state into current state
+          useAppStore.setState((current) => ({
+            ...current,
+            // Only merge data fields, not actions
+            theses: actualState.theses ?? current.theses,
+            papers: actualState.papers ?? current.papers,
+            connections: actualState.connections ?? current.connections,
+            annotations: actualState.annotations ?? current.annotations,
+            reviewSections: actualState.reviewSections ?? current.reviewSections,
+            synthesisThemes: actualState.synthesisThemes ?? current.synthesisThemes,
+            researchGaps: actualState.researchGaps ?? current.researchGaps,
+            evidenceSyntheses: actualState.evidenceSyntheses ?? current.evidenceSyntheses,
+            clusters: actualState.clusters ?? current.clusters,
+            settings: actualState.settings ?? current.settings,
+            aiSettings: actualState.aiSettings ?? current.aiSettings,
+          }));
+
+          console.log('[MultiTabSync] Applied state update from another tab');
+        } catch (e) {
+          console.error('[MultiTabSync] Failed to apply state update:', e);
+        }
+      }
+    });
+
+    // Subscribe to store changes and broadcast to other tabs
+    useAppStore.subscribe(
+      (state) => ({
+        theses: state.theses,
+        papers: state.papers,
+        connections: state.connections,
+        annotations: state.annotations,
+        settings: state.settings,
+        aiSettings: state.aiSettings,
+      }),
+      () => {
+        // State changed, notify other tabs
+        // The actual state is read from localStorage by other tabs
+        multiTabSync.broadcastStateUpdate(['theses', 'papers', 'connections', 'annotations', 'settings', 'aiSettings']);
+      },
+      { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+    );
+
+    // Discover other tabs
+    multiTabSync.discoverTabs().then((tabs) => {
+      if (tabs.length > 0) {
+        console.log(`[MultiTabSync] Found ${tabs.length} other tab(s)`);
+      }
+    });
+  }).catch((e) => {
+    console.warn('[MultiTabSync] Failed to initialize:', e);
+  });
+}

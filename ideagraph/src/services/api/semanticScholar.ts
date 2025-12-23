@@ -1,6 +1,14 @@
 // Semantic Scholar API Service
 // Docs: https://api.semanticscholar.org/api-docs
 
+import {
+  cacheManager,
+  getCachedSimilarPapers as getCachedSimilar,
+  cacheSimilarPapers as cacheSimilar,
+  cacheEmbedding as cacheEmbed,
+  getCachedEmbedding as getCachedEmbed,
+} from '../cache';
+
 export interface SemanticScholarAuthor {
   name: string;
   authorId: string;
@@ -63,124 +71,41 @@ const FIELDS_WITH_EMBEDDING = FIELDS + ',embedding.specter_v2';
 
 // Fields to request for nested citation/reference objects
 // These need to be prefixed with citations. or references.
-const CITATION_FIELDS = 'paperId,title,authors,year,venue,abstract,citationCount,externalIds';
+// Note: Some fields like 'abstract' and 'venue' can cause 400 errors in nested contexts
+// Using minimal fields that are reliably available
+const CITATION_FIELDS = 'paperId,title,authors,year,citationCount';
 
 // ============================================================================
-// Similarity Cache - Stores computed similar papers in localStorage
+// Similarity Cache - Now using centralized cache manager
+// Legacy functions provided for backwards compatibility
 // ============================================================================
-const SIMILARITY_CACHE_KEY = 'ideagraph_similarity_cache';
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const MAX_CACHE_ENTRIES = 100; // Limit cache size
 
-interface SimilarityCacheEntry {
-  papers: SemanticScholarPaper[];
-  computedAt: number;
-  expiresAt: number;
-}
-
-interface SimilarityCache {
-  [paperId: string]: SimilarityCacheEntry;
-}
-
-function getSimilarityCache(): SimilarityCache {
-  try {
-    const cached = localStorage.getItem(SIMILARITY_CACHE_KEY);
-    if (!cached) return {};
-    return JSON.parse(cached);
-  } catch {
-    return {};
-  }
-}
-
-function setSimilarityCache(cache: SimilarityCache): void {
-  try {
-    localStorage.setItem(SIMILARITY_CACHE_KEY, JSON.stringify(cache));
-  } catch (e) {
-    // localStorage might be full, clear old entries
-    console.warn('[SimilarityCache] Failed to save, clearing old entries:', e);
-    clearExpiredCache();
-  }
-}
-
+// Local wrapper functions that delegate to centralized cache manager
 function getCachedSimilarPapers(paperId: string): SemanticScholarPaper[] | null {
-  const cache = getSimilarityCache();
-  const entry = cache[paperId];
-
-  if (!entry) return null;
-
-  // Check if expired
-  if (Date.now() > entry.expiresAt) {
-    console.log('[SimilarityCache] Cache expired for:', paperId);
-    delete cache[paperId];
-    setSimilarityCache(cache);
-    return null;
+  const result = getCachedSimilar(paperId);
+  if (result) {
+    console.log('[SimilarityCache] Cache hit for:', paperId);
   }
-
-  console.log('[SimilarityCache] Cache hit for:', paperId,
-    '(computed', Math.round((Date.now() - entry.computedAt) / 1000 / 60), 'min ago)');
-  return entry.papers;
+  return result;
 }
 
 function cacheSimilarPapers(paperId: string, papers: SemanticScholarPaper[]): void {
-  const cache = getSimilarityCache();
-  const now = Date.now();
-
-  // Add new entry
-  cache[paperId] = {
-    papers,
-    computedAt: now,
-    expiresAt: now + CACHE_TTL_MS,
-  };
-
-  // Prune cache if too large (keep most recent)
-  const entries = Object.entries(cache);
-  if (entries.length > MAX_CACHE_ENTRIES) {
-    console.log('[SimilarityCache] Pruning cache, entries:', entries.length);
-    const sorted = entries.sort((a, b) => b[1].computedAt - a[1].computedAt);
-    const pruned = Object.fromEntries(sorted.slice(0, MAX_CACHE_ENTRIES));
-    setSimilarityCache(pruned);
-  } else {
-    setSimilarityCache(cache);
-  }
-
+  cacheSimilar(paperId, papers);
   console.log('[SimilarityCache] Cached', papers.length, 'papers for:', paperId);
-}
-
-function clearExpiredCache(): void {
-  const cache = getSimilarityCache();
-  const now = Date.now();
-  let cleared = 0;
-
-  for (const [paperId, entry] of Object.entries(cache)) {
-    if (now > entry.expiresAt) {
-      delete cache[paperId];
-      cleared++;
-    }
-  }
-
-  if (cleared > 0) {
-    console.log('[SimilarityCache] Cleared', cleared, 'expired entries');
-    setSimilarityCache(cache);
-  }
 }
 
 // Export for manual cache management
 export function clearSimilarityCache(): void {
-  localStorage.removeItem(SIMILARITY_CACHE_KEY);
+  cacheManager.clear('similarity');
   console.log('[SimilarityCache] Cache cleared');
 }
 
 export function getSimilarityCacheStats(): { entries: number; oldestDays: number; newestDays: number } {
-  const cache = getSimilarityCache();
-  const entries = Object.values(cache);
-  if (entries.length === 0) return { entries: 0, oldestDays: 0, newestDays: 0 };
-
-  const now = Date.now();
-  const ages = entries.map(e => (now - e.computedAt) / (24 * 60 * 60 * 1000));
+  const stats = cacheManager.getStats('similarity');
   return {
-    entries: entries.length,
-    oldestDays: Math.round(Math.max(...ages)),
-    newestDays: Math.round(Math.min(...ages)),
+    entries: stats.entryCount,
+    oldestDays: Math.round(stats.oldestEntryAge / (24 * 60 * 60 * 1000)),
+    newestDays: Math.round(stats.newestEntryAge / (24 * 60 * 60 * 1000)),
   };
 }
 
@@ -942,80 +867,29 @@ export async function fetchPapersWithEmbeddings(
 }
 
 // ============================================================================
-// Embedding Cache - Store embeddings locally for faster similarity searches
+// Embedding Cache - Now using centralized cache manager
+// Legacy functions provided for backwards compatibility
 // ============================================================================
-const EMBEDDING_CACHE_KEY = 'ideagraph_embedding_cache';
-
-interface EmbeddingCacheEntry {
-  paperId: string;
-  embedding: number[];
-  cachedAt: number;
-}
-
-interface EmbeddingCache {
-  entries: EmbeddingCacheEntry[];
-  version: number;
-}
-
-/**
- * Get cached embeddings
- */
-export function getEmbeddingCache(): EmbeddingCache {
-  try {
-    const cached = localStorage.getItem(EMBEDDING_CACHE_KEY);
-    if (!cached) return { entries: [], version: 1 };
-    return JSON.parse(cached);
-  } catch {
-    return { entries: [], version: 1 };
-  }
-}
 
 /**
  * Save embedding to cache
  */
 export function cacheEmbedding(paperId: string, embedding: number[]): void {
-  try {
-    const cache = getEmbeddingCache();
-
-    // Remove existing entry for this paper if present
-    cache.entries = cache.entries.filter(e => e.paperId !== paperId);
-
-    // Add new entry
-    cache.entries.push({
-      paperId,
-      embedding,
-      cachedAt: Date.now(),
-    });
-
-    // Limit cache size (embeddings are 768 floats each, so ~6KB per paper)
-    // Keep max 200 papers (~1.2MB)
-    const MAX_CACHED = 200;
-    if (cache.entries.length > MAX_CACHED) {
-      cache.entries = cache.entries
-        .sort((a, b) => b.cachedAt - a.cachedAt)
-        .slice(0, MAX_CACHED);
-    }
-
-    localStorage.setItem(EMBEDDING_CACHE_KEY, JSON.stringify(cache));
-  } catch (e) {
-    console.warn('[cacheEmbedding] Failed to cache embedding:', e);
-  }
+  cacheEmbed(paperId, embedding);
 }
 
 /**
  * Get embedding from cache
  */
 export function getCachedEmbedding(paperId: string): number[] | null {
-  const cache = getEmbeddingCache();
-  const entry = cache.entries.find(e => e.paperId === paperId);
-  return entry?.embedding || null;
+  return getCachedEmbed(paperId);
 }
 
 /**
  * Clear embedding cache
  */
 export function clearEmbeddingCache(): void {
-  localStorage.removeItem(EMBEDDING_CACHE_KEY);
+  cacheManager.clear('embedding');
   console.log('[clearEmbeddingCache] Cache cleared');
 }
 
@@ -1027,21 +901,10 @@ export function getEmbeddingCacheStats(): {
   estimatedSizeKB: number;
   oldestDays: number;
 } {
-  const cache = getEmbeddingCache();
-  const entries = cache.entries;
-
-  if (entries.length === 0) {
-    return { entryCount: 0, estimatedSizeKB: 0, oldestDays: 0 };
-  }
-
-  const now = Date.now();
-  const oldestEntry = entries.reduce((oldest, e) =>
-    e.cachedAt < oldest.cachedAt ? e : oldest
-  );
-
+  const stats = cacheManager.getStats('embedding');
   return {
-    entryCount: entries.length,
-    estimatedSizeKB: Math.round(entries.length * 6), // ~6KB per embedding
-    oldestDays: Math.round((now - oldestEntry.cachedAt) / (24 * 60 * 60 * 1000)),
+    entryCount: stats.entryCount,
+    estimatedSizeKB: Math.round(stats.entryCount * 6), // ~6KB per embedding
+    oldestDays: Math.round(stats.oldestEntryAge / (24 * 60 * 60 * 1000)),
   };
 }
