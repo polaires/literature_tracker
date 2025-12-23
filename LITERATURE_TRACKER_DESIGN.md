@@ -1,6 +1,6 @@
 # IdeaGraph: Literature Idea Connection Tool
 
-## Design Document v1.3
+## Design Document v2.0
 
 > **Philosophy**: Zotero catalogs papers. IdeaGraph catalogs ideas.
 
@@ -10,15 +10,20 @@
 |-------|--------|------------|
 | **Phase 1: Core MVP** | ✅ Complete | 100% |
 | **Phase 2: Enhanced Features** | ✅ Complete | 100% |
-| **Phase 3: AI Features** | ❌ Not Started | 0% |
-| **Phase 4: Collaboration** | ❌ Not Started | 0% |
+| **Phase 2.5: Screening Workflow** | ✅ Complete | 100% |
+| **Phase 2.6: Synthesis Tools** | ✅ Complete | 100% |
+| **Phase 3: AI Features** | ✅ Complete | 100% |
+| **Phase 4: Collaboration** | 🔄 Partial | 20% (Clustering only) |
 
 **Current Tech Stack**: React 19 + TypeScript 5.9 + Vite 7 + Tailwind 4 + Zustand 5 + Cytoscape.js + react-pdf-highlighter
+
+**Last Audit**: December 2025
 
 ---
 
 ## Table of Contents
 
+0. [Architecture Review & Critique](#0-architecture-review--critique)
 1. [Vision & Problem Statement](#1-vision--problem-statement)
 2. [Core Concepts](#2-core-concepts)
 3. [Feature Specification](#3-feature-specification)
@@ -30,6 +35,175 @@
 9. [AI Features Roadmap](#9-ai-features-roadmap)
 10. [Integration Strategy](#10-integration-strategy)
 11. [Development Phases](#11-development-phases)
+
+---
+
+## 0. Architecture Review & Critique
+
+> **Audit Date**: December 2025
+> **Status**: Implementation has significantly outpaced documentation
+
+### 0.1 Implementation vs. Design: Key Discrepancies
+
+#### ✅ What's Working Well
+
+| Area | Design Intent | Implementation Reality | Assessment |
+|------|---------------|----------------------|------------|
+| **State Management** | Zustand with persist | ✅ Correctly implemented with `ideagraph-storage` key | Excellent |
+| **PDF Storage** | IndexedDB | ✅ Properly implemented with `idb` library | Excellent |
+| **Core CRUD** | Thesis/Paper/Connection | ✅ All operations work correctly | Excellent |
+| **Graph Visualization** | Cytoscape.js | ✅ Multiple layouts (fcose, concentric, circle, grid) | Excellent |
+| **API Integration** | Semantic Scholar + CrossRef | ✅ Both implemented with rate limiting | Excellent |
+
+#### ⚠️ Documentation Gaps (Features Implemented but Not Documented)
+
+1. **Phase 2.5: PRISMA-style Screening Workflow**
+   - `ScreeningDecision`: pending/include/exclude/maybe
+   - `ExclusionReason`: 10 predefined reasons
+   - Batch screening operations
+   - Screening statistics dashboard
+
+2. **Phase 2.6: Synthesis Tools**
+   - `ReviewSection`: Organize papers into literature review sections
+   - `SynthesisTheme`: Cross-paper thematic analysis
+   - `ResearchGap`: Gap detection (with auto-inference from data)
+   - `EvidenceSynthesis`: Aggregate evidence across papers
+   - Synthesis matrix visualization
+
+3. **Phase 3: AI Features (FULLY IMPLEMENTED)**
+   - Multi-provider support: Claude, OpenAI, Ollama, Mock
+   - Connection suggestions with confidence scores
+   - Takeaway suggestions grounded in thesis context
+   - Argument extraction from abstracts
+   - Gap analysis using plan-based reasoning
+   - Paper intake analysis (role + relevance + takeaway)
+   - Feedback recording and learning
+   - Adaptive context based on collection size
+
+4. **Phase 4: Paper Clustering (Partial)**
+   - `PaperCluster`: Manual paper grouping
+   - Collapse/expand clusters in graph view
+   - Color-coded cluster visualization
+
+5. **Additional APIs Implemented**
+   - **OpenAlex API**: Full implementation for paper lookup, search, related works, retraction checking
+   - **Hybrid Discovery Search**: Combines Semantic Scholar + OpenAlex
+   - **Retraction Checking**: Via OpenAlex + Semantic Scholar
+
+### 0.2 Storage Architecture Critique
+
+#### Current Storage Keys (Fragmented)
+
+| Key | Purpose | File | TTL | Issues |
+|-----|---------|------|-----|--------|
+| `ideagraph-storage` | Main Zustand state | useAppStore.ts | None | ✅ OK |
+| `ideagraph_ai_settings` | AI provider config | useAI.ts | None | ⚠️ Should be in Zustand |
+| `ideagraph_similarity_cache` | Paper similarity | semanticScholar.ts | 7 days | ⚠️ Scattered cache |
+| `ideagraph_embedding_cache` | SPECTER embeddings | semanticScholar.ts | None | ⚠️ 200 paper limit |
+| `ideagraph_retraction_cache` | Retraction checks | retractionCheck.ts | 7 days | ⚠️ Scattered cache |
+| `ideagraph_feedback_storage` | AI feedback | feedback/index.ts | None | ⚠️ Should be in Zustand |
+| `ideagraph-pdfs` | PDF files | pdfStorage.ts | None | ✅ OK (IndexedDB) |
+
+#### Problems Identified
+
+1. **Cache Fragmentation**: 6+ localStorage keys scattered across codebase with inconsistent naming
+2. **No Centralized Cache Manager**: TTLs handled manually in each service
+3. **AI Settings Isolated**: Stored separately from main app state, creating two state management patterns
+4. **VERSION Key Unused**: Defined in types but never checked—no migration system
+5. **No Storage Quota Monitoring**: Risk of localStorage overflow (5-10MB limit)
+6. **No Multi-Tab Conflict Resolution**: Last-write-wins could cause data loss
+
+### 0.3 Data Model Drift
+
+#### Design vs. Implementation
+
+| Interface | Design Document | Actual Implementation | Status |
+|-----------|-----------------|----------------------|--------|
+| `ReadingStatus` | to-read, reading, read, to-revisit | + `screening` | ⚠️ Not documented |
+| `Paper.source` | doi, url, bibtex, manual | + `zotero`, `search` | ⚠️ Not documented |
+| `Paper` fields | 25 fields | 31 fields (+screening, semanticScholarId) | ⚠️ Not documented |
+| `AppState` | 5 collections | 10 collections | ⚠️ Missing 5 new types |
+
+#### New Types Not in Design Document
+
+```typescript
+// Phase 2.5
+ScreeningDecision, ExclusionReason
+
+// Phase 2.6
+ReviewSection, SynthesisTheme, ResearchGap, EvidenceSynthesis
+
+// Phase 3
+AISettings, AIProviderType, AITaskType, AITask, AIError
+ConnectionSuggestion, TakeawaySuggestion, ArgumentSuggestion, GapSuggestion
+
+// Phase 4
+PaperCluster
+```
+
+### 0.4 Recommendations
+
+#### Immediate Actions
+
+1. **Consolidate AI Settings into Zustand Store**
+   ```typescript
+   // Move from separate localStorage to:
+   interface AppStore {
+     // ... existing
+     aiSettings: AISettings;  // Add here
+   }
+   ```
+
+2. **Create Centralized Cache Manager**
+   ```typescript
+   // src/services/cache.ts
+   export const cacheManager = {
+     get(key: CacheKey): T | null,
+     set(key: CacheKey, data: T, ttl?: number): void,
+     invalidate(key: CacheKey): void,
+     clear(): void,
+     getStats(): { used: number; quota: number },
+   };
+   ```
+
+3. **Implement Data Migration System**
+   ```typescript
+   const CURRENT_VERSION = '2.0.0';
+   const migrations = {
+     '1.0.0 -> 1.1.0': migrateScreeningFields,
+     '1.1.0 -> 2.0.0': migrateAISettings,
+   };
+   ```
+
+#### Medium-Term Improvements
+
+4. **Add Storage Quota Monitoring**
+   - Warn users when approaching localStorage limits
+   - Implement automatic cache eviction
+
+5. **Multi-Tab Synchronization**
+   - Use BroadcastChannel API or localStorage events
+   - Implement optimistic locking with timestamps
+
+6. **Update This Design Document**
+   - Add Phase 2.5 and 2.6 sections
+   - Update Phase 3 to reflect actual implementation
+   - Document all new data types
+   - Add storage architecture section
+
+### 0.5 Assessment Summary
+
+| Category | Score | Notes |
+|----------|-------|-------|
+| **Core Features** | ⭐⭐⭐⭐⭐ | Thesis/Paper/Connection CRUD excellent |
+| **AI Integration** | ⭐⭐⭐⭐⭐ | Full multi-provider AI with feedback |
+| **PDF Annotations** | ⭐⭐⭐⭐⭐ | Zotero-like with IdeaGraph linking |
+| **Storage Reliability** | ⭐⭐⭐⭐ | Works but fragmented caching |
+| **Documentation Accuracy** | ⭐⭐ | Significantly outdated |
+| **Migration Safety** | ⭐⭐ | No versioning or migration system |
+| **Multi-Tab Safety** | ⭐⭐ | No conflict resolution |
+
+**Overall**: The implementation has grown well beyond the documented design. The core architecture is sound, but technical debt is accumulating in storage management and documentation. Priority should be given to consolidating caches, implementing migrations, and updating this document.
 
 ---
 
@@ -240,29 +414,125 @@ The **Knowledge Graph** visualizes your intellectual landscape:
 - [x] Upload PDF from local file or URL
 - [x] Page-organized annotation view
 
-#### P2.5 Collaboration (Optional)
+#### P2.5 Screening Workflow ✅ COMPLETE (PRISMA-style)
+
+> **Implementation Note**: Added for systematic review support
+
+- [x] Screening queue with pending/include/exclude/maybe decisions
+- [x] 10 predefined exclusion reasons (not-relevant, wrong-study-type, duplicate, etc.)
+- [x] Custom exclusion notes for "other" reason
+- [x] Batch screening operations
+- [x] Screening statistics dashboard
+- [x] Auto-transition from 'screening' to 'to-read' on include
+
+**New Types**:
+```typescript
+type ScreeningDecision = 'pending' | 'include' | 'exclude' | 'maybe';
+type ExclusionReason = 'not-relevant' | 'wrong-study-type' | 'duplicate' |
+  'no-full-text' | 'wrong-population' | 'wrong-outcome' |
+  'low-quality' | 'language' | 'date-range' | 'other';
+```
+
+#### P2.6 Synthesis Tools ✅ COMPLETE
+
+> **Implementation Note**: Literature review writing support
+
+- [x] Review sections for organizing papers
+- [x] Synthesis themes for cross-paper analysis
+- [x] Research gap tracking (user-defined and auto-detected)
+- [x] Evidence synthesis across papers
+- [x] Synthesis matrix visualization (themes × papers)
+- [x] Argument clustering by claim similarity
+
+**New Types**:
+```typescript
+interface ReviewSection {
+  id: string;
+  thesisId: string;
+  title: string;
+  description: string | null;
+  order: number;
+  paperIds: string[];
+  createdAt: string;
+}
+
+interface SynthesisTheme {
+  id: string;
+  thesisId: string;
+  name: string;
+  description: string | null;
+  color: string;
+  paperIds: string[];
+  relatedArgumentIds: string[];
+  createdAt: string;
+}
+
+interface ResearchGap {
+  id: string;
+  thesisId: string;
+  title: string;
+  description: string;
+  type: 'knowledge' | 'methodological' | 'population' |
+        'theoretical' | 'temporal' | 'geographic' | 'contradictory';
+  priority: 'high' | 'medium' | 'low';
+  evidenceSource: 'user' | 'inferred';
+  relatedPaperIds: string[];
+  futureResearchNote: string | null;
+  createdAt: string;
+}
+
+interface EvidenceSynthesis {
+  id: string;
+  thesisId: string;
+  claim: string;
+  supportingPaperIds: string[];
+  contradictingPaperIds: string[];
+  evidenceStrength: 'strong' | 'moderate' | 'weak' | 'conflicting';
+  consensusNote: string | null;
+  createdAt: string;
+}
+```
+
+#### P2.7 Collaboration (Optional)
 - [ ] Share thesis as read-only link
 - [ ] Export interactive graph as HTML
 - [ ] Import shared thesis
 
-### 3.3 Phase 3: AI Features
+### 3.3 Phase 3: AI Features ✅ COMPLETE
 
-#### P3.1 AI-Assisted Entry
-- [ ] Suggest takeaway from abstract (user must confirm/edit)
-- [ ] Suggest arguments from full text
-- [ ] Suggest evidence from full text
-- [ ] **Always requires human confirmation**
+> **Implementation Note**: Full AI system implemented in `src/services/ai/` with multi-provider support
 
-#### P3.2 AI-Suggested Connections
-- [ ] Analyze takeaways to suggest connections
-- [ ] Identify potential contradictions
-- [ ] Find methodological similarities
-- [ ] Flag as "AI-suggested" (user must approve)
+#### P3.1 AI-Assisted Entry ✅ COMPLETE
+- [x] Suggest takeaway from abstract (user must confirm/edit)
+- [x] Suggest thesis role based on abstract analysis
+- [x] Extract arguments from abstracts with strength assessment
+- [x] Unified paper intake analysis (role + takeaway + arguments + relevance)
+- [x] **Always requires human confirmation**
 
-#### P3.3 Synthesis Assistance
-- [ ] Generate literature review draft from thesis
-- [ ] Summarize argument structure
-- [ ] Identify strongest/weakest evidence chains
+#### P3.2 AI-Suggested Connections ✅ COMPLETE
+- [x] Analyze takeaways to suggest connections
+- [x] Identify potential contradictions
+- [x] Find methodological similarities
+- [x] Flag as "AI-suggested" with confidence scores (user must approve)
+- [x] Grounding in user's existing synthesis (takeaways, arguments)
+
+#### P3.3 Gap Analysis ✅ COMPLETE
+- [x] AI-powered gap detection using plan-based reasoning
+- [x] Auto-detection of contradictory findings
+- [x] Identify temporal gaps (outdated literature)
+- [x] Detect methodological gaps (missing evidence types)
+- [x] Find knowledge gaps from weak arguments
+
+#### P3.4 Provider Support ✅ COMPLETE
+- [x] Claude API (primary, via Anthropic)
+- [x] OpenAI API (alternative)
+- [x] Ollama (local models)
+- [x] Mock provider (for testing/demos)
+
+#### P3.5 Feedback & Learning ✅ COMPLETE
+- [x] Record accept/dismiss actions on suggestions
+- [x] Store feedback for future model improvements
+- [x] Adaptive context based on collection size (cold start → mature)
 
 ---
 
@@ -772,13 +1042,24 @@ IdeaGraph is designed to run on multiple platforms from a single codebase:
 │  Primary:        Semantic Scholar API ✅                         │
 │                  - Paper metadata, abstracts, citations          │
 │                  - TLDR summaries (pre-fills takeaway field)     │
+│                  - SPECTER embeddings (768-dim vectors)          │
+│                  - Similar paper discovery (Connected Papers-like)│
 │                  - Rate limit: 100 req/sec with API key          │
+│                                                                  │
+│  Secondary:      OpenAlex API ✅                                 │
+│                  - 209M+ works, free and open                    │
+│                  - Retraction checking                           │
+│                  - Related works discovery                       │
+│                  - Concept/topic extraction for auto-tagging     │
 │                                                                  │
 │  Fallback:       CrossRef API ✅                                 │
 │                  - DOI resolution, comprehensive coverage        │
 │                  - Rate limit: 50 req/sec (polite pool)          │
 │                                                                  │
-│  Not Used:       OpenAlex API (mentioned but not implemented)    │
+│  AI Providers:   Multiple ✅                                     │
+│                  - Claude API (Anthropic)                        │
+│                  - OpenAI API                                    │
+│                  - Ollama (local models)                         │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1588,15 +1869,36 @@ When integrating, ensure compatible versions of:
   - IndexedDB storage for offline PDF access
 - [x] Argument map view (hierarchical) - papers organized by thesis role with expandable arguments/evidence
 
-### Phase 3: AI Features (Future)
+### Phase 2.5: Screening Workflow ✅ COMPLETE
 
-- [ ] AI takeaway suggestions
-- [ ] AI connection suggestions
-- [ ] Literature review draft generation
-- [ ] Gap analysis
+- [x] PRISMA-style screening queue
+- [x] Include/exclude/maybe decisions
+- [x] 10 exclusion reason types
+- [x] Batch screening operations
+- [x] Screening statistics
 
-### Phase 4: Collaboration & Sync (Future)
+### Phase 2.6: Synthesis Tools ✅ COMPLETE
 
+- [x] Review sections for organizing papers
+- [x] Synthesis themes for cross-paper analysis
+- [x] Research gap tracking (manual + auto-detected)
+- [x] Evidence synthesis across papers
+- [x] Synthesis matrix visualization
+
+### Phase 3: AI Features ✅ COMPLETE
+
+- [x] AI takeaway suggestions (context-aware)
+- [x] AI connection suggestions (with confidence)
+- [x] Argument extraction from abstracts
+- [x] Gap analysis (plan-based reasoning)
+- [x] Paper intake analysis (role + relevance + takeaway)
+- [x] Multi-provider: Claude, OpenAI, Ollama
+- [x] Feedback recording for learning
+
+### Phase 4: Collaboration & Sync (Partial - 20%)
+
+- [x] Paper clustering (manual grouping)
+- [x] Cluster visualization in graph
 - [ ] User accounts
 - [ ] Cloud sync
 - [ ] Sharing theses
@@ -1653,6 +1955,7 @@ Export formats supported:
 
 ---
 
-*Document Version: 1.3*
+*Document Version: 2.0*
 *Last Updated: December 2025*
 *Author: Research Tools Team*
+*Audit Status: Implementation verified against codebase*
