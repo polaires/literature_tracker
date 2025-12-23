@@ -365,7 +365,8 @@ export type AIErrorCode =
   | 'NETWORK_ERROR'
   | 'PROVIDER_ERROR'
   | 'NOT_CONFIGURED'
-  | 'FEATURE_DISABLED';
+  | 'FEATURE_DISABLED'
+  | 'INVALID_INPUT';
 
 export class AIError extends Error {
   code: AIErrorCode;

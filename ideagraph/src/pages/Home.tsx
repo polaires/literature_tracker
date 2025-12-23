@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings, Clock, AlertCircle, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { loadSampleData } from '../utils/sampleData';
+import { loadEnhancedSampleData, workflowSummary } from '../utils/enhancedSampleData';
+import { loadCrisprReviewSampleData, crisprWorkflowSummary } from '../utils/crisprReviewPart5';
 import { DataManager } from '../components/common/DataManager';
 import type { Paper } from '../types';
 
@@ -58,6 +60,11 @@ export function Home() {
     getPapersForThesis,
     addPaper,
     createConnection,
+    createTheme,
+    createGap,
+    createSection,
+    createEvidenceSynthesis,
+    createCluster,
   } = useAppStore();
   const [showNewThesisForm, setShowNewThesisForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -168,6 +175,40 @@ export function Home() {
     const thesisId = loadSampleData(createThesis, addPaper, createConnection);
     setActiveThesis(thesisId);
     navigate(`/thesis/${thesisId}`);
+  };
+
+  const handleLoadEnhancedDemo = () => {
+    const result = loadEnhancedSampleData(
+      createThesis,
+      addPaper,
+      createConnection,
+      createTheme,
+      createGap,
+      createSection,
+      createEvidenceSynthesis
+    );
+    setActiveThesis(result.thesisId);
+    navigate(`/thesis/${result.thesisId}`);
+  };
+
+  const handleLoadCrisprDemo = () => {
+    // Wrapper for createCluster to match expected signature
+    const createClusterWrapper = (cluster: { name: string; thesisId: string; paperIds: string[] }) => {
+      return createCluster(cluster.name, cluster.thesisId, cluster.paperIds);
+    };
+
+    const result = loadCrisprReviewSampleData(
+      createThesis,
+      addPaper,
+      createConnection,
+      createTheme,
+      createGap,
+      createSection,
+      createEvidenceSynthesis,
+      createClusterWrapper
+    );
+    setActiveThesis(result.thesisId);
+    navigate(`/thesis/${result.thesisId}`);
   };
 
   return (
@@ -314,14 +355,32 @@ export function Home() {
           </h2>
           <div className="flex items-center gap-2">
             {activeTheses.length === 0 && (
-              <button
-                onClick={handleLoadSampleData}
-                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm"
-                title="Load sample data to explore the app"
-              >
-                <Beaker size={18} />
-                Load Demo
-              </button>
+              <>
+                <button
+                  onClick={handleLoadSampleData}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors font-medium shadow-sm"
+                  title="Load simple demo (5 papers)"
+                >
+                  <Beaker size={18} />
+                  Simple Demo
+                </button>
+                <button
+                  onClick={handleLoadEnhancedDemo}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm"
+                  title={`Load comprehensive demo (${workflowSummary.totalPapers} papers with themes, gaps, and sections)`}
+                >
+                  <Beaker size={18} />
+                  Full Demo
+                </button>
+                <button
+                  onClick={handleLoadCrisprDemo}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium shadow-sm"
+                  title={`CRISPR Review Demo (${crisprWorkflowSummary.totalPapers} papers - mimics writing a biological review)`}
+                >
+                  <Beaker size={18} />
+                  CRISPR Review ({crisprWorkflowSummary.totalPapers})
+                </button>
+              </>
             )}
             <button
               onClick={() => setShowNewThesisForm(true)}
@@ -396,7 +455,7 @@ export function Home() {
             <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
               Create your first thesis to start building your knowledge graph of connected ideas.
             </p>
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col items-center gap-3">
               <button
                 onClick={() => setShowNewThesisForm(true)}
                 className="inline-flex items-center gap-2 px-5 py-2.5 btn-brand rounded-xl font-medium"
@@ -404,13 +463,32 @@ export function Home() {
                 <Plus size={18} />
                 Create Your First Thesis
               </button>
-              <button
-                onClick={handleLoadSampleData}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm"
-              >
-                <Beaker size={18} />
-                Load Demo Data
-              </button>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                <button
+                  onClick={handleLoadSampleData}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors font-medium shadow-sm text-sm"
+                >
+                  <Beaker size={16} />
+                  Simple (5)
+                </button>
+                <button
+                  onClick={handleLoadEnhancedDemo}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm text-sm"
+                >
+                  <Beaker size={16} />
+                  LLM Code ({workflowSummary.totalPapers})
+                </button>
+                <button
+                  onClick={handleLoadCrisprDemo}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium shadow-sm text-sm"
+                >
+                  <Beaker size={16} />
+                  CRISPR Review ({crisprWorkflowSummary.totalPapers})
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                CRISPR demo has {crisprWorkflowSummary.totalPapers} papers with {crisprWorkflowSummary.totalClusters} clusters - mimics writing a biological review
+              </p>
             </div>
           </div>
         ) : (
