@@ -773,15 +773,24 @@ export function GraphView({
           'text-wrap': 'wrap',
           'text-max-width': 100,
           'text-valign': 'bottom',
-          'text-margin-y': 6,
-          color: '#334155',
+          'text-halign': 'center',
+          'text-margin-y': 8,
+          color: '#1e293b',
+          // Strong text outline for readability over other nodes
           'text-outline-color': '#ffffff',
-          'text-outline-width': 2.5,
-          'text-outline-opacity': 0.9,
+          'text-outline-width': 3,
+          'text-outline-opacity': 1,
+          // Add background to labels for better visibility
+          'text-background-color': '#ffffff',
+          'text-background-opacity': 0.85,
+          'text-background-padding': '2px',
+          'text-background-shape': 'roundrectangle',
           'border-width': 2.5,
           'border-color': '#ffffff',
           'border-opacity': 0.9,
           'overlay-opacity': 0,
+          // Ensure labels render on top
+          'z-compound-depth': 'top',
           'transition-property': 'background-color, border-color, width, height, opacity',
           'transition-duration': '0.2s',
           'transition-timing-function': 'ease-out',
@@ -1301,23 +1310,10 @@ export function GraphView({
 
         case 'temporal': {
           // Arrange papers by publication year (left=older, right=newer)
-          // Use preset layout for reliability - fcose with fixedNodeConstraint can crash
-          const papersWithYear = visiblePapers.filter((p) => p.year);
-          const years = papersWithYear.map((p) => p.year!);
-
-          // Handle empty years array safely
+          // Use FIXED spacing between year columns with vertical spreading
           const currentYear = new Date().getFullYear();
-          const minYear = years.length > 0 ? Math.min(...years) : currentYear - 10;
-          const maxYear = years.length > 0 ? Math.max(...years) : currentYear;
-          const yearRange = maxYear - minYear || 1;
 
-          // Calculate positions for all papers
-          const graphWidth = 700;
-          const graphHeight = 400;
-          const marginX = 80;
-          const marginY = 60;
-
-          // Group papers by year for Y distribution
+          // Group papers by year for distribution
           const papersByYear = new Map<number, string[]>();
           visiblePapers.forEach((p) => {
             const year = p.year || currentYear;
@@ -1325,6 +1321,22 @@ export function GraphView({
             existing.push(p.id);
             papersByYear.set(year, existing);
           });
+
+          // Get sorted unique years
+          const uniqueYears = [...papersByYear.keys()].sort((a, b) => a - b);
+          const yearToColumnIndex = new Map<number, number>();
+          uniqueYears.forEach((year, idx) => yearToColumnIndex.set(year, idx));
+
+          // Find the year with most papers to determine graph height
+          const maxPapersInYear = Math.max(...[...papersByYear.values()].map(ids => ids.length), 1);
+
+          // Fixed spacing - use wider column spacing and larger vertical spacing for labels
+          const columnSpacing = 140; // Wider columns to accommodate horizontal spread
+          const verticalSpacing = 75; // More vertical space to prevent label overlap
+          const graphWidth = Math.max(700, uniqueYears.length * columnSpacing);
+          const graphHeight = Math.max(500, maxPapersInYear * verticalSpacing);
+          const marginX = 100;
+          const marginY = 80;
 
           // Track position index within each year
           const yearIndex = new Map<string, number>();
@@ -1341,15 +1353,27 @@ export function GraphView({
               const year = paper?.year || currentYear;
               const papersInYear = papersByYear.get(year) || [id];
               const indexInYear = yearIndex.get(id) || 0;
+              const columnIndex = yearToColumnIndex.get(year) || 0;
+              const countInYear = papersInYear.length;
 
-              // X based on year (older left, newer right)
-              const xNorm = (year - minYear) / yearRange;
-              const x = marginX + xNorm * graphWidth;
+              // Base X from column index
+              const baseX = marginX + columnIndex * columnSpacing;
 
-              // Y distributed within year group
-              const ySpacing = Math.min(60, graphHeight / (papersInYear.length + 1));
-              const yOffset = (papersInYear.length - 1) * ySpacing / 2;
-              const y = marginY + graphHeight / 2 - yOffset + indexInYear * ySpacing;
+              // Use zigzag/wave pattern for X when multiple papers in same year
+              // This spreads nodes horizontally within their year column
+              let xOffset = 0;
+              if (countInYear > 1) {
+                // Alternate left/right from center, with increasing amplitude
+                const wave = (indexInYear % 2 === 0) ? -1 : 1;
+                const amplitude = Math.min(columnSpacing * 0.35, 40); // Max 40px from center
+                xOffset = wave * amplitude * ((indexInYear % 4 < 2) ? 0.5 : 1);
+              }
+              const x = baseX + xOffset;
+
+              // Y distributed evenly within year group with more spacing
+              const totalHeight = (countInYear - 1) * verticalSpacing;
+              const yStart = marginY + (graphHeight - totalHeight) / 2;
+              const y = yStart + indexInYear * verticalSpacing;
 
               return { x, y };
             },
@@ -1361,22 +1385,70 @@ export function GraphView({
           const xNormalized = normalizeAxisValues(visiblePapers, scatterXAxis);
           const yNormalized = normalizeAxisValues(visiblePapers, scatterYAxis);
 
-          // Graph dimensions
-          const graphWidth = 700;
-          const graphHeight = 500;
+          // Graph dimensions - scale with paper count
+          const nodeSpacing = 55; // Minimum distance between nodes
+          const graphWidth = Math.max(700, Math.sqrt(nodeCount) * 120);
+          const graphHeight = Math.max(500, Math.sqrt(nodeCount) * 100);
           const marginX = 80;
           const marginY = 60;
+
+          // Sort papers by their raw position for consistent ordering
+          const sortedPapers = [...visiblePapers].sort((a, b) => {
+            const xA = xNormalized.get(a.id) ?? 0.5;
+            const yA = yNormalized.get(a.id) ?? 0.5;
+            const xB = xNormalized.get(b.id) ?? 0.5;
+            const yB = yNormalized.get(b.id) ?? 0.5;
+            // Sort by Y first, then X
+            if (Math.abs(yA - yB) > 0.01) return yB - yA;
+            return xA - xB;
+          });
+
+          // Calculate final positions with collision avoidance
+          const finalPositions = new Map<string, { x: number; y: number }>();
+          const occupiedPositions: { x: number; y: number }[] = [];
+
+          sortedPapers.forEach((paper) => {
+            const xVal = xNormalized.get(paper.id) ?? 0.5;
+            const yVal = yNormalized.get(paper.id) ?? 0.5;
+            let x = marginX + xVal * graphWidth;
+            let y = marginY + (1 - yVal) * graphHeight;
+
+            // Check for collisions and adjust using spiral pattern
+            let attempts = 0;
+            const maxAttempts = 50;
+            while (attempts < maxAttempts) {
+              const collision = occupiedPositions.some(pos => {
+                const dx = pos.x - x;
+                const dy = pos.y - y;
+                return Math.sqrt(dx * dx + dy * dy) < nodeSpacing;
+              });
+
+              if (!collision) break;
+
+              // Spiral outward to find free space
+              attempts++;
+              const angle = attempts * 0.5; // Golden angle approximation
+              const radius = nodeSpacing * 0.5 * Math.sqrt(attempts);
+              x = marginX + xVal * graphWidth + Math.cos(angle) * radius;
+              y = marginY + (1 - yVal) * graphHeight + Math.sin(angle) * radius;
+            }
+
+            finalPositions.set(paper.id, { x, y });
+            occupiedPositions.push({ x, y });
+          });
 
           return {
             name: 'preset',
             ...baseConfig,
             positions: (node: { id: () => string }) => {
               const id = node.id();
+              const pos = finalPositions.get(id);
+              if (pos) return pos;
+              // Fallback
               const xVal = xNormalized.get(id) ?? 0.5;
               const yVal = yNormalized.get(id) ?? 0.5;
               return {
                 x: marginX + xVal * graphWidth,
-                // Y is inverted (higher values at top)
                 y: marginY + (1 - yVal) * graphHeight,
               };
             },
@@ -1536,9 +1608,11 @@ export function GraphView({
 
       layout.on('layoutstop', () => {
         // POST-LAYOUT OVERLAP REMOVAL
-        // Similar to Connected Papers' PRISM algorithm
-        // This runs after force-directed layout to eliminate remaining overlaps
-        if (cyRef.current && cyRef.current.nodes().length > 1) {
+        // Only run for force-directed layouts where node position is fluid
+        // Skip for preset layouts (temporal, scatter) where position has semantic meaning
+        const skipOverlapRemoval = ['temporal', 'scatter', 'concentric', 'circle', 'grid'].includes(layoutType);
+
+        if (!skipOverlapRemoval && cyRef.current && cyRef.current.nodes().length > 1) {
           const moved = removeOverlaps(cyRef.current);
           if (moved > 0) {
             console.log(`[GraphView] Overlap removal moved nodes by ${moved.toFixed(1)}px total`);
