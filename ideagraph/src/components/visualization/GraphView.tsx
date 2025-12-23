@@ -50,6 +50,142 @@ if (!cytoscape.prototype.hasInitializedFcose) {
   cytoscape.prototype.hasInitializedFcose = true;
 }
 
+// ============================================================================
+// GLOBAL LAYOUT CONSTANTS - Centralized parameters to prevent node overlaps
+// ============================================================================
+const LAYOUT_CONSTANTS = {
+  // Node dimensions (must match stylesheet)
+  NODE_SIZE: 48,                    // Base node diameter in pixels
+  NODE_SIZE_FOCUSED: 56,            // Focused/cluster node size
+
+  // COMPACT COLLISION DETECTION
+  // Only check node circles for collision, NOT labels
+  // This allows labels to overlap slightly for a more compact layout
+  COLLISION_RADIUS: 26,             // Slightly larger than NODE_SIZE/2 for minimal padding
+  MIN_NODE_DISTANCE: 55,            // Minimum center-to-center distance
+
+  // Force-directed layout parameters
+  MIN_NODE_OVERLAP: 55,             // Match MIN_NODE_DISTANCE
+  MIN_EDGE_LENGTH: 90,              // Shorter edges for tighter layout
+  MIN_NODE_SPACING: 60,             // Reduced for compactness
+
+  // Repulsion scaling - balanced for compact but readable
+  BASE_REPULSION: 5000,
+  REPULSION_PER_NODE: 80,
+  MAX_REPULSION: 12000,
+
+  // Gravity to keep graph centered
+  BASE_GRAVITY: 0.4,                // Higher gravity = more compact
+  GRAVITY_RANGE: 2.0,
+
+  // Iteration counts
+  BASE_ITERATIONS: 2500,
+  ITERATIONS_PER_NODE: 30,
+  MAX_ITERATIONS: 5000,
+
+  // Tiling for disconnected components
+  TILING_PADDING: 50,
+
+  // Post-layout overlap removal settings
+  OVERLAP_REMOVAL_ITERATIONS: 20,
+  // Bias toward horizontal push to balance vertical spreading from alignment constraints
+  HORIZONTAL_BIAS: 1.5,             // Push 1.5x more horizontally than vertically
+} as const;
+
+// ============================================================================
+// COMPACT OVERLAP REMOVAL - Circle-based collision with horizontal bias
+// Prefers horizontal spreading to counter vertical alignment constraints
+// ============================================================================
+interface NodePosition {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+}
+
+/**
+ * Compact overlap removal - only prevents node circle overlaps
+ * Uses HORIZONTAL BIAS to spread nodes more horizontally
+ * This counters the vertical stacking from alignment constraints
+ */
+function removeOverlaps(cy: Core): number {
+  const nodes = cy.nodes();
+  if (nodes.length < 2) return 0;
+
+  const minDistance = LAYOUT_CONSTANTS.MIN_NODE_DISTANCE;
+  let totalMoved = 0;
+
+  for (let iter = 0; iter < LAYOUT_CONSTANTS.OVERLAP_REMOVAL_ITERATIONS; iter++) {
+    let hasOverlap = false;
+    let maxOverlap = 0;
+
+    // Build node positions
+    const positions: NodePosition[] = nodes.map(node => ({
+      id: node.id(),
+      x: node.position('x'),
+      y: node.position('y'),
+      radius: LAYOUT_CONSTANTS.COLLISION_RADIUS,
+    }));
+
+    // Check all pairs for circle overlaps
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i];
+        const b = positions[j];
+
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < minDistance) {
+          hasOverlap = true;
+          const overlap = minDistance - distance;
+          maxOverlap = Math.max(maxOverlap, overlap);
+
+          // Calculate push direction with HORIZONTAL BIAS
+          // This spreads nodes more horizontally to counter vertical alignment
+          const len = distance || 1;
+          let nx = dx / len;
+          let ny = dy / len;
+
+          // Apply horizontal bias - amplify horizontal component
+          nx *= LAYOUT_CONSTANTS.HORIZONTAL_BIAS;
+
+          // Re-normalize after bias
+          const biasedLen = Math.sqrt(nx * nx + ny * ny);
+          nx /= biasedLen;
+          ny /= biasedLen;
+
+          // Push each node by half the overlap amount
+          const push = overlap / 2;
+
+          a.x -= nx * push;
+          a.y -= ny * push;
+          b.x += nx * push;
+          b.y += ny * push;
+
+          totalMoved += push * 2;
+        }
+      }
+    }
+
+    // Apply new positions
+    positions.forEach(pos => {
+      const node = cy.getElementById(pos.id);
+      if (node.length > 0) {
+        node.position({ x: pos.x, y: pos.y });
+      }
+    });
+
+    // Early exit if overlaps are minimal
+    if (!hasOverlap || maxOverlap < 1) {
+      break;
+    }
+  }
+
+  return totalMoved;
+}
+
 interface GraphViewProps {
   thesis: { id: string; title: string };
   papers: Paper[];
@@ -766,7 +902,7 @@ export function GraphView({
           // Calculate ideal edge length based on graph density
           // Sparser graphs = longer edges for clarity
           const density = filteredConnections.length / Math.max(nodeCount * (nodeCount - 1) / 2, 1);
-          const basEdgeLength = density < 0.1 ? 140 : density < 0.3 ? 110 : 85;
+          const densityEdgeBonus = density < 0.1 ? 20 : density < 0.3 ? 10 : 0;
 
           return {
             name: 'fcose',
@@ -774,48 +910,55 @@ export function GraphView({
             quality: 'proof',
             randomize: false,
 
-            // Semantic grouping via alignment
-            alignmentConstraint: {
-              // Papers of same role align vertically (form columns)
-              vertical: supportsIds.length > 1 ? [supportsIds] : undefined,
-            },
+            // REMOVED strict alignment constraints - they cause vertical stacking
+            // Only use relative placement for general structure, not strict columns
+            // alignmentConstraint: undefined,
 
-            // Relative placement for debate layout
-            relativePlacementConstraint: relativePlacement.length > 0 ? relativePlacement : undefined,
+            // Softer relative placement - only for small graphs
+            // Large graphs should spread more naturally
+            relativePlacementConstraint: nodeCount <= 10 && relativePlacement.length > 0
+              ? relativePlacement
+              : undefined,
 
-            // Node repulsion scales with citation count (prominent papers get more space)
+            // Node repulsion - balanced for compact layout
             nodeRepulsion: (node: { data: (key: string) => number }): number => {
               const citations = node.data('citationCount') || 0;
-              const citationBonus = Math.min(citations / 100, 3); // Max 3x boost
-              const baseRepulsion = Math.max(4500, 7500 - nodeCount * 80);
-              return baseRepulsion * (1 + citationBonus * 0.3);
+              const citationBonus = Math.min(citations / 100, 1.5);
+              const scaledRepulsion = Math.min(
+                LAYOUT_CONSTANTS.MAX_REPULSION,
+                LAYOUT_CONSTANTS.BASE_REPULSION + nodeCount * LAYOUT_CONSTANTS.REPULSION_PER_NODE
+              );
+              return scaledRepulsion * (1 + citationBonus * 0.2);
             },
 
-            // Edge length adapts to graph density
-            idealEdgeLength: (): number => Math.max(75, basEdgeLength - nodeCount * 1.5),
+            // Shorter edge lengths for compact layout
+            idealEdgeLength: (): number => LAYOUT_CONSTANTS.MIN_EDGE_LENGTH + densityEdgeBonus,
             edgeElasticity: (): number => 0.4,
 
-            // Moderate gravity to keep groups together
-            nestingFactor: 0.15,
-            gravity: 0.3,
-            gravityRange: 4.0,
-            gravityCompound: 1.2,
-            gravityRangeCompound: 2.0,
+            // Higher gravity pulls nodes together more
+            nestingFactor: 0.1,
+            gravity: LAYOUT_CONSTANTS.BASE_GRAVITY,
+            gravityRange: LAYOUT_CONSTANTS.GRAVITY_RANGE,
+            gravityCompound: 1.5,
+            gravityRangeCompound: 2.5,
 
-            // More iterations for better convergence
-            numIter: 3000,
+            // Iterations for convergence
+            numIter: Math.min(
+              LAYOUT_CONSTANTS.MAX_ITERATIONS,
+              LAYOUT_CONSTANTS.BASE_ITERATIONS + nodeCount * LAYOUT_CONSTANTS.ITERATIONS_PER_NODE
+            ),
 
-            // Tile disconnected components with good spacing
+            // Tile disconnected components
             tile: true,
-            tilingPaddingVertical: 50,
-            tilingPaddingHorizontal: 50,
+            tilingPaddingVertical: LAYOUT_CONSTANTS.TILING_PADDING,
+            tilingPaddingHorizontal: LAYOUT_CONSTANTS.TILING_PADDING,
 
-            // Include labels in spacing calculations
-            nodeDimensionsIncludeLabels: true,
-            nodeOverlap: 25,
+            // Don't include labels - let post-processing handle overlaps
+            nodeDimensionsIncludeLabels: false,
+            nodeOverlap: LAYOUT_CONSTANTS.MIN_NODE_OVERLAP,
 
             // Smoother incremental updates
-            initialEnergyOnIncremental: 0.2,
+            initialEnergyOnIncremental: 0.3,
           };
         }
 
@@ -879,19 +1022,30 @@ export function GraphView({
             ...baseConfig,
             quality: 'proof',
             randomize: false,
-            alignmentConstraint: Object.keys(alignmentConstraint).length > 0 ? alignmentConstraint : undefined,
-            relativePlacementConstraint: relativePlacement.length > 0 ? relativePlacement : undefined,
-            nodeRepulsion: (): number => 6000,
-            idealEdgeLength: (): number => 120,
-            edgeElasticity: (): number => 0.45,
-            gravity: 0.35,
-            gravityRange: 3.0,
-            numIter: 3500,
+            // Only use alignment for small graphs - causes vertical stacking in large graphs
+            alignmentConstraint: nodeCount <= 15 && Object.keys(alignmentConstraint).length > 0
+              ? alignmentConstraint
+              : undefined,
+            relativePlacementConstraint: nodeCount <= 15 && relativePlacement.length > 0
+              ? relativePlacement
+              : undefined,
+            nodeRepulsion: (): number => Math.min(
+              LAYOUT_CONSTANTS.MAX_REPULSION,
+              LAYOUT_CONSTANTS.BASE_REPULSION + nodeCount * LAYOUT_CONSTANTS.REPULSION_PER_NODE
+            ),
+            idealEdgeLength: (): number => LAYOUT_CONSTANTS.MIN_EDGE_LENGTH,
+            edgeElasticity: (): number => 0.4,
+            gravity: LAYOUT_CONSTANTS.BASE_GRAVITY,
+            gravityRange: LAYOUT_CONSTANTS.GRAVITY_RANGE,
+            numIter: Math.min(
+              LAYOUT_CONSTANTS.MAX_ITERATIONS,
+              LAYOUT_CONSTANTS.BASE_ITERATIONS + nodeCount * LAYOUT_CONSTANTS.ITERATIONS_PER_NODE
+            ),
             tile: true,
-            tilingPaddingVertical: 60,
-            tilingPaddingHorizontal: 60,
-            nodeDimensionsIncludeLabels: true,
-            nodeOverlap: 30,
+            tilingPaddingVertical: LAYOUT_CONSTANTS.TILING_PADDING,
+            tilingPaddingHorizontal: LAYOUT_CONSTANTS.TILING_PADDING,
+            nodeDimensionsIncludeLabels: false,
+            nodeOverlap: LAYOUT_CONSTANTS.MIN_NODE_OVERLAP,
           };
         }
 
@@ -984,24 +1138,28 @@ export function GraphView({
           return {
             name: 'concentric',
             ...baseConfig,
-            minNodeSpacing: 60,
+            // Use global constant for consistent spacing
+            minNodeSpacing: LAYOUT_CONSTANTS.MIN_NODE_SPACING,
             concentric: (node: { data: (key: string) => number }) => {
               // Higher citation count = closer to center
               return Math.log10((node.data('citationCount') || 1) + 1) * 10;
             },
             levelWidth: () => 2,
-            spacingFactor: 1.2,
+            // Increase spacing factor to prevent overlap
+            spacingFactor: 1.5,
             startAngle: (3 * Math.PI) / 2, // Start from top
             sweep: 2 * Math.PI, // Full circle
             clockwise: true,
             equidistant: false,
+            avoidOverlap: true,
           };
 
         case 'circle':
           return {
             name: 'circle',
             ...baseConfig,
-            spacingFactor: 1.8,
+            // Increase spacing factor based on node count
+            spacingFactor: Math.max(2.0, 1.5 + nodeCount * 0.02),
             avoidOverlap: true,
             startAngle: (3 * Math.PI) / 2,
             sweep: 2 * Math.PI,
@@ -1018,8 +1176,9 @@ export function GraphView({
             rows: Math.ceil(Math.sqrt(nodeCount)),
             cols: Math.ceil(nodeCount / Math.ceil(Math.sqrt(nodeCount))),
             avoidOverlap: true,
-            avoidOverlapPadding: 25,
-            condense: true,
+            // Compact grid with minimal padding
+            avoidOverlapPadding: 15,
+            condense: true, // Condense for compact layout
             // Sort by year for grid layout
             sort: (a: { data: (key: string) => number | null }, b: { data: (key: string) => number | null }) => {
               const yearA = a.data('year') || 0;
@@ -1030,93 +1189,71 @@ export function GraphView({
 
         case 'hybrid': {
           // Connected Papers-inspired hybrid layout:
-          // Key insight: NO alignment constraints - let force-directed naturally cluster
+          // NO alignment constraints - natural force-directed clustering
           // Phantom edges provide gentle attraction between similar papers
-          // Strong repulsion prevents overlap, gravity keeps it centered
-
-          // Scale spacing based on paper count - more papers need more space
-          const spacingScale = Math.max(1, Math.sqrt(nodeCount / 20));
-
-          // Base ideal edge length - larger for bigger graphs
-          const baseEdgeLength = Math.max(100, 80 + nodeCount * 1.5) * spacingScale;
 
           return {
             name: 'fcose',
             ...baseConfig,
             quality: 'proof',
 
-            // CRITICAL: Start with random positions to avoid local minima
+            // Start with random positions to avoid local minima
             randomize: true,
 
-            // NO alignment constraints - these cause vertical stacking!
-            // Let the force simulation naturally find clusters
+            // NO alignment constraints - let force simulation work naturally
 
-            // STRONG node repulsion to prevent overlap
-            // This is the key to avoiding the "hairball"
+            // Balanced node repulsion
             nodeRepulsion: (node: { data: (key: string) => number | string | null }): number => {
               const citations = (node.data('citationCount') as number) || 0;
-              // Log scale for citations to prevent outliers from dominating
-              const citationBonus = Math.log10(citations + 10) / 2;
-
-              // Much higher base repulsion - scale with node count
-              const baseRepulsion = Math.max(8000, 4000 + nodeCount * 200);
-
-              return baseRepulsion * (1 + citationBonus * 0.5);
+              const citationBonus = Math.log10(citations + 10) / 3;
+              const scaledRepulsion = Math.min(
+                LAYOUT_CONSTANTS.MAX_REPULSION,
+                LAYOUT_CONSTANTS.BASE_REPULSION + nodeCount * LAYOUT_CONSTANTS.REPULSION_PER_NODE
+              );
+              return scaledRepulsion * (1 + citationBonus * 0.3);
             },
 
-            // Ideal edge length varies by edge type
+            // Shorter edge lengths for compact layout
             idealEdgeLength: (edge: { data: (key: string) => boolean | number }): number => {
               const isPhantom = edge.data('isPhantom') as boolean;
               const similarity = (edge.data('similarity') as number) || 0.5;
 
               if (isPhantom) {
-                // Phantom edges: LONGER base length, similarity brings them closer
-                // High similarity (0.8) = 70% of phantom length
-                // Low similarity (0.3) = 100% of phantom length
-                const phantomBase = baseEdgeLength * 1.8;
-                return phantomBase * (1.2 - similarity * 0.6);
+                // Phantom edges: longer but similarity brings closer
+                return LAYOUT_CONSTANTS.MIN_EDGE_LENGTH * (1.4 - similarity * 0.3);
               }
-              // Explicit connections: shorter, bring connected papers together
-              return baseEdgeLength * 0.7;
+              return LAYOUT_CONSTANTS.MIN_EDGE_LENGTH * 0.9;
             },
 
-            // Edge elasticity: phantom edges are MUCH weaker
-            // They suggest clustering but don't force it
+            // Phantom edges are weaker
             edgeElasticity: (edge: { data: (key: string) => boolean }): number => {
               const isPhantom = edge.data('isPhantom');
-              return isPhantom ? 0.1 : 0.45;  // Phantom edges 4.5x weaker
+              return isPhantom ? 0.1 : 0.45;
             },
 
-            // Moderate gravity - keeps graph centered without crushing it
-            gravity: 0.25 * hybridConfig.thesisGravityStrength,
-            gravityRange: 3.8,
-            gravityCompound: 1.0,
-            gravityRangeCompound: 1.5,
+            // Higher gravity for compact layout
+            gravity: LAYOUT_CONSTANTS.BASE_GRAVITY * hybridConfig.thesisGravityStrength,
+            gravityRange: LAYOUT_CONSTANTS.GRAVITY_RANGE,
+            gravityCompound: 1.2,
+            gravityRangeCompound: 2.0,
 
-            // No nesting factor - we're not using compound nodes
             nestingFactor: 0.1,
 
-            // More iterations for complex graphs
-            numIter: Math.min(5000, 2500 + nodeCount * 50),
+            numIter: Math.min(
+              LAYOUT_CONSTANTS.MAX_ITERATIONS,
+              LAYOUT_CONSTANTS.BASE_ITERATIONS + nodeCount * LAYOUT_CONSTANTS.ITERATIONS_PER_NODE
+            ),
 
-            // Tiling for disconnected components - spread them out
             tile: true,
-            tilingPaddingVertical: 80,
-            tilingPaddingHorizontal: 80,
+            tilingPaddingVertical: LAYOUT_CONSTANTS.TILING_PADDING,
+            tilingPaddingHorizontal: LAYOUT_CONSTANTS.TILING_PADDING,
 
-            // CRITICAL: Include labels in dimension calculations
-            nodeDimensionsIncludeLabels: true,
+            // Don't include labels - post-processing handles overlaps
+            nodeDimensionsIncludeLabels: false,
+            nodeOverlap: LAYOUT_CONSTANTS.MIN_NODE_OVERLAP,
 
-            // Strong overlap prevention
-            nodeOverlap: 50,
-
-            // Smoother animation
             initialEnergyOnIncremental: 0.3,
-
-            // Pack components closer after layout
             packComponents: true,
-
-            // Step size for simulation
             step: 'all',
           };
         }
@@ -1128,7 +1265,7 @@ export function GraphView({
     [visiblePapers, filteredConnections, normalizeAxisValues, scatterXAxis, scatterYAxis, ROLE_ORDER, hybridConfig.thesisGravityStrength]
   );
 
-  // Run layout with proper cleanup
+  // Run layout with proper cleanup and post-layout overlap removal
   const runLayout = useCallback(
     (animate = true) => {
       if (!cyRef.current || allElements.length === 0) return;
@@ -1144,6 +1281,18 @@ export function GraphView({
       layoutRef.current = layout;
 
       layout.on('layoutstop', () => {
+        // POST-LAYOUT OVERLAP REMOVAL
+        // Similar to Connected Papers' PRISM algorithm
+        // This runs after force-directed layout to eliminate remaining overlaps
+        if (cyRef.current && cyRef.current.nodes().length > 1) {
+          const moved = removeOverlaps(cyRef.current);
+          if (moved > 0) {
+            console.log(`[GraphView] Overlap removal moved nodes by ${moved.toFixed(1)}px total`);
+            // Fit the view after overlap removal
+            cyRef.current.fit(undefined, 50);
+          }
+        }
+
         setIsLayoutRunning(false);
         layoutRef.current = null;
       });
