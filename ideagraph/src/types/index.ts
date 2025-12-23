@@ -418,3 +418,127 @@ export interface ExportOptions {
   includeCitations: boolean;
   citationStyle: 'apa' | 'mla' | 'chicago' | 'ieee';
 }
+
+// ============================================
+// SUB-THESIS & HYBRID LAYOUT (Phase 5)
+// ============================================
+
+/**
+ * Sub-thesis shapes for cognitive differentiation in graph visualization
+ * Using distinct shapes helps cognitive grouping without relying solely on color
+ */
+export type SubThesisShape =
+  | 'ellipse'      // Default - general sub-thesis
+  | 'rectangle'    // Methodology/technical sub-thesis
+  | 'diamond'      // Controversial/debate sub-thesis
+  | 'hexagon'      // Application/practical sub-thesis
+  | 'triangle'     // Foundational/historical sub-thesis
+  | 'octagon'      // Safety/limitations sub-thesis
+  | 'star'         // Future directions/emerging sub-thesis
+  | 'vee';         // Critique/gap sub-thesis
+
+export const SUB_THESIS_SHAPES: SubThesisShape[] = [
+  'ellipse',
+  'rectangle',
+  'diamond',
+  'hexagon',
+  'triangle',
+  'octagon',
+  'star',
+  'vee',
+];
+
+// Shape metadata for UI
+export const SUB_THESIS_SHAPE_INFO: Record<SubThesisShape, { label: string; description: string; icon: string }> = {
+  ellipse: { label: 'General', description: 'Default shape for general topics', icon: '⬭' },
+  rectangle: { label: 'Methods', description: 'Methodology or technical topics', icon: '▭' },
+  diamond: { label: 'Debate', description: 'Controversial or contested topics', icon: '◇' },
+  hexagon: { label: 'Applications', description: 'Practical applications', icon: '⬡' },
+  triangle: { label: 'Foundation', description: 'Historical or foundational topics', icon: '△' },
+  octagon: { label: 'Limitations', description: 'Safety concerns or limitations', icon: '⯃' },
+  star: { label: 'Future', description: 'Emerging or future directions', icon: '☆' },
+  vee: { label: 'Gaps', description: 'Research gaps or critiques', icon: '∨' },
+};
+
+export interface SubThesis {
+  id: string;
+  thesisId: string;                // Parent thesis
+  parentSubThesisId: string | null; // For nested sub-theses (null = top-level)
+
+  // Content
+  title: string;                   // Short name (e.g., "Delivery Challenges")
+  question: string | null;         // Sub-question being addressed
+  summary: string | null;          // Brief synthesis of papers in this sub-thesis
+
+  // Visual organization
+  shape: SubThesisShape;           // Cognitive differentiation via shape
+  color: string;                   // Hex color for region background
+  icon: string | null;             // Optional emoji/icon
+
+  // Papers
+  paperIds: string[];              // Papers assigned to this sub-thesis
+
+  // Layout hints
+  order: number;                   // Display order among siblings
+  depth: number;                   // 0 = direct child of thesis
+  isCollapsed: boolean;            // Whether to show as single node in graph
+
+  // Radial position hint (optional, for thesis-centric layout)
+  preferredAngle: number | null;   // Angle in degrees from 12 o'clock, clockwise
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Similarity between two papers (for phantom edges)
+export interface PaperSimilarity {
+  paper1Id: string;
+  paper2Id: string;
+  similarity: number;              // 0-1 combined similarity score
+  components: {
+    tagSimilarity: number;         // Jaccard similarity of tags
+    textSimilarity: number;        // Abstract/title text similarity
+    yearProximity: number;         // How close in publication year
+    roleSimilarity: number;        // Same thesis role bonus
+    connectionOverlap: number;     // Shared connections (bibliographic coupling-lite)
+  };
+}
+
+// Configuration for hybrid layout algorithm
+export interface HybridLayoutConfig {
+  // Thesis-centric layout
+  thesisCentered: boolean;
+  thesisGravityStrength: number;   // 0-1, how strongly papers are pulled toward center
+
+  // Similarity-based clustering
+  useSimilarityEdges: boolean;     // Add phantom edges for similar papers
+  similarityThreshold: number;      // 0-1, minimum similarity to create phantom edge
+  similarityEdgeOpacity: number;    // Visual opacity of phantom edges
+
+  // Sub-thesis grouping
+  useSubThesisGrouping: boolean;   // Group papers by sub-thesis
+  subThesisAttractionStrength: number; // How strongly papers in same sub-thesis attract
+  subThesisRepulsionStrength: number;  // How strongly different sub-theses repel
+
+  // Visual encoding
+  maxVisibleEdges: number;         // Limit edges shown for performance
+  showEdgesOnHover: boolean;       // Show all edges only on hover
+  nodeSizeMetric: 'fixed' | 'citations' | 'connections' | 'pagerank';
+  nodeColorMetric: 'role' | 'subthesis' | 'year' | 'readingStatus';
+}
+
+// Default hybrid layout config
+export const DEFAULT_HYBRID_CONFIG: HybridLayoutConfig = {
+  thesisCentered: true,
+  thesisGravityStrength: 0.8,
+  useSimilarityEdges: true,
+  similarityThreshold: 0.25,
+  similarityEdgeOpacity: 0.3,
+  useSubThesisGrouping: true,
+  subThesisAttractionStrength: 0.6,
+  subThesisRepulsionStrength: 0.4,
+  maxVisibleEdges: 100,
+  showEdgesOnHover: true,
+  nodeSizeMetric: 'citations',
+  nodeColorMetric: 'role',
+};

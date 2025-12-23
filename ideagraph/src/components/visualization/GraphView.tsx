@@ -3,7 +3,9 @@ import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import fcose from 'cytoscape-fcose';
 import type { Core, ElementDefinition } from 'cytoscape';
-import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus } from '../../types';
+import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus, HybridLayoutConfig } from '../../types';
+import { DEFAULT_HYBRID_CONFIG } from '../../types';
+import { generatePhantomEdges, type PhantomEdge } from '../../utils/similarityEngine';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import { getSimilarPapers, fetchPaperByDOI } from '../../services/api/semanticScholar';
 import { QuickAddModal } from './QuickAddModal';
@@ -112,7 +114,7 @@ const CONNECTION_STYLES: Record<string, { color: string; style: string; label: s
   replicates: { color: '#22c55e', style: 'solid', label: 'Replicates' },
 };
 
-type LayoutType = 'fcose' | 'role-clustered' | 'temporal' | 'scatter' | 'concentric' | 'circle' | 'grid';
+type LayoutType = 'fcose' | 'role-clustered' | 'temporal' | 'scatter' | 'concentric' | 'circle' | 'grid' | 'hybrid';
 
 type ScatterAxisType = 'year' | 'citations' | 'connections' | 'added';
 
@@ -212,6 +214,10 @@ export function GraphView({
   const [scatterXAxis, setScatterXAxis] = useState<ScatterAxisType>('year');
   const [scatterYAxis, setScatterYAxis] = useState<ScatterAxisType>('citations');
 
+  // Hybrid layout configuration
+  const [hybridConfig, setHybridConfig] = useState<HybridLayoutConfig>(DEFAULT_HYBRID_CONFIG);
+  const [showPhantomEdges, setShowPhantomEdges] = useState(true);
+
   // Keep refs in sync with state (for event handlers to avoid stale closures)
   useEffect(() => {
     toolModeRef.current = toolMode;
@@ -276,6 +282,19 @@ export function GraphView({
     [connections, filteredPaperIds]
   );
 
+  // Compute phantom edges for hybrid layout (similarity-based edges for clustering)
+  const phantomEdges = useMemo<PhantomEdge[]>(() => {
+    if (layoutType !== 'hybrid' || !hybridConfig.useSimilarityEdges) {
+      return [];
+    }
+    return generatePhantomEdges(
+      filteredPapers,
+      filteredConnections,
+      hybridConfig.similarityThreshold,
+      3 // max phantom edges per paper
+    );
+  }, [filteredPapers, filteredConnections, layoutType, hybridConfig.useSimilarityEdges, hybridConfig.similarityThreshold]);
+
   // Get papers that are in collapsed clusters
   const collapsedClusterPaperIds = useMemo(() => {
     const ids = new Set<string>();
@@ -284,6 +303,13 @@ export function GraphView({
     });
     return ids;
   }, [clusters]);
+
+  // Papers actually visible in the graph (excludes collapsed cluster papers)
+  // Used for both element generation AND layout constraints to avoid referencing non-existent nodes
+  const visiblePapers = useMemo(
+    () => filteredPapers.filter((p) => !collapsedClusterPaperIds.has(p.id)),
+    [filteredPapers, collapsedClusterPaperIds]
+  );
 
   // Helper: Generate Connected Papers-style label (FirstAuthor Year)
   // e.g., "Smith 2023" or "Smith et al. 2023"
@@ -299,9 +325,6 @@ export function GraphView({
 
   // Build graph elements
   const elements = useMemo<ElementDefinition[]>(() => {
-    // Filter out papers that are in collapsed clusters
-    const visiblePapers = filteredPapers.filter((p) => !collapsedClusterPaperIds.has(p.id));
-
     const nodes: ElementDefinition[] = visiblePapers.map((paper) => ({
       data: {
         id: paper.id,
@@ -346,8 +369,29 @@ export function GraphView({
           }))
       : [];
 
-    return [...nodes, ...clusterNodes, ...edges];
-  }, [filteredPapers, filteredConnections, showEdges, selectedNodes, pinnedNodes, connectSourceId, focusedNodeId, clusters, collapsedClusterPaperIds, filteredPaperIds, getShortLabel]);
+    // Add phantom edges for hybrid layout (similarity-based clustering)
+    const phantomEdgeElements: ElementDefinition[] =
+      layoutType === 'hybrid' && showPhantomEdges && phantomEdges.length > 0
+        ? phantomEdges
+            .filter(
+              (edge) =>
+                !collapsedClusterPaperIds.has(edge.source) &&
+                !collapsedClusterPaperIds.has(edge.target)
+            )
+            .map((edge) => ({
+              data: {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                type: 'phantom',
+                similarity: edge.similarity,
+                isPhantom: true,
+              },
+            }))
+        : [];
+
+    return [...nodes, ...clusterNodes, ...edges, ...phantomEdgeElements];
+  }, [visiblePapers, filteredConnections, showEdges, selectedNodes, pinnedNodes, connectSourceId, focusedNodeId, clusters, filteredPaperIds, getShortLabel, collapsedClusterPaperIds, layoutType, showPhantomEdges, phantomEdges]);
 
   // Helper: Generate short label for Semantic Scholar papers
   const getSSPaperLabel = useCallback((paper: { authors: { name: string }[]; year: number | null; title: string }) => {
@@ -543,6 +587,18 @@ export function GraphView({
           'target-arrow-shape': 'none',
         },
       },
+      // Phantom edges (similarity-based for hybrid layout)
+      {
+        selector: 'edge[?isPhantom]',
+        style: {
+          'line-style': 'dotted',
+          'line-color': '#94a3b8',
+          opacity: hybridConfig.similarityEdgeOpacity,
+          width: 1,
+          'target-arrow-shape': 'none',
+          'curve-style': 'bezier',
+        },
+      },
       // Hover/selected states
       {
         selector: 'node:active',
@@ -587,7 +643,7 @@ export function GraphView({
         },
       },
     ],
-    []
+    [hybridConfig.similarityEdgeOpacity]
   );
 
   // Role order for clustering layout (center to edge)
@@ -656,7 +712,7 @@ export function GraphView({
         padding: 50,
       };
 
-      const nodeCount = filteredPapers.length;
+      const nodeCount = visiblePapers.length;
 
       switch (type) {
         case 'fcose': {
@@ -668,10 +724,11 @@ export function GraphView({
           // 4. Connection clarity: Connected papers stay close
 
           // Group papers by role for relative placement
-          const supportsIds = filteredPapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
-          const contradictsIds = filteredPapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
-          const methodIds = filteredPapers.filter(p => p.thesisRole === 'method').map(p => p.id);
-          const backgroundIds = filteredPapers.filter(p => p.thesisRole === 'background').map(p => p.id);
+          // IMPORTANT: Use visiblePapers (not filteredPapers) to match actual graph nodes
+          const supportsIds = visiblePapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
+          const contradictsIds = visiblePapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
+          const methodIds = visiblePapers.filter(p => p.thesisRole === 'method').map(p => p.id);
+          const backgroundIds = visiblePapers.filter(p => p.thesisRole === 'background').map(p => p.id);
 
           // Build relative placement constraints for semantic grouping
           const relativePlacement: Array<{ left?: string; right?: string; top?: string; bottom?: string; gap?: number }> = [];
@@ -766,11 +823,11 @@ export function GraphView({
           // Explicit role-based clustering with clear visual separation
           // Layout: Methods (top) -> Supports (left) | Contradicts (right) -> Background (bottom)
 
-          const supportsIds = filteredPapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
-          const contradictsIds = filteredPapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
-          const methodIds = filteredPapers.filter(p => p.thesisRole === 'method').map(p => p.id);
-          const backgroundIds = filteredPapers.filter(p => p.thesisRole === 'background').map(p => p.id);
-          const otherIds = filteredPapers.filter(p => p.thesisRole === 'other').map(p => p.id);
+          const supportsIds = visiblePapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
+          const contradictsIds = visiblePapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
+          const methodIds = visiblePapers.filter(p => p.thesisRole === 'method').map(p => p.id);
+          const backgroundIds = visiblePapers.filter(p => p.thesisRole === 'background').map(p => p.id);
+          const otherIds = visiblePapers.filter(p => p.thesisRole === 'other').map(p => p.id);
 
           // Build comprehensive alignment constraints
           const alignmentConstraint: { vertical?: string[][]; horizontal?: string[][] } = {};
@@ -841,7 +898,7 @@ export function GraphView({
         case 'temporal':
           // Arrange papers by publication year (left=older, right=newer)
           // eslint-disable-next-line no-case-declarations
-          const papersWithYear = filteredPapers.filter((p) => p.year);
+          const papersWithYear = visiblePapers.filter((p) => p.year);
           // eslint-disable-next-line no-case-declarations
           const years = papersWithYear.map((p) => p.year!);
           // eslint-disable-next-line no-case-declarations
@@ -877,9 +934,9 @@ export function GraphView({
         case 'scatter': {
           // Configurable scatter plot: X and Y axes based on user selection
           // eslint-disable-next-line no-case-declarations
-          const xNormalized = normalizeAxisValues(filteredPapers, scatterXAxis);
+          const xNormalized = normalizeAxisValues(visiblePapers, scatterXAxis);
           // eslint-disable-next-line no-case-declarations
-          const yNormalized = normalizeAxisValues(filteredPapers, scatterYAxis);
+          const yNormalized = normalizeAxisValues(visiblePapers, scatterYAxis);
 
           // Graph dimensions
           const graphWidth = 700;
@@ -952,11 +1009,104 @@ export function GraphView({
             },
           };
 
+        case 'hybrid': {
+          // Connected Papers-inspired hybrid layout:
+          // Key insight: NO alignment constraints - let force-directed naturally cluster
+          // Phantom edges provide gentle attraction between similar papers
+          // Strong repulsion prevents overlap, gravity keeps it centered
+
+          // Scale spacing based on paper count - more papers need more space
+          const spacingScale = Math.max(1, Math.sqrt(nodeCount / 20));
+
+          // Base ideal edge length - larger for bigger graphs
+          const baseEdgeLength = Math.max(100, 80 + nodeCount * 1.5) * spacingScale;
+
+          return {
+            name: 'fcose',
+            ...baseConfig,
+            quality: 'proof',
+
+            // CRITICAL: Start with random positions to avoid local minima
+            randomize: true,
+
+            // NO alignment constraints - these cause vertical stacking!
+            // Let the force simulation naturally find clusters
+
+            // STRONG node repulsion to prevent overlap
+            // This is the key to avoiding the "hairball"
+            nodeRepulsion: (node: { data: (key: string) => number | string | null }): number => {
+              const citations = (node.data('citationCount') as number) || 0;
+              // Log scale for citations to prevent outliers from dominating
+              const citationBonus = Math.log10(citations + 10) / 2;
+
+              // Much higher base repulsion - scale with node count
+              const baseRepulsion = Math.max(8000, 4000 + nodeCount * 200);
+
+              return baseRepulsion * (1 + citationBonus * 0.5);
+            },
+
+            // Ideal edge length varies by edge type
+            idealEdgeLength: (edge: { data: (key: string) => boolean | number }): number => {
+              const isPhantom = edge.data('isPhantom') as boolean;
+              const similarity = (edge.data('similarity') as number) || 0.5;
+
+              if (isPhantom) {
+                // Phantom edges: LONGER base length, similarity brings them closer
+                // High similarity (0.8) = 70% of phantom length
+                // Low similarity (0.3) = 100% of phantom length
+                const phantomBase = baseEdgeLength * 1.8;
+                return phantomBase * (1.2 - similarity * 0.6);
+              }
+              // Explicit connections: shorter, bring connected papers together
+              return baseEdgeLength * 0.7;
+            },
+
+            // Edge elasticity: phantom edges are MUCH weaker
+            // They suggest clustering but don't force it
+            edgeElasticity: (edge: { data: (key: string) => boolean }): number => {
+              const isPhantom = edge.data('isPhantom');
+              return isPhantom ? 0.1 : 0.45;  // Phantom edges 4.5x weaker
+            },
+
+            // Moderate gravity - keeps graph centered without crushing it
+            gravity: 0.25 * hybridConfig.thesisGravityStrength,
+            gravityRange: 3.8,
+            gravityCompound: 1.0,
+            gravityRangeCompound: 1.5,
+
+            // No nesting factor - we're not using compound nodes
+            nestingFactor: 0.1,
+
+            // More iterations for complex graphs
+            numIter: Math.min(5000, 2500 + nodeCount * 50),
+
+            // Tiling for disconnected components - spread them out
+            tile: true,
+            tilingPaddingVertical: 80,
+            tilingPaddingHorizontal: 80,
+
+            // CRITICAL: Include labels in dimension calculations
+            nodeDimensionsIncludeLabels: true,
+
+            // Strong overlap prevention
+            nodeOverlap: 50,
+
+            // Smoother animation
+            initialEnergyOnIncremental: 0.3,
+
+            // Pack components closer after layout
+            packComponents: true,
+
+            // Step size for simulation
+            step: 'all',
+          };
+        }
+
         default:
           return { name: 'fcose', ...baseConfig };
       }
     },
-    [filteredPapers, normalizeAxisValues, scatterXAxis, scatterYAxis, ROLE_ORDER]
+    [visiblePapers, filteredConnections, normalizeAxisValues, scatterXAxis, scatterYAxis, ROLE_ORDER, hybridConfig.thesisGravityStrength]
   );
 
   // Run layout with proper cleanup
@@ -1902,95 +2052,6 @@ export function GraphView({
               </div>
             )}
 
-            {/* Layout Selector */}
-            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 px-1">
-                Layout
-              </label>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { value: 'fcose', label: 'Auto', desc: 'Force-directed' },
-                  { value: 'role-clustered', label: 'By Role', desc: 'Group by thesis role' },
-                  { value: 'temporal', label: 'Timeline', desc: 'Left=old, Right=new' },
-                  { value: 'scatter', label: 'Scatter', desc: 'Custom X/Y axes' },
-                  { value: 'concentric', label: 'Citations', desc: 'High cites = center' },
-                  { value: 'circle', label: 'Circle', desc: 'Grouped by role' },
-                  { value: 'grid', label: 'Grid', desc: 'Sorted by year' },
-                ].map(({ value, label, desc }) => (
-                  <button
-                    key={value}
-                    onClick={() => setLayoutType(value as LayoutType)}
-                    title={desc}
-                    className={`px-2.5 py-1.5 text-xs rounded-lg transition-all duration-150 ${
-                      layoutType === value
-                        ? 'bg-indigo-500 text-white font-medium'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Scatter Plot Axis Configuration */}
-              {layoutType === 'scatter' && (
-                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-600 space-y-2">
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
-                      X-Axis
-                    </label>
-                    <div className="flex gap-1">
-                      {[
-                        { value: 'year', label: 'Year' },
-                        { value: 'citations', label: 'Cites' },
-                        { value: 'connections', label: 'Links' },
-                        { value: 'added', label: 'Added' },
-                      ].map(({ value, label }) => (
-                        <button
-                          key={value}
-                          onClick={() => setScatterXAxis(value as ScatterAxisType)}
-                          className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
-                            scatterXAxis === value
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
-                      Y-Axis
-                    </label>
-                    <div className="flex gap-1">
-                      {[
-                        { value: 'year', label: 'Year' },
-                        { value: 'citations', label: 'Cites' },
-                        { value: 'connections', label: 'Links' },
-                        { value: 'added', label: 'Added' },
-                      ].map(({ value, label }) => (
-                        <button
-                          key={value}
-                          onClick={() => setScatterYAxis(value as ScatterAxisType)}
-                          className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
-                            scatterYAxis === value
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-400 pt-1">
-                    High-impact recent → top-right
-                  </p>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -2008,6 +2069,7 @@ export function GraphView({
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             {[
+              { value: 'hybrid', label: 'Hybrid', desc: 'Connected Papers-style similarity clustering' },
               { value: 'fcose', label: 'Auto', desc: 'Force-directed' },
               { value: 'role-clustered', label: 'By Role', desc: 'Group by thesis role' },
               { value: 'temporal', label: 'Timeline', desc: 'Left=old, Right=new' },
@@ -2020,7 +2082,7 @@ export function GraphView({
                 key={value}
                 onClick={() => {
                   setLayoutType(value as LayoutType);
-                  if (value !== 'scatter') setShowLayoutPicker(false);
+                  if (value !== 'scatter' && value !== 'hybrid') setShowLayoutPicker(false);
                 }}
                 title={desc}
                 className={`px-3 py-2 text-xs rounded-lg transition-all duration-150 ${
@@ -2071,6 +2133,89 @@ export function GraphView({
                       {value === 'citations' ? 'Cites' : value === 'connections' ? 'Links' : value.charAt(0).toUpperCase() + value.slice(1)}
                     </button>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Hybrid Layout Configuration */}
+          {layoutType === 'hybrid' && (
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-600 space-y-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Hybrid Settings</div>
+
+              {/* Similarity Edges Toggle */}
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-xs text-slate-600 dark:text-slate-300">Show similarity edges</span>
+                <button
+                  onClick={() => setShowPhantomEdges(!showPhantomEdges)}
+                  className={`w-9 h-5 rounded-full transition-colors ${
+                    showPhantomEdges ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'
+                  }`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                    showPhantomEdges ? 'translate-x-4' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </label>
+
+              {/* Similarity Threshold */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                  Similarity threshold: {(hybridConfig.similarityThreshold * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="80"
+                  value={hybridConfig.similarityThreshold * 100}
+                  onChange={(e) => setHybridConfig(prev => ({
+                    ...prev,
+                    similarityThreshold: parseInt(e.target.value) / 100
+                  }))}
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+
+              {/* Edge Opacity */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                  Edge opacity: {(hybridConfig.similarityEdgeOpacity * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="5"
+                  max="60"
+                  value={hybridConfig.similarityEdgeOpacity * 100}
+                  onChange={(e) => setHybridConfig(prev => ({
+                    ...prev,
+                    similarityEdgeOpacity: parseInt(e.target.value) / 100
+                  }))}
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+
+              {/* Gravity Strength */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                  Center gravity: {(hybridConfig.thesisGravityStrength * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="20"
+                  max="100"
+                  value={hybridConfig.thesisGravityStrength * 100}
+                  onChange={(e) => setHybridConfig(prev => ({
+                    ...prev,
+                    thesisGravityStrength: parseInt(e.target.value) / 100
+                  }))}
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+
+              {/* Stats */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-600">
+                <div className="text-[10px] text-slate-400">
+                  {phantomEdges.length} similarity edges • {filteredPapers.length} papers
                 </div>
               </div>
             </div>
