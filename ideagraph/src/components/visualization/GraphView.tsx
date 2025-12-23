@@ -5,7 +5,7 @@ import fcose from 'cytoscape-fcose';
 import type { Core, ElementDefinition } from 'cytoscape';
 import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus, HybridLayoutConfig } from '../../types';
 import { DEFAULT_HYBRID_CONFIG } from '../../types';
-import { generatePhantomEdges, type PhantomEdge } from '../../utils/similarityEngine';
+import { generatePhantomEdges, generateAutoClusters, type PhantomEdge, type AutoCluster } from '../../utils/similarityEngine';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import { getSimilarPapers, fetchPaperByDOI } from '../../services/api/semanticScholar';
 import { QuickAddModal } from './QuickAddModal';
@@ -112,20 +112,23 @@ function removeOverlaps(cy: Core): number {
   const nodes = cy.nodes();
   if (nodes.length < 2) return 0;
 
-  const minDistance = LAYOUT_CONSTANTS.MIN_NODE_DISTANCE;
   let totalMoved = 0;
 
   for (let iter = 0; iter < LAYOUT_CONSTANTS.OVERLAP_REMOVAL_ITERATIONS; iter++) {
     let hasOverlap = false;
     let maxOverlap = 0;
 
-    // Build node positions
-    const positions: NodePosition[] = nodes.map(node => ({
-      id: node.id(),
-      x: node.position('x'),
-      y: node.position('y'),
-      radius: LAYOUT_CONSTANTS.COLLISION_RADIUS,
-    }));
+    // Build node positions with actual node sizes
+    const positions: NodePosition[] = nodes.map(node => {
+      // Get actual rendered width, or use default
+      const width = node.renderedWidth() || node.width() || LAYOUT_CONSTANTS.NODE_SIZE;
+      return {
+        id: node.id(),
+        x: node.position('x'),
+        y: node.position('y'),
+        radius: width / 2 + 5, // Half width + small padding
+      };
+    });
 
     // Check all pairs for circle overlaps
     for (let i = 0; i < positions.length; i++) {
@@ -136,6 +139,9 @@ function removeOverlaps(cy: Core): number {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Minimum distance is sum of radii (both nodes' collision circles)
+        const minDistance = a.radius + b.radius;
 
         if (distance < minDistance) {
           hasOverlap = true;
@@ -354,6 +360,16 @@ export function GraphView({
   const [hybridConfig, setHybridConfig] = useState<HybridLayoutConfig>(DEFAULT_HYBRID_CONFIG);
   const [showPhantomEdges, setShowPhantomEdges] = useState(true);
 
+  // Auto-clustering for Similar layout
+  const [enableAutoClustering, setEnableAutoClustering] = useState(false);
+  const [clusterThreshold, setClusterThreshold] = useState(0.45);
+  const [expandedClusterIds, setExpandedClusterIds] = useState<Set<string>>(new Set());
+
+  // Reset expanded cluster IDs when threshold changes (cluster IDs change)
+  useEffect(() => {
+    setExpandedClusterIds(new Set());
+  }, [clusterThreshold]);
+
   // Keep refs in sync with state (for event handlers to avoid stale closures)
   useEffect(() => {
     toolModeRef.current = toolMode;
@@ -431,6 +447,38 @@ export function GraphView({
     );
   }, [filteredPapers, filteredConnections, layoutType, hybridConfig.useSimilarityEdges, hybridConfig.similarityThreshold]);
 
+  // Compute auto-clusters for Similar layout when clustering is enabled
+  const autoClusters = useMemo<AutoCluster[]>(() => {
+    if (layoutType !== 'hybrid' || !enableAutoClustering) {
+      return [];
+    }
+    return generateAutoClusters(filteredPapers, filteredConnections, {
+      minClusterSize: 2,
+      similarityThreshold: clusterThreshold,
+      maxClusters: 10,
+    });
+  }, [filteredPapers, filteredConnections, layoutType, enableAutoClustering, clusterThreshold]);
+
+  // Papers that are in collapsed auto-clusters (not expanded)
+  // Also build a map from paper ID to cluster ID for edge redirection
+  const { autoClusteredPaperIds, paperToClusterMap } = useMemo(() => {
+    if (!enableAutoClustering) {
+      return { autoClusteredPaperIds: new Set<string>(), paperToClusterMap: new Map<string, string>() };
+    }
+
+    const ids = new Set<string>();
+    const mapping = new Map<string, string>();
+    autoClusters.forEach(cluster => {
+      if (!expandedClusterIds.has(cluster.id)) {
+        cluster.paperIds.forEach(id => {
+          ids.add(id);
+          mapping.set(id, cluster.id);
+        });
+      }
+    });
+    return { autoClusteredPaperIds: ids, paperToClusterMap: mapping };
+  }, [autoClusters, enableAutoClustering, expandedClusterIds]);
+
   // Get papers that are in collapsed clusters
   const collapsedClusterPaperIds = useMemo(() => {
     const ids = new Set<string>();
@@ -440,11 +488,13 @@ export function GraphView({
     return ids;
   }, [clusters]);
 
-  // Papers actually visible in the graph (excludes collapsed cluster papers)
+  // Papers actually visible in the graph (excludes collapsed cluster papers AND auto-clustered papers)
   // Used for both element generation AND layout constraints to avoid referencing non-existent nodes
   const visiblePapers = useMemo(
-    () => filteredPapers.filter((p) => !collapsedClusterPaperIds.has(p.id)),
-    [filteredPapers, collapsedClusterPaperIds]
+    () => filteredPapers.filter((p) =>
+      !collapsedClusterPaperIds.has(p.id) && !autoClusteredPaperIds.has(p.id)
+    ),
+    [filteredPapers, collapsedClusterPaperIds, autoClusteredPaperIds]
   );
 
   // Helper: Generate Connected Papers-style label (FirstAuthor Year)
@@ -459,6 +509,36 @@ export function GraphView({
     return paper.title.length > 15 ? paper.title.slice(0, 15) + '...' : paper.title;
   }, []);
 
+  // Compute year range for color mapping (Connected Papers style)
+  const yearRange = useMemo(() => {
+    const years = visiblePapers.map(p => p.year).filter((y): y is number => y != null);
+    if (years.length === 0) return { min: 2020, max: 2024 };
+    return { min: Math.min(...years), max: Math.max(...years) };
+  }, [visiblePapers]);
+
+  // Compute connection count per paper
+  const connectionCountByPaper = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredConnections.forEach(conn => {
+      counts.set(conn.fromPaperId, (counts.get(conn.fromPaperId) || 0) + 1);
+      counts.set(conn.toPaperId, (counts.get(conn.toPaperId) || 0) + 1);
+    });
+    return counts;
+  }, [filteredConnections]);
+
+  // Year to color mapping (light blue → dark blue, like Connected Papers)
+  const yearToColor = useCallback((year: number | null | undefined): string => {
+    if (year == null) return '#94a3b8'; // Gray for unknown years
+    const { min, max } = yearRange;
+    const range = max - min || 1;
+    const t = (year - min) / range;
+    // Interpolate from #93c5fd (light blue) to #1e40af (dark blue)
+    const r = Math.round(147 + t * (30 - 147));
+    const g = Math.round(197 + t * (64 - 197));
+    const b = Math.round(253 + t * (175 - 253));
+    return `rgb(${r}, ${g}, ${b})`;
+  }, [yearRange]);
+
   // Build graph elements
   const elements = useMemo<ElementDefinition[]>(() => {
     const nodes: ElementDefinition[] = visiblePapers.map((paper) => ({
@@ -468,6 +548,8 @@ export function GraphView({
         role: paper.thesisRole,
         year: paper.year,
         citationCount: paper.citationCount || 0,
+        connectionCount: connectionCountByPaper.get(paper.id) || 0,
+        yearColor: yearToColor(paper.year),
         isSelected: selectedNodes.has(paper.id),
         isPinned: pinnedNodes.has(paper.id),
         isConnectSource: connectSourceId === paper.id,
@@ -488,12 +570,41 @@ export function GraphView({
         },
       }));
 
-    const edges: ElementDefinition[] = showEdges
+    // Add auto-cluster nodes for Similar layout when clustering is enabled
+    const autoClusterNodes: ElementDefinition[] = enableAutoClustering
+      ? autoClusters
+          .filter(cluster => !expandedClusterIds.has(cluster.id))
+          .map(cluster => {
+            // Get representative paper for styling
+            const repPaper = filteredPapers.find(p => p.id === cluster.representativePaperId);
+            const repRole = repPaper?.thesisRole || 'other';
+
+            return {
+              data: {
+                id: cluster.id,
+                label: `${cluster.name} (${cluster.paperIds.length})`,
+                isAutoCluster: true,
+                role: cluster.dominantRole,
+                citationCount: cluster.totalCitations,
+                paperCount: cluster.paperIds.length,
+                paperIds: cluster.paperIds,
+                avgSimilarity: cluster.avgSimilarity,
+                representativePaperId: cluster.representativePaperId,
+                yearRange: cluster.yearRange,
+              },
+            };
+          })
+      : [];
+
+    // Regular edges between non-clustered papers
+    const regularEdges: ElementDefinition[] = showEdges
       ? filteredConnections
           .filter(
             (conn) =>
               !collapsedClusterPaperIds.has(conn.fromPaperId) &&
-              !collapsedClusterPaperIds.has(conn.toPaperId)
+              !collapsedClusterPaperIds.has(conn.toPaperId) &&
+              !autoClusteredPaperIds.has(conn.fromPaperId) &&
+              !autoClusteredPaperIds.has(conn.toPaperId)
           )
           .map((conn) => ({
             data: {
@@ -505,14 +616,75 @@ export function GraphView({
           }))
       : [];
 
+    // Edges connecting to/from auto-clusters (redirect paper → cluster)
+    // Aggregate multiple connections into single edge with count
+    const clusterEdgeMap = new Map<string, { source: string; target: string; type: string; count: number; ids: string[] }>();
+
+    if (showEdges && enableAutoClustering && paperToClusterMap.size > 0) {
+      filteredConnections.forEach((conn) => {
+        // Skip if in user-created collapsed cluster
+        if (collapsedClusterPaperIds.has(conn.fromPaperId) || collapsedClusterPaperIds.has(conn.toPaperId)) {
+          return;
+        }
+
+        const fromCluster = paperToClusterMap.get(conn.fromPaperId);
+        const toCluster = paperToClusterMap.get(conn.toPaperId);
+
+        // Skip if both ends are in the same cluster (internal edge)
+        if (fromCluster && toCluster && fromCluster === toCluster) {
+          return;
+        }
+
+        // Skip if neither end is in a cluster (handled by regularEdges)
+        if (!fromCluster && !toCluster) {
+          return;
+        }
+
+        // Redirect to cluster node
+        const source = fromCluster || conn.fromPaperId;
+        const target = toCluster || conn.toPaperId;
+
+        // Create unique key for this edge pair
+        const edgeKey = source < target ? `${source}:${target}` : `${target}:${source}`;
+
+        if (clusterEdgeMap.has(edgeKey)) {
+          const existing = clusterEdgeMap.get(edgeKey)!;
+          existing.count++;
+          existing.ids.push(conn.id);
+        } else {
+          clusterEdgeMap.set(edgeKey, {
+            source,
+            target,
+            type: conn.type,
+            count: 1,
+            ids: [conn.id],
+          });
+        }
+      });
+    }
+
+    const clusterEdges: ElementDefinition[] = [...clusterEdgeMap.values()].map((edge) => ({
+      data: {
+        id: `cluster_edge_${edge.ids[0]}`,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type,
+        isClusterEdge: true,
+        connectionCount: edge.count,
+      },
+    }));
+
     // Add phantom edges for hybrid layout (similarity-based clustering)
+    // Skip edges involving auto-clustered papers (they're already visually grouped)
     const phantomEdgeElements: ElementDefinition[] =
       layoutType === 'hybrid' && showPhantomEdges && phantomEdges.length > 0
         ? phantomEdges
             .filter(
               (edge) =>
                 !collapsedClusterPaperIds.has(edge.source) &&
-                !collapsedClusterPaperIds.has(edge.target)
+                !collapsedClusterPaperIds.has(edge.target) &&
+                !autoClusteredPaperIds.has(edge.source) &&
+                !autoClusteredPaperIds.has(edge.target)
             )
             .map((edge) => ({
               data: {
@@ -526,8 +698,8 @@ export function GraphView({
             }))
         : [];
 
-    return [...nodes, ...clusterNodes, ...edges, ...phantomEdgeElements];
-  }, [visiblePapers, filteredConnections, showEdges, selectedNodes, pinnedNodes, connectSourceId, focusedNodeId, clusters, filteredPaperIds, getShortLabel, collapsedClusterPaperIds, layoutType, showPhantomEdges, phantomEdges]);
+    return [...nodes, ...clusterNodes, ...autoClusterNodes, ...regularEdges, ...clusterEdges, ...phantomEdgeElements];
+  }, [visiblePapers, filteredConnections, showEdges, selectedNodes, pinnedNodes, connectSourceId, focusedNodeId, clusters, filteredPaperIds, getShortLabel, collapsedClusterPaperIds, autoClusteredPaperIds, paperToClusterMap, layoutType, showPhantomEdges, phantomEdges, connectionCountByPaper, yearToColor, enableAutoClustering, autoClusters, expandedClusterIds, filteredPapers]);
 
   // Helper: Generate short label for Semantic Scholar papers
   const getSSPaperLabel = useCallback((paper: { authors: { name: string }[]; year: number | null; title: string }) => {
@@ -615,13 +787,63 @@ export function GraphView({
           'transition-timing-function': 'ease-out',
         },
       },
-      // Role colors
+      // Role colors (default coloring)
       ...Object.entries(ROLE_COLORS).map(([role, colors]) => ({
         selector: `node[role="${role}"]`,
         style: {
           'background-color': colors.bg,
         },
       })),
+      // Year-based coloring (Connected Papers style) - applied when nodeColorMetric is 'year'
+      ...(layoutType === 'hybrid' && hybridConfig.nodeColorMetric === 'year'
+        ? [{
+            selector: 'node[yearColor]',
+            style: {
+              'background-color': 'data(yearColor)',
+            },
+          }]
+        : []),
+      // Dynamic node sizing based on citations (Connected Papers style)
+      ...(layoutType === 'hybrid' && hybridConfig.nodeSizeMetric === 'citations'
+        ? [{
+            selector: 'node[citationCount]',
+            style: {
+              // mapData: citationCount 0-500 → size 40-72px
+              width: 'mapData(citationCount, 0, 500, 40, 72)',
+              height: 'mapData(citationCount, 0, 500, 40, 72)',
+            },
+          }]
+        : []),
+      // Dynamic node sizing based on connections
+      ...(layoutType === 'hybrid' && hybridConfig.nodeSizeMetric === 'connections'
+        ? [{
+            selector: 'node[connectionCount]',
+            style: {
+              // mapData: connectionCount 0-10 → size 40-72px
+              width: 'mapData(connectionCount, 0, 10, 40, 72)',
+              height: 'mapData(connectionCount, 0, 10, 40, 72)',
+            },
+          }]
+        : []),
+      // Auto-cluster nodes (merged similar papers)
+      {
+        selector: 'node[?isAutoCluster]',
+        style: {
+          // Larger size for clusters, scales with paper count
+          width: 'mapData(paperCount, 2, 8, 56, 80)',
+          height: 'mapData(paperCount, 2, 8, 56, 80)',
+          // Double border to indicate it's a group
+          'border-width': 4,
+          'border-style': 'double',
+          'border-color': '#6366f1',
+          'border-opacity': 0.9,
+          // Semi-transparent to hint at grouped nature
+          'background-opacity': 0.85,
+          // Slightly different label style
+          'font-weight': 600,
+          'font-size': 10,
+        },
+      },
       // Discovery (ghost) nodes
       {
         selector: 'node[?isDiscovery]',
@@ -724,14 +946,34 @@ export function GraphView({
         },
       },
       // Phantom edges (similarity-based for hybrid layout)
+      // Thickness and opacity vary by similarity score for visual distinction
       {
         selector: 'edge[?isPhantom]',
         style: {
-          'line-style': 'dotted',
+          'line-style': 'dashed',
           'line-color': '#94a3b8',
-          opacity: hybridConfig.similarityEdgeOpacity,
-          width: 1,
+          // mapData: similarity 0.25-1.0 → opacity scales with config
+          opacity: `mapData(similarity, 0.25, 1.0, ${hybridConfig.similarityEdgeOpacity * 0.5}, ${hybridConfig.similarityEdgeOpacity})`,
+          // mapData: similarity 0.25-1.0 → width 1-3px
+          width: 'mapData(similarity, 0.25, 1.0, 1, 3)',
           'target-arrow-shape': 'none',
+          'curve-style': 'bezier',
+        },
+      },
+      // Cluster edges (aggregated connections to/from clusters)
+      // Thicker based on number of connections aggregated
+      {
+        selector: 'edge[?isClusterEdge]',
+        style: {
+          // Width scales with connection count (1 connection = 2px, 5+ = 5px)
+          width: 'mapData(connectionCount, 1, 5, 2, 5)',
+          opacity: 0.7,
+          'line-style': 'solid',
+          // Use indigo to match cluster border color
+          'line-color': '#818cf8',
+          'target-arrow-color': '#818cf8',
+          'target-arrow-shape': 'triangle',
+          'arrow-scale': 0.8,
           'curve-style': 'bezier',
         },
       },
@@ -779,7 +1021,7 @@ export function GraphView({
         },
       },
     ],
-    [hybridConfig.similarityEdgeOpacity]
+    [hybridConfig.similarityEdgeOpacity, hybridConfig.nodeSizeMetric, hybridConfig.nodeColorMetric, layoutType]
   );
 
   // Role order for clustering layout (center to edge)
@@ -860,22 +1102,22 @@ export function GraphView({
           // 4. Connection clarity: Connected papers stay close
 
           // Group papers by role for relative placement
-          // IMPORTANT: Use visiblePapers (not filteredPapers) to match actual graph nodes
           const supportsIds = visiblePapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
           const contradictsIds = visiblePapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
           const methodIds = visiblePapers.filter(p => p.thesisRole === 'method').map(p => p.id);
           const backgroundIds = visiblePapers.filter(p => p.thesisRole === 'background').map(p => p.id);
 
           // Build relative placement constraints for semantic grouping
+          // SCALING: Gap decreases as graph grows to prevent explosion
+          const baseGap = Math.max(80, 150 - nodeCount * 3);
           const relativePlacement: Array<{ left?: string; right?: string; top?: string; bottom?: string; gap?: number }> = [];
 
           // Supports papers should be LEFT of Contradicts papers (debate layout)
           if (supportsIds.length > 0 && contradictsIds.length > 0) {
-            // Pick a representative from each group
             relativePlacement.push({
               left: supportsIds[0],
               right: contradictsIds[0],
-              gap: 150,
+              gap: baseGap,
             });
           }
 
@@ -885,7 +1127,7 @@ export function GraphView({
             relativePlacement.push({
               top: methodIds[0],
               bottom: mainPaperId,
-              gap: 100,
+              gap: baseGap * 0.7,
             });
           }
 
@@ -895,14 +1137,25 @@ export function GraphView({
             relativePlacement.push({
               top: mainPaperId,
               bottom: backgroundIds[0],
-              gap: 100,
+              gap: baseGap * 0.7,
             });
           }
 
           // Calculate ideal edge length based on graph density
-          // Sparser graphs = longer edges for clarity
           const density = filteredConnections.length / Math.max(nodeCount * (nodeCount - 1) / 2, 1);
           const densityEdgeBonus = density < 0.1 ? 20 : density < 0.3 ? 10 : 0;
+
+          // Edge length by connection type (semantic meaning)
+          const EDGE_LENGTH_BY_TYPE: Record<string, number> = {
+            'supports': 0.85,      // Tight coupling
+            'contradicts': 0.85,   // Tight coupling (opposing)
+            'extends': 0.9,        // Close relationship
+            'critiques': 0.95,     // Moderate distance
+            'uses-method': 1.1,    // Looser coupling
+            'replicates': 0.9,     // Close relationship
+            'reviews': 1.0,        // Standard
+            'same-topic': 1.15,    // Loose coupling
+          };
 
           return {
             name: 'fcose',
@@ -910,13 +1163,9 @@ export function GraphView({
             quality: 'proof',
             randomize: false,
 
-            // REMOVED strict alignment constraints - they cause vertical stacking
-            // Only use relative placement for general structure, not strict columns
-            // alignmentConstraint: undefined,
-
-            // Softer relative placement - only for small graphs
-            // Large graphs should spread more naturally
-            relativePlacementConstraint: nodeCount <= 10 && relativePlacement.length > 0
+            // SCALING: Always apply relative placement, but with scaled gaps
+            // This maintains semantic structure at any graph size
+            relativePlacementConstraint: relativePlacement.length > 0
               ? relativePlacement
               : undefined,
 
@@ -931,8 +1180,12 @@ export function GraphView({
               return scaledRepulsion * (1 + citationBonus * 0.2);
             },
 
-            // Shorter edge lengths for compact layout
-            idealEdgeLength: (): number => LAYOUT_CONSTANTS.MIN_EDGE_LENGTH + densityEdgeBonus,
+            // Edge length varies by connection type for semantic meaning
+            idealEdgeLength: (edge: { data: (key: string) => string }): number => {
+              const type = edge.data('type') || 'same-topic';
+              const multiplier = EDGE_LENGTH_BY_TYPE[type] || 1.0;
+              return (LAYOUT_CONSTANTS.MIN_EDGE_LENGTH + densityEdgeBonus) * multiplier;
+            },
             edgeElasticity: (): number => 0.4,
 
             // Higher gravity pulls nodes together more
@@ -963,89 +1216,86 @@ export function GraphView({
         }
 
         case 'role-clustered': {
-          // Explicit role-based clustering with clear visual separation
-          // Layout: Methods (top) -> Supports (left) | Contradicts (right) -> Background (bottom)
+          // Deterministic role-based regions layout
+          // Works at ANY scale - no fcose constraints that fail for large graphs
+          // Layout: Methods (top) | Supports (left) | Contradicts (right) | Background (bottom) | Other (center)
 
-          const supportsIds = visiblePapers.filter(p => p.thesisRole === 'supports').map(p => p.id);
-          const contradictsIds = visiblePapers.filter(p => p.thesisRole === 'contradicts').map(p => p.id);
-          const methodIds = visiblePapers.filter(p => p.thesisRole === 'method').map(p => p.id);
-          const backgroundIds = visiblePapers.filter(p => p.thesisRole === 'background').map(p => p.id);
-          const otherIds = visiblePapers.filter(p => p.thesisRole === 'other').map(p => p.id);
+          // Define region centers (normalized 0-1 coordinates)
+          const ROLE_REGIONS: Record<ThesisRole, { cx: number; cy: number; radius: number }> = {
+            method:      { cx: 0.5, cy: 0.12, radius: 0.18 },  // Top center
+            supports:    { cx: 0.18, cy: 0.5, radius: 0.22 },  // Left
+            contradicts: { cx: 0.82, cy: 0.5, radius: 0.22 },  // Right
+            background:  { cx: 0.5, cy: 0.88, radius: 0.18 },  // Bottom center
+            other:       { cx: 0.5, cy: 0.5, radius: 0.15 },   // Center
+          };
 
-          // Build comprehensive alignment constraints
-          const alignmentConstraint: { vertical?: string[][]; horizontal?: string[][] } = {};
+          // Group papers by role
+          const papersByRole = new Map<ThesisRole, Paper[]>();
+          visiblePapers.forEach(p => {
+            const existing = papersByRole.get(p.thesisRole) || [];
+            existing.push(p);
+            papersByRole.set(p.thesisRole, existing);
+          });
 
-          // Vertical alignment: each role forms a column
-          const verticalGroups: string[][] = [];
-          if (supportsIds.length > 1) verticalGroups.push(supportsIds);
-          if (contradictsIds.length > 1) verticalGroups.push(contradictsIds);
-          if (methodIds.length > 1) verticalGroups.push(methodIds);
-          if (backgroundIds.length > 1) verticalGroups.push(backgroundIds);
-          if (verticalGroups.length > 0) {
-            alignmentConstraint.vertical = verticalGroups;
-          }
+          // Sort papers within each role by year (oldest first) for consistent ordering
+          papersByRole.forEach((papers, role) => {
+            papers.sort((a, b) => (a.year || 2020) - (b.year || 2020));
+            papersByRole.set(role, papers);
+          });
 
-          // Horizontal alignment: methods in one row, background in another
-          const horizontalGroups: string[][] = [];
-          if (methodIds.length > 1) horizontalGroups.push(methodIds);
-          if (backgroundIds.length > 1) horizontalGroups.push(backgroundIds);
-          if (horizontalGroups.length > 0) {
-            alignmentConstraint.horizontal = horizontalGroups;
-          }
+          // Build position index for each paper
+          const paperPositionIndex = new Map<string, { role: ThesisRole; index: number; total: number }>();
+          papersByRole.forEach((papers, role) => {
+            papers.forEach((p, idx) => {
+              paperPositionIndex.set(p.id, { role, index: idx, total: papers.length });
+            });
+          });
 
-          // Build relative placement for debate-style layout
-          const relativePlacement: Array<{ left?: string; right?: string; top?: string; bottom?: string; gap?: number }> = [];
-
-          // Supports LEFT of Contradicts (the main debate axis)
-          if (supportsIds.length > 0 && contradictsIds.length > 0) {
-            relativePlacement.push({ left: supportsIds[0], right: contradictsIds[0], gap: 200 });
-          }
-
-          // Methods ABOVE main content (foundational knowledge)
-          if (methodIds.length > 0) {
-            const centerPaper = supportsIds[0] || contradictsIds[0] || otherIds[0];
-            if (centerPaper) {
-              relativePlacement.push({ top: methodIds[0], bottom: centerPaper, gap: 120 });
-            }
-          }
-
-          // Background BELOW main content (contextual)
-          if (backgroundIds.length > 0) {
-            const centerPaper = supportsIds[0] || contradictsIds[0] || otherIds[0];
-            if (centerPaper) {
-              relativePlacement.push({ top: centerPaper, bottom: backgroundIds[0], gap: 120 });
-            }
-          }
+          // Graph dimensions
+          const graphWidth = 800;
+          const graphHeight = 600;
 
           return {
-            name: 'fcose',
+            name: 'preset',
             ...baseConfig,
-            quality: 'proof',
-            randomize: false,
-            // Only use alignment for small graphs - causes vertical stacking in large graphs
-            alignmentConstraint: nodeCount <= 15 && Object.keys(alignmentConstraint).length > 0
-              ? alignmentConstraint
-              : undefined,
-            relativePlacementConstraint: nodeCount <= 15 && relativePlacement.length > 0
-              ? relativePlacement
-              : undefined,
-            nodeRepulsion: (): number => Math.min(
-              LAYOUT_CONSTANTS.MAX_REPULSION,
-              LAYOUT_CONSTANTS.BASE_REPULSION + nodeCount * LAYOUT_CONSTANTS.REPULSION_PER_NODE
-            ),
-            idealEdgeLength: (): number => LAYOUT_CONSTANTS.MIN_EDGE_LENGTH,
-            edgeElasticity: (): number => 0.4,
-            gravity: LAYOUT_CONSTANTS.BASE_GRAVITY,
-            gravityRange: LAYOUT_CONSTANTS.GRAVITY_RANGE,
-            numIter: Math.min(
-              LAYOUT_CONSTANTS.MAX_ITERATIONS,
-              LAYOUT_CONSTANTS.BASE_ITERATIONS + nodeCount * LAYOUT_CONSTANTS.ITERATIONS_PER_NODE
-            ),
-            tile: true,
-            tilingPaddingVertical: LAYOUT_CONSTANTS.TILING_PADDING,
-            tilingPaddingHorizontal: LAYOUT_CONSTANTS.TILING_PADDING,
-            nodeDimensionsIncludeLabels: false,
-            nodeOverlap: LAYOUT_CONSTANTS.MIN_NODE_OVERLAP,
+            positions: (node: { id: () => string }) => {
+              const id = node.id();
+              const posInfo = paperPositionIndex.get(id);
+
+              if (!posInfo) {
+                // Fallback for unknown nodes (clusters, etc.)
+                return { x: graphWidth / 2, y: graphHeight / 2 };
+              }
+
+              const { role, index, total } = posInfo;
+              const region = ROLE_REGIONS[role];
+
+              // Calculate position within region using spiral pattern
+              // This ensures papers don't overlap and fills the region nicely
+              const regionRadiusPx = region.radius * Math.min(graphWidth, graphHeight);
+
+              if (total === 1) {
+                // Single paper in region: place at center
+                return {
+                  x: region.cx * graphWidth,
+                  y: region.cy * graphHeight,
+                };
+              }
+
+              // Spiral layout within region
+              // Golden angle for even distribution
+              const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+              const angle = index * goldenAngle;
+
+              // Radius grows with sqrt for even area distribution
+              const normalizedRadius = Math.sqrt((index + 0.5) / total);
+              const r = normalizedRadius * regionRadiusPx * 0.85; // 85% to leave padding
+
+              return {
+                x: region.cx * graphWidth + r * Math.cos(angle),
+                y: region.cy * graphHeight + r * Math.sin(angle),
+              };
+            },
           };
         }
 
@@ -1202,15 +1452,19 @@ export function GraphView({
 
             // NO alignment constraints - let force simulation work naturally
 
-            // Balanced node repulsion
-            nodeRepulsion: (node: { data: (key: string) => number | string | null }): number => {
+            // Balanced node repulsion - auto-clusters get higher repulsion
+            nodeRepulsion: (node: { data: (key: string) => number | string | boolean | null }): number => {
+              const isAutoCluster = node.data('isAutoCluster') as boolean;
+              const paperCount = (node.data('paperCount') as number) || 1;
               const citations = (node.data('citationCount') as number) || 0;
               const citationBonus = Math.log10(citations + 10) / 3;
               const scaledRepulsion = Math.min(
                 LAYOUT_CONSTANTS.MAX_REPULSION,
                 LAYOUT_CONSTANTS.BASE_REPULSION + nodeCount * LAYOUT_CONSTANTS.REPULSION_PER_NODE
               );
-              return scaledRepulsion * (1 + citationBonus * 0.3);
+              // Auto-clusters get higher repulsion based on how many papers they contain
+              const clusterBonus = isAutoCluster ? 1 + (paperCount - 1) * 0.3 : 1;
+              return scaledRepulsion * (1 + citationBonus * 0.3) * clusterBonus;
             },
 
             // Shorter edge lengths for compact layout
@@ -1427,12 +1681,28 @@ export function GraphView({
     [discoveryState.papers]
   );
 
-  // Handle cluster node click
+  // Handle user-created cluster node click
   const handleClusterNodeClick = useCallback(
     (clusterId: string) => {
       onToggleClusterCollapse(clusterId);
     },
     [onToggleClusterCollapse]
+  );
+
+  // Handle auto-cluster node click (expand/collapse)
+  const handleAutoClusterNodeClick = useCallback(
+    (clusterId: string) => {
+      setExpandedClusterIds(prev => {
+        const next = new Set(prev);
+        if (next.has(clusterId)) {
+          next.delete(clusterId);
+        } else {
+          next.add(clusterId);
+        }
+        return next;
+      });
+    },
+    []
   );
 
   // Toggle node selection for clustering
@@ -1635,7 +1905,13 @@ export function GraphView({
           return;
         }
 
-        // Check if it's a cluster node
+        // Check if it's an auto-cluster node (from Similar layout)
+        if (nodeData.isAutoCluster) {
+          handleAutoClusterNodeClick(nodeId);
+          return;
+        }
+
+        // Check if it's a user-created cluster node
         if (nodeId.startsWith('cluster_')) {
           handleClusterNodeClick(nodeData.clusterId);
           return;
@@ -1716,9 +1992,10 @@ export function GraphView({
       cy.on('mouseover', 'node', (event) => {
         const node = event.target;
         const nodeId = node.id();
+        const nodeData = node.data();
         const currentMode = toolModeRef.current;
 
-        // Skip hover effects for discovery/cluster nodes or when in focus mode with a focused node
+        // Skip hover effects for discovery/user-cluster nodes or when in focus mode with a focused node
         if (nodeId.startsWith('discovery_') || nodeId.startsWith('cluster_')) {
           return;
         }
@@ -1732,6 +2009,30 @@ export function GraphView({
 
         cy.elements().addClass('dimmed');
         neighborhood.removeClass('dimmed').addClass('highlighted');
+
+        // Handle auto-cluster node hover - show cluster info tooltip
+        if (nodeData.isAutoCluster && containerRef.current) {
+          const renderedPos = node.renderedPosition();
+          const containerRect = containerRef.current.getBoundingClientRect();
+          // Create a pseudo-paper object for the tooltip
+          const clusterPaperIds = nodeData.paperIds as string[];
+          const clusterPapers = papersRef.current.filter(p => clusterPaperIds?.includes(p.id));
+          if (clusterPapers.length > 0) {
+            setHoveredPaper({
+              ...clusterPapers[0],
+              id: nodeId,
+              title: nodeData.label,
+              takeaway: clusterPapers.map(p => `• ${p.title}`).slice(0, 5).join('\n') +
+                (clusterPapers.length > 5 ? `\n  ...and ${clusterPapers.length - 5} more` : ''),
+              authors: [`Click to expand ${clusterPapers.length} papers`],
+            });
+            setTooltipPos({
+              x: Math.min(renderedPos.x, containerRect.width - 280),
+              y: renderedPos.y,
+            });
+          }
+          return;
+        }
 
         // Use ref to get current papers (avoid stale closure)
         const paper = papersRef.current.find((p) => p.id === nodeId);
@@ -1849,17 +2150,18 @@ export function GraphView({
       runLayout,
       handleDiscoveryNodeClick,
       handleClusterNodeClick,
+      handleAutoClusterNodeClick,
       toggleNodeSelection,
       focusedNodeId,
     ]
   );
 
-  // Re-run layout when filter, layout type, or scatter axes change
+  // Re-run layout when filter, layout type, scatter axes, or clustering changes
   useEffect(() => {
     if (cyRef.current && !isFirstRender.current) {
       runLayout(true);
     }
-  }, [filteredPapers.length, showEdges, layoutType, discoveryElements.length, scatterXAxis, scatterYAxis]);
+  }, [filteredPapers.length, showEdges, layoutType, discoveryElements.length, scatterXAxis, scatterYAxis, autoClusters.length, enableAutoClustering, expandedClusterIds.size]);
 
   // Handle tool mode changes
   useEffect(() => {
@@ -2225,7 +2527,7 @@ export function GraphView({
 
       {/* Layout Picker Panel - Positioned below toolbar */}
       {showLayoutPicker && (
-        <div className="absolute top-16 left-4 z-30 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 w-[220px] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-16 left-4 z-30 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 w-[260px] animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Layout</h4>
             <button
@@ -2235,31 +2537,42 @@ export function GraphView({
               <X size={14} className="text-slate-400" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="space-y-1">
             {[
-              { value: 'hybrid', label: 'Hybrid', desc: 'Connected Papers-style similarity clustering' },
-              { value: 'fcose', label: 'Auto', desc: 'Force-directed' },
-              { value: 'role-clustered', label: 'By Role', desc: 'Group by thesis role' },
-              { value: 'temporal', label: 'Timeline', desc: 'Left=old, Right=new' },
-              { value: 'scatter', label: 'Scatter', desc: 'Custom X/Y axes' },
-              { value: 'concentric', label: 'Citations', desc: 'High cites = center' },
-              { value: 'circle', label: 'Circle', desc: 'Grouped by role' },
-              { value: 'grid', label: 'Grid', desc: 'Sorted by year' },
-            ].map(({ value, label, desc }) => (
+              { value: 'hybrid', label: 'Similar', desc: 'Clusters by content similarity', bestFor: 'Discovering hidden relationships' },
+              { value: 'fcose', label: 'Force', desc: 'Physics-based, connected papers attract', bestFor: 'Seeing connection structure' },
+              { value: 'role-clustered', label: 'Regions', desc: 'Fixed zones by thesis role', bestFor: 'Comparing supports vs contradicts' },
+              { value: 'temporal', label: 'Timeline', desc: 'Papers arranged by publication year', bestFor: 'Understanding research evolution' },
+              { value: 'scatter', label: 'Scatter', desc: 'Custom X/Y axes for analysis', bestFor: 'Finding correlations' },
+              { value: 'concentric', label: 'Impact', desc: 'High-cited papers at center', bestFor: 'Identifying key papers' },
+              { value: 'circle', label: 'Circle', desc: 'Papers in a ring, grouped by role', bestFor: 'Overview presentations' },
+              { value: 'grid', label: 'Grid', desc: 'Orderly grid, sorted by year', bestFor: 'Systematic review' },
+            ].map(({ value, label, desc, bestFor }) => (
               <button
                 key={value}
                 onClick={() => {
                   setLayoutType(value as LayoutType);
                   if (value !== 'scatter' && value !== 'hybrid') setShowLayoutPicker(false);
                 }}
-                title={desc}
-                className={`px-3 py-2 text-xs rounded-lg transition-all duration-150 ${
+                className={`w-full px-3 py-2 text-left rounded-lg transition-all duration-150 ${
                   layoutType === value
-                    ? 'bg-indigo-500 text-white font-medium'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                    ? 'bg-indigo-500 text-white'
+                    : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
-                {label}
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-medium ${layoutType === value ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                    {label}
+                  </span>
+                  {value === 'hybrid' && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${layoutType === value ? 'bg-white/20 text-white' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
+                      NEW
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[10px] mt-0.5 ${layoutType === value ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {desc}
+                </p>
               </button>
             ))}
           </div>
@@ -2378,6 +2691,129 @@ export function GraphView({
                   }))}
                   className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                 />
+              </div>
+
+              {/* Auto-Clustering Section */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-600">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Clustering</div>
+
+                {/* Enable Clustering Toggle */}
+                <label className="flex items-center justify-between cursor-pointer mb-2">
+                  <span className="text-xs text-slate-600 dark:text-slate-300">Merge similar papers</span>
+                  <button
+                    onClick={() => {
+                      setEnableAutoClustering(!enableAutoClustering);
+                      setExpandedClusterIds(new Set()); // Reset expanded state
+                    }}
+                    className={`w-9 h-5 rounded-full transition-colors ${
+                      enableAutoClustering ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      enableAutoClustering ? 'translate-x-4' : 'translate-x-0.5'
+                    }`} />
+                  </button>
+                </label>
+
+                {/* Cluster Threshold - only show when enabled */}
+                {enableAutoClustering && (
+                  <>
+                    <div className="mb-2">
+                      <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">
+                        Similarity required: {(clusterThreshold * 100).toFixed(0)}%
+                      </label>
+                      <input
+                        type="range"
+                        min="30"
+                        max="70"
+                        value={clusterThreshold * 100}
+                        onChange={(e) => setClusterThreshold(parseInt(e.target.value) / 100)}
+                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      />
+                      <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
+                        <span>Loose (more merging)</span>
+                        <span>Strict (less merging)</span>
+                      </div>
+                    </div>
+
+                    {/* Cluster stats */}
+                    <div className="text-[10px] text-slate-400">
+                      {autoClusters.length} clusters • {autoClusters.reduce((sum, c) => sum + c.paperIds.length, 0)} papers grouped
+                    </div>
+
+                    {/* Expand all / Collapse all */}
+                    {autoClusters.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => setExpandedClusterIds(new Set(autoClusters.map(c => c.id)))}
+                          className="flex-1 px-2 py-1 text-[10px] bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          Expand All
+                        </button>
+                        <button
+                          onClick={() => setExpandedClusterIds(new Set())}
+                          className="flex-1 px-2 py-1 text-[10px] bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          Collapse All
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Visual Encoding Section */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-600">
+                <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Visual Encoding</div>
+
+                {/* Node Color Mode */}
+                <div className="mb-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">Color by</label>
+                  <div className="flex gap-1">
+                    {(['role', 'year'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setHybridConfig(prev => ({ ...prev, nodeColorMetric: mode }))}
+                        className={`flex-1 px-2 py-1 text-[10px] rounded transition-all ${
+                          hybridConfig.nodeColorMetric === mode
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
+                        }`}
+                      >
+                        {mode === 'role' ? 'Role' : 'Year'}
+                      </button>
+                    ))}
+                  </div>
+                  {hybridConfig.nodeColorMetric === 'year' && (
+                    <div className="mt-1 flex items-center justify-between text-[9px] text-slate-400">
+                      <span>{yearRange.min}</span>
+                      <span className="flex-1 mx-2 h-1.5 rounded" style={{
+                        background: 'linear-gradient(to right, #93c5fd, #1e40af)'
+                      }} />
+                      <span>{yearRange.max}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Node Size Mode */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">Size by</label>
+                  <div className="flex gap-1">
+                    {(['fixed', 'citations', 'connections'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setHybridConfig(prev => ({ ...prev, nodeSizeMetric: mode }))}
+                        className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
+                          hybridConfig.nodeSizeMetric === mode
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
+                        }`}
+                      >
+                        {mode === 'fixed' ? 'Fixed' : mode === 'citations' ? 'Cites' : 'Links'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Stats */}
