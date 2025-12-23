@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  Bot,
   Key,
   Zap,
   Shield,
@@ -25,11 +24,7 @@ import { getSimilarityCacheStats, clearSimilarityCache } from '../../services/ap
 import { getEmbeddingCacheStats, clearEmbeddingCache } from '../../services/api/semanticScholar';
 import { getRetractionCheckStats, clearRetractionCache } from '../../services/intake/retractionCheck';
 
-interface AISettingsProps {
-  onClose?: () => void;
-}
-
-export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
+export const AISettings: React.FC = () => {
   const {
     settings,
     updateSettings,
@@ -83,21 +78,6 @@ export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-          <Bot className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-            AI Settings
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Configure AI-powered suggestions
-          </p>
-        </div>
-      </div>
-
       {/* API Configuration */}
       <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="flex items-center gap-2 mb-3">
@@ -394,18 +374,6 @@ export const AISettings: React.FC<AISettingsProps> = ({ onClose }) => {
 
       {/* Cache Management */}
       <CacheManagement />
-
-      {/* Close Button */}
-      {onClose && (
-        <div className="flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-          >
-            Done
-          </button>
-        </div>
-      )}
     </div>
   );
 };

@@ -136,7 +136,22 @@ export function useAI(): UseAIReturn {
   // Suggest connections for a paper
   const suggestConnections = useCallback(async (targetPaperId: string) => {
     if (!activeThesis) {
-      throw new Error('No active thesis');
+      throw new Error('No active thesis. Please ensure the thesis is selected.');
+    }
+
+    // Check that the target paper exists in thesis papers
+    const targetPaper = thesisPapers.find(p => p.id === targetPaperId);
+    if (!targetPaper) {
+      // Try to find in all papers and use that thesis
+      const paperInAllPapers = papers.find(p => p.id === targetPaperId);
+      if (paperInAllPapers) {
+        throw new Error(`Paper found but not in active thesis. Active thesis ID: ${activeThesisId}, Paper thesis ID: ${paperInAllPapers.thesisId}`);
+      }
+      throw new Error(`Target paper not found: ${targetPaperId}`);
+    }
+
+    if (thesisPapers.length < 2) {
+      throw new Error('Need at least 2 papers in the thesis to suggest connections');
     }
 
     setState(prev => ({
@@ -174,7 +189,7 @@ export function useAI(): UseAIReturn {
       }));
       throw error;
     }
-  }, [activeThesis, thesisPapers, thesisConnections, annotations, manager]);
+  }, [activeThesis, activeThesisId, papers, thesisPapers, thesisConnections, annotations, manager]);
 
   // Suggest takeaway for a paper
   const suggestTakeaway = useCallback(async (paperData: {

@@ -11,7 +11,6 @@ import {
 import { cacheManager, type CacheType, type CacheStats } from '../services/cache';
 import {
   getStorageVersion,
-  needsMigration,
   ensureMigrated,
   type MigrationResult,
 } from '../services/storage/migrations';

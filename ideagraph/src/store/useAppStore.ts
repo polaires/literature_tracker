@@ -196,8 +196,9 @@ const defaultAISettings: AISettings = {
 };
 
 export const useAppStore = create<AppStore>()(
-  persist(
-    (set, get) => ({
+  subscribeWithSelector(
+    persist(
+      (set, get) => ({
       // Initial state
       theses: [],
       papers: [],
@@ -1007,13 +1008,30 @@ export const useAppStore = create<AppStore>()(
       name: 'ideagraph-storage',
       // Merge function for handling state updates (used by multi-tab sync)
       merge: (persistedState, currentState) => {
-        // Deep merge persisted state with current state
+        const persisted = persistedState as typeof currentState;
+        // Deep merge persisted state with current state, ensuring defaults are preserved
         return {
           ...currentState,
-          ...(persistedState as object),
+          ...persisted,
+          // Ensure settings are deep-merged with defaults
+          settings: {
+            ...currentState.settings,
+            ...(persisted?.settings || {}),
+          },
+          // Ensure AI settings are deep-merged with defaults to pick up new feature flags
+          aiSettings: {
+            ...currentState.aiSettings,
+            ...(persisted?.aiSettings || {}),
+            // Deep merge taskModels
+            taskModels: {
+              ...currentState.aiSettings.taskModels,
+              ...(persisted?.aiSettings?.taskModels || {}),
+            },
+          },
         };
       },
     }
+    )
   )
 );
 

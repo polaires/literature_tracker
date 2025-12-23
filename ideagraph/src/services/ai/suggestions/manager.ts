@@ -110,13 +110,22 @@ export class SuggestionManager {
 
     const { thesis, papers, connections, targetPaperId, annotations, maxSuggestions } = params;
 
-    // Get relevant papers for context
+    // Find the target paper
+    const targetPaper = papers.find(p => p.id === targetPaperId);
+    if (!targetPaper) {
+      throw new AIError('INVALID_INPUT', `Target paper not found: ${targetPaperId}`, false);
+    }
+
+    // Get relevant papers for context (this excludes target paper)
     const relevantPapers = getRelevantPapers(targetPaperId, papers, connections, 15);
+
+    // Include target paper in the papers array for context building
+    const papersForContext = [targetPaper, ...relevantPapers.filter(p => p.id !== targetPaperId)];
 
     // Build context
     let context = buildAIContext({
       thesis,
-      papers: relevantPapers,
+      papers: papersForContext,
       connections,
       targetPaperId,
       annotations,

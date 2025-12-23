@@ -3,7 +3,7 @@ import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import fcose from 'cytoscape-fcose';
 import type { Core, ElementDefinition } from 'cytoscape';
-import type { Paper, Connection, ThesisRole, PaperCluster } from '../../types';
+import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus } from '../../types';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import { getSimilarPapers, fetchPaperByDOI } from '../../services/api/semanticScholar';
 import { QuickAddModal } from './QuickAddModal';
@@ -22,7 +22,25 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  Link2,
+  MousePointer2,
+  Pin,
+  Focus,
+  Plus,
+  Trash2,
+  MoreHorizontal,
+  Square,
+  ArrowRight,
+  Check,
+  XCircle,
+  ArrowRightCircle,
+  AlertCircle,
+  Settings2,
+  BookOpen,
+  RotateCcw,
+  Circle,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 // Register fcose layout once
 if (!cytoscape.prototype.hasInitializedFcose) {
@@ -43,9 +61,35 @@ interface GraphViewProps {
     addAsScreening: boolean;
   }) => void;
   onOpenSearch: () => void;
+  onOpenAddPaper?: () => void;
   onViewPdf?: (url: string) => void;
   onCreateCluster: (name: string, paperIds: string[]) => void;
   onToggleClusterCollapse: (clusterId: string) => void;
+}
+
+// Connection type options for inline picker with Lucide icons
+const CONNECTION_TYPE_OPTIONS: { value: ConnectionType; label: string; color: string; Icon: LucideIcon }[] = [
+  { value: 'supports', label: 'Supports', color: '#10b981', Icon: Check },
+  { value: 'contradicts', label: 'Contradicts', color: '#f43f5e', Icon: XCircle },
+  { value: 'extends', label: 'Extends', color: '#f59e0b', Icon: ArrowRightCircle },
+  { value: 'critiques', label: 'Critiques', color: '#f97316', Icon: AlertCircle },
+  { value: 'uses-method', label: 'Uses Method', color: '#06b6d4', Icon: Settings2 },
+  { value: 'reviews', label: 'Reviews', color: '#8b5cf6', Icon: BookOpen },
+  { value: 'replicates', label: 'Replicates', color: '#22c55e', Icon: RotateCcw },
+  { value: 'same-topic', label: 'Same Topic', color: '#94a3b8', Icon: Circle },
+];
+
+// Tool modes for the graph
+type ToolMode = 'pointer' | 'connect' | 'select' | 'discovery' | 'focus';
+
+// Context menu state
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  type: 'node' | 'edge' | 'canvas';
+  targetId: string | null;
+  targetData?: Record<string, unknown>;
 }
 
 // Refined color palette with gradients
@@ -80,28 +124,30 @@ interface DiscoveryState {
 }
 
 export function GraphView({
-  thesis: _thesis,
+  thesis,
   papers,
   connections,
   clusters,
   onPaperSelect,
   onAddPaper,
   onOpenSearch,
+  onOpenAddPaper,
   onViewPdf,
   onCreateCluster,
   onToggleClusterCollapse,
 }: GraphViewProps) {
-  void _thesis; // Available for future use (e.g., thesis-centered layout)
   const cyRef = useRef<Core | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<ReturnType<Core['layout']> | null>(null);
   const isFirstRender = useRef(true);
 
   // Refs to track current state for event handlers (avoid stale closures)
-  const discoveryModeRef = useRef(false);
-  const selectModeRef = useRef(false);
+  const toolModeRef = useRef<ToolMode>('pointer');
   const papersRef = useRef<Paper[]>([]);
   const fetchSimilarPapersRef = useRef<(paper: { id?: string; semanticScholarId?: string | null; doi?: string | null; title: string }) => void>(() => {});
+
+  // Store actions
+  const { createConnection, deleteConnection, updatePaper: storeUpdatePaper, deletePaper } = useAppStore();
 
   // UI state
   const [activeRoles, setActiveRoles] = useState<Set<ThesisRole>>(
@@ -109,13 +155,22 @@ export function GraphView({
   );
   const [showEdges, setShowEdges] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [layoutType, setLayoutType] = useState<LayoutType>('fcose');
   const [hoveredPaper, setHoveredPaper] = useState<Paper | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
 
-  // Phase 4: Discovery Mode state
-  const [discoveryMode, setDiscoveryMode] = useState(false);
+  // Tool mode (unified mode selector)
+  const [toolMode, setToolMode] = useState<ToolMode>('pointer');
+
+  // Connect mode state
+  const [connectSourceId, setConnectSourceId] = useState<string | null>(null);
+  const [showConnectionTypePicker, setShowConnectionTypePicker] = useState(false);
+  const [pendingConnection, setPendingConnection] = useState<{ from: string; to: string } | null>(null);
+  const [connectionPickerPos, setConnectionPickerPos] = useState({ x: 0, y: 0 });
+
+  // Discovery Mode state
   const [discoveryState, setDiscoveryState] = useState<DiscoveryState>({
     sourcePaperId: null,
     papers: [],
@@ -124,13 +179,33 @@ export function GraphView({
   });
   const [selectedDiscoveryPaper, setSelectedDiscoveryPaper] = useState<SemanticScholarPaper | null>(null);
 
-  // Phase 4: Multi-select for clustering
-  const [selectMode, setSelectMode] = useState(false);
+  // Multi-select state
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
   const [showClusterModal, setShowClusterModal] = useState(false);
   const [newClusterName, setNewClusterName] = useState('');
+  const [isBoxSelecting, setIsBoxSelecting] = useState(false);
+  const [boxSelectStart, setBoxSelectStart] = useState<{ x: number; y: number } | null>(null);
+  const [boxSelectEnd, setBoxSelectEnd] = useState<{ x: number; y: number } | null>(null);
 
-  // Phase 4: Filter - hide screening papers
+  // Bulk actions panel
+  const [showBulkActions, setShowBulkActions] = useState(false);
+
+  // Focus mode state
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+
+  // Pinned nodes
+  const [pinnedNodes, setPinnedNodes] = useState<Set<string>>(new Set());
+
+  // Context menu
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    type: 'canvas',
+    targetId: null,
+  });
+
+  // Filter - hide screening papers
   const [hideScreening, setHideScreening] = useState(false);
 
   // Scatter plot axis configuration
@@ -139,16 +214,39 @@ export function GraphView({
 
   // Keep refs in sync with state (for event handlers to avoid stale closures)
   useEffect(() => {
-    discoveryModeRef.current = discoveryMode;
-  }, [discoveryMode]);
-
-  useEffect(() => {
-    selectModeRef.current = selectMode;
-  }, [selectMode]);
+    toolModeRef.current = toolMode;
+  }, [toolMode]);
 
   useEffect(() => {
     papersRef.current = papers;
   }, [papers]);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(prev => ({ ...prev, visible: false }));
+    if (contextMenu.visible) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu.visible]);
+
+  // Handle escape key to exit modes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (toolMode !== 'pointer') {
+          setToolMode('pointer');
+          setConnectSourceId(null);
+          setShowConnectionTypePicker(false);
+          setFocusedNodeId(null);
+        }
+        setContextMenu(prev => ({ ...prev, visible: false }));
+        setSelectedNodes(new Set());
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [toolMode]);
 
   // Existing paper IDs for filtering out duplicates
   const existingSemanticScholarIds = useMemo(
@@ -212,6 +310,9 @@ export function GraphView({
         year: paper.year,
         citationCount: paper.citationCount || 0,
         isSelected: selectedNodes.has(paper.id),
+        isPinned: pinnedNodes.has(paper.id),
+        isConnectSource: connectSourceId === paper.id,
+        isFocused: focusedNodeId === paper.id,
       },
     }));
 
@@ -246,7 +347,7 @@ export function GraphView({
       : [];
 
     return [...nodes, ...clusterNodes, ...edges];
-  }, [filteredPapers, filteredConnections, showEdges, selectedNodes, clusters, collapsedClusterPaperIds, filteredPaperIds, getShortLabel]);
+  }, [filteredPapers, filteredConnections, showEdges, selectedNodes, pinnedNodes, connectSourceId, focusedNodeId, clusters, collapsedClusterPaperIds, filteredPaperIds, getShortLabel]);
 
   // Helper: Generate short label for Semantic Scholar papers
   const getSSPaperLabel = useCallback((paper: { authors: { name: string }[]; year: number | null; title: string }) => {
@@ -376,6 +477,36 @@ export function GraphView({
           'border-width': 4,
           'border-color': '#6366f1',
           'border-opacity': 1,
+        },
+      },
+      // Pinned nodes
+      {
+        selector: 'node[?isPinned]',
+        style: {
+          'border-style': 'double',
+          'border-width': 3,
+        },
+      },
+      // Connect source node (first node in connect mode)
+      {
+        selector: 'node[?isConnectSource]',
+        style: {
+          'border-width': 4,
+          'border-color': '#f59e0b',
+          'border-opacity': 1,
+          width: 54,
+          height: 54,
+        },
+      },
+      // Focused node
+      {
+        selector: 'node[?isFocused]',
+        style: {
+          'border-width': 4,
+          'border-color': '#8b5cf6',
+          'border-opacity': 1,
+          width: 56,
+          height: 56,
         },
       },
       // Edge styling
@@ -1006,9 +1137,121 @@ export function GraphView({
       setSelectedNodes(new Set());
       setNewClusterName('');
       setShowClusterModal(false);
-      setSelectMode(false);
+      setToolMode('pointer');
     }
   }, [selectedNodes, newClusterName, onCreateCluster]);
+
+  // Toggle pin for a node
+  const togglePinNode = useCallback((nodeId: string) => {
+    setPinnedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Handle connection creation
+  const handleCreateConnection = useCallback((type: ConnectionType) => {
+    if (pendingConnection) {
+      createConnection({
+        thesisId: thesis.id,
+        fromPaperId: pendingConnection.from,
+        toPaperId: pendingConnection.to,
+        type,
+        note: null,
+        aiSuggested: false,
+        aiConfidence: null,
+        userApproved: true,
+      });
+      setPendingConnection(null);
+      setShowConnectionTypePicker(false);
+      setConnectSourceId(null);
+    }
+  }, [pendingConnection, thesis.id, createConnection]);
+
+  // Handle bulk role change
+  const handleBulkRoleChange = useCallback((role: ThesisRole) => {
+    selectedNodes.forEach(nodeId => {
+      storeUpdatePaper(nodeId, { thesisRole: role });
+    });
+    setSelectedNodes(new Set());
+    setShowBulkActions(false);
+  }, [selectedNodes, storeUpdatePaper]);
+
+  // Handle bulk status change
+  const handleBulkStatusChange = useCallback((status: ReadingStatus) => {
+    selectedNodes.forEach(nodeId => {
+      storeUpdatePaper(nodeId, {
+        readingStatus: status,
+        readAt: status === 'read' ? new Date().toISOString() : undefined,
+      });
+    });
+    setSelectedNodes(new Set());
+    setShowBulkActions(false);
+  }, [selectedNodes, storeUpdatePaper]);
+
+  // Handle bulk delete
+  const handleBulkDelete = useCallback(() => {
+    if (confirm(`Delete ${selectedNodes.size} papers?`)) {
+      selectedNodes.forEach(nodeId => {
+        deletePaper(nodeId);
+      });
+      setSelectedNodes(new Set());
+      setShowBulkActions(false);
+    }
+  }, [selectedNodes, deletePaper]);
+
+  // Invert selection
+  const invertSelection = useCallback(() => {
+    const allIds = new Set(filteredPapers.map(p => p.id));
+    const inverted = new Set<string>();
+    allIds.forEach(id => {
+      if (!selectedNodes.has(id)) {
+        inverted.add(id);
+      }
+    });
+    setSelectedNodes(inverted);
+  }, [filteredPapers, selectedNodes]);
+
+  // Select all visible papers
+  const selectAll = useCallback(() => {
+    setSelectedNodes(new Set(filteredPapers.map(p => p.id)));
+  }, [filteredPapers]);
+
+  // Connect all selected papers with same-topic connection
+  const handleBulkConnect = useCallback((connectionType: ConnectionType) => {
+    const selectedArray = Array.from(selectedNodes);
+    if (selectedArray.length < 2) return;
+
+    // Create connections between consecutive pairs to avoid n^2 connections
+    for (let i = 0; i < selectedArray.length - 1; i++) {
+      const fromId = selectedArray[i];
+      const toId = selectedArray[i + 1];
+      // Check if connection already exists
+      const exists = connections.some(
+        c => (c.fromPaperId === fromId && c.toPaperId === toId) ||
+             (c.fromPaperId === toId && c.toPaperId === fromId)
+      );
+      if (!exists) {
+        createConnection({
+          thesisId: thesis.id,
+          fromPaperId: fromId,
+          toPaperId: toId,
+          type: connectionType,
+          note: null,
+          aiSuggested: false,
+          aiConfidence: null,
+          userApproved: true,
+        });
+      }
+    }
+    setSelectedNodes(new Set());
+    setShowBulkActions(false);
+  }, [selectedNodes, connections, createConnection, thesis.id]);
 
   // Initialize cytoscape
   const handleCy = useCallback(
@@ -1020,12 +1263,52 @@ export function GraphView({
         cy.style().update();
       });
 
+      // Right-click context menu
+      cy.on('cxttap', 'node', (event) => {
+        event.originalEvent.preventDefault();
+        const nodeId = event.target.id();
+        const nodeData = event.target.data();
+
+        // Skip for special nodes
+        if (nodeId.startsWith('discovery_') || nodeId.startsWith('cluster_')) return;
+
+        const renderedPos = event.target.renderedPosition();
+        setContextMenu({
+          visible: true,
+          x: renderedPos.x,
+          y: renderedPos.y,
+          type: 'node',
+          targetId: nodeId,
+          targetData: nodeData,
+        });
+      });
+
+      cy.on('cxttap', 'edge', (event) => {
+        event.originalEvent.preventDefault();
+        const edgeId = event.target.id();
+        const edgeData = event.target.data();
+
+        // Skip discovery edges
+        if (edgeId.startsWith('discovery_')) return;
+
+        const midpoint = event.target.midpoint();
+        const pan = cy.pan();
+        const zoom = cy.zoom();
+        setContextMenu({
+          visible: true,
+          x: midpoint.x * zoom + pan.x,
+          y: midpoint.y * zoom + pan.y,
+          type: 'edge',
+          targetId: edgeId,
+          targetData: edgeData,
+        });
+      });
+
       // Click handler - uses refs to avoid stale closures
       cy.on('tap', 'node', (event) => {
         const nodeId = event.target.id();
         const nodeData = event.target.data();
-
-        console.log('[GraphView] Node clicked:', nodeId, 'discoveryMode:', discoveryModeRef.current);
+        const currentMode = toolModeRef.current;
 
         // Check if it's a discovery node
         if (nodeId.startsWith('discovery_')) {
@@ -1040,41 +1323,90 @@ export function GraphView({
           return;
         }
 
-        // Discovery mode: fetch similar papers (use refs to get current values)
-        if (discoveryModeRef.current) {
-          const paper = papersRef.current.find((p) => p.id === nodeId);
-          console.log('[GraphView] Discovery mode active, paper:', paper?.title, 'semanticScholarId:', paper?.semanticScholarId, 'doi:', paper?.doi);
-          if (paper) {
-            // Pass the full paper info including id for caching
-            fetchSimilarPapersRef.current({
-              id: paper.id,
-              semanticScholarId: paper.semanticScholarId,
-              doi: paper.doi,
-              title: paper.title,
+        // Handle based on current tool mode
+        switch (currentMode) {
+          case 'connect': {
+            // Connect mode: first click sets source, second click creates connection
+            setConnectSourceId(prev => {
+              if (prev === null) {
+                // First click - set source
+                return nodeId;
+              } else if (prev !== nodeId) {
+                // Second click - show connection type picker
+                const targetNode = cy.getElementById(nodeId);
+                const sourceNode = cy.getElementById(prev);
+                if (targetNode && sourceNode) {
+                  const midX = (sourceNode.renderedPosition().x + targetNode.renderedPosition().x) / 2;
+                  const midY = (sourceNode.renderedPosition().y + targetNode.renderedPosition().y) / 2;
+                  setConnectionPickerPos({ x: midX, y: midY });
+                }
+                setPendingConnection({ from: prev, to: nodeId });
+                setShowConnectionTypePicker(true);
+                return prev; // Keep source until connection is created
+              }
+              return prev;
             });
-          } else {
-            console.warn('Paper not found for node:', nodeId);
+            break;
           }
-          return;
-        }
 
-        // Select mode: toggle selection (use ref to get current value)
-        if (selectModeRef.current || event.originalEvent.shiftKey) {
-          toggleNodeSelection(nodeId);
-          return;
-        }
+          case 'discovery': {
+            const paper = papersRef.current.find((p) => p.id === nodeId);
+            if (paper) {
+              fetchSimilarPapersRef.current({
+                id: paper.id,
+                semanticScholarId: paper.semanticScholarId,
+                doi: paper.doi,
+                title: paper.title,
+              });
+            }
+            break;
+          }
 
-        // Normal mode: select paper
-        onPaperSelect(nodeId);
+          case 'select': {
+            toggleNodeSelection(nodeId);
+            break;
+          }
+
+          case 'focus': {
+            setFocusedNodeId(prev => prev === nodeId ? null : nodeId);
+            // Apply focus effect
+            if (focusedNodeId !== nodeId) {
+              const node = cy.getElementById(nodeId);
+              const neighborhood = node.neighborhood().add(node);
+              cy.elements().addClass('dimmed');
+              neighborhood.removeClass('dimmed').addClass('highlighted');
+            } else {
+              cy.elements().removeClass('dimmed highlighted');
+            }
+            break;
+          }
+
+          case 'pointer':
+          default: {
+            // Shift+click for multi-select even in pointer mode
+            if (event.originalEvent.shiftKey) {
+              toggleNodeSelection(nodeId);
+            } else {
+              onPaperSelect(nodeId);
+            }
+            break;
+          }
+        }
       });
 
-      // Hover effects with smooth transitions
+      // Hover effects with smooth transitions (only in pointer mode)
       cy.on('mouseover', 'node', (event) => {
         const node = event.target;
         const nodeId = node.id();
+        const currentMode = toolModeRef.current;
 
-        // Skip hover effects for discovery/cluster nodes
+        // Skip hover effects for discovery/cluster nodes or when in focus mode with a focused node
         if (nodeId.startsWith('discovery_') || nodeId.startsWith('cluster_')) {
+          return;
+        }
+
+        // Don't apply hover effects if in focus mode with a focused node
+        if (currentMode === 'focus' && focusedNodeId) {
           return;
         }
 
@@ -1097,6 +1429,11 @@ export function GraphView({
       });
 
       cy.on('mouseout', 'node', () => {
+        const currentMode = toolModeRef.current;
+        // Don't clear if in focus mode with a focused node
+        if (currentMode === 'focus' && focusedNodeId) {
+          return;
+        }
         cy.elements().removeClass('dimmed highlighted');
         setHoveredPaper(null);
       });
@@ -1107,6 +1444,80 @@ export function GraphView({
           duration: 300,
           easing: 'ease-out-cubic',
         });
+      });
+
+      // Box selection support - works in select mode OR pointer mode with Shift key
+      // Use local variable to track within the callback scope
+      let boxStartPos: { x: number; y: number } | null = null;
+      let isCurrentlyBoxSelecting = false;
+
+      cy.on('mousedown', (event) => {
+        const currentMode = toolModeRef.current;
+        const isOnCanvas = !event.target.isNode?.() && !event.target.isEdge?.();
+        const shiftHeld = event.originalEvent?.shiftKey;
+
+        // In pointer mode: only box select with Shift held
+        // In select mode: always allow box select on canvas
+        const shouldBoxSelect = isOnCanvas && (currentMode === 'select' || (currentMode === 'pointer' && shiftHeld));
+
+        if (shouldBoxSelect) {
+          boxStartPos = { x: event.renderedPosition.x, y: event.renderedPosition.y };
+          isCurrentlyBoxSelecting = true;
+          setBoxSelectStart(boxStartPos);
+          setIsBoxSelecting(true);
+          // Prevent panning when starting box select
+          event.originalEvent?.preventDefault();
+        }
+      });
+
+      cy.on('mousemove', (event) => {
+        if (isCurrentlyBoxSelecting && boxStartPos) {
+          setBoxSelectEnd({ x: event.renderedPosition.x, y: event.renderedPosition.y });
+        }
+      });
+
+      cy.on('mouseup', (event) => {
+        if (isCurrentlyBoxSelecting && boxStartPos) {
+          const endPos = { x: event.renderedPosition.x, y: event.renderedPosition.y };
+
+          // Only select if box is bigger than a small threshold (to distinguish from clicks)
+          const boxWidth = Math.abs(endPos.x - boxStartPos.x);
+          const boxHeight = Math.abs(endPos.y - boxStartPos.y);
+
+          if (boxWidth > 10 || boxHeight > 10) {
+            // Calculate box bounds
+            const minX = Math.min(boxStartPos.x, endPos.x);
+            const maxX = Math.max(boxStartPos.x, endPos.x);
+            const minY = Math.min(boxStartPos.y, endPos.y);
+            const maxY = Math.max(boxStartPos.y, endPos.y);
+
+            // Select nodes within box
+            const newSelection = new Set<string>();
+            cy.nodes().forEach((node) => {
+              const pos = node.renderedPosition();
+              if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
+                const nodeId = node.id();
+                if (!nodeId.startsWith('discovery_') && !nodeId.startsWith('cluster_')) {
+                  newSelection.add(nodeId);
+                }
+              }
+            });
+
+            if (newSelection.size > 0) {
+              setSelectedNodes(prev => {
+                const combined = new Set(prev);
+                newSelection.forEach(id => combined.add(id));
+                return combined;
+              });
+            }
+          }
+
+          boxStartPos = null;
+          isCurrentlyBoxSelecting = false;
+          setIsBoxSelecting(false);
+          setBoxSelectStart(null);
+          setBoxSelectEnd(null);
+        }
       });
 
       // Run initial layout after a brief delay
@@ -1121,6 +1532,7 @@ export function GraphView({
       handleDiscoveryNodeClick,
       handleClusterNodeClick,
       toggleNodeSelection,
+      focusedNodeId,
     ]
   );
 
@@ -1131,19 +1543,32 @@ export function GraphView({
     }
   }, [filteredPapers.length, showEdges, layoutType, discoveryElements.length, scatterXAxis, scatterYAxis]);
 
-  // Clear discovery when exiting discovery mode
+  // Handle tool mode changes
   useEffect(() => {
-    if (!discoveryMode) {
+    // Clear discovery when not in discovery mode
+    if (toolMode !== 'discovery') {
       clearDiscovery();
     }
-  }, [discoveryMode, clearDiscovery]);
-
-  // Clear selection when exiting select mode
-  useEffect(() => {
-    if (!selectMode) {
-      setSelectedNodes(new Set());
+    // Note: Don't clear selection when changing modes - keep it so user can switch back
+    // Selection is only cleared explicitly via X button or Escape key
+    // Clear connect state when not in connect mode
+    if (toolMode !== 'connect') {
+      setConnectSourceId(null);
+      setShowConnectionTypePicker(false);
+      setPendingConnection(null);
     }
-  }, [selectMode]);
+    // Clear focus when not in focus mode
+    if (toolMode !== 'focus') {
+      setFocusedNodeId(null);
+      if (cyRef.current) {
+        cyRef.current.elements().removeClass('dimmed highlighted');
+      }
+    }
+    // Disable panning in select mode to prevent drag conflicts with box selection
+    if (cyRef.current) {
+      cyRef.current.userPanningEnabled(toolMode !== 'select');
+    }
+  }, [toolMode, clearDiscovery]);
 
   // Zoom handlers
   const handleZoom = (factor: number) => {
@@ -1224,77 +1649,143 @@ export function GraphView({
         </div>
       )}
 
-      {/* Control Panel - Top Left */}
-      <div className="absolute top-4 left-4 flex items-start gap-2">
-        {/* Zoom Controls */}
-        <div className="flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <button
-            onClick={() => handleZoom(1.3)}
-            className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            title="Zoom In"
-          >
-            <ZoomIn size={18} className="text-slate-600 dark:text-slate-300" />
-          </button>
-          <div className="h-px bg-slate-200 dark:bg-slate-700" />
-          <button
-            onClick={() => handleZoom(0.7)}
-            className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            title="Zoom Out"
-          >
-            <ZoomOut size={18} className="text-slate-600 dark:text-slate-300" />
-          </button>
-          <div className="h-px bg-slate-200 dark:bg-slate-700" />
-          <button
-            onClick={handleFit}
-            className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            title="Fit to View"
-          >
-            <Maximize2 size={18} className="text-slate-600 dark:text-slate-300" />
-          </button>
+      {/* Control Panel - Top Horizontal Toolbar */}
+      <div className="absolute top-4 left-4 right-4 flex items-start justify-between pointer-events-none">
+        {/* Left Toolbar Group */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Quick Add Button */}
+          {onOpenAddPaper && (
+            <button
+              onClick={onOpenAddPaper}
+              className="p-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors"
+              title="Add Paper"
+            >
+              <Plus size={18} />
+            </button>
+          )}
+
+          {/* Navigation Tools */}
+          <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <button
+              onClick={() => handleZoom(1.3)}
+              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-r border-slate-200 dark:border-slate-700"
+              title="Zoom In"
+            >
+              <ZoomIn size={18} className="text-slate-600 dark:text-slate-300" />
+            </button>
+            <button
+              onClick={() => handleZoom(0.7)}
+              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-r border-slate-200 dark:border-slate-700"
+              title="Zoom Out"
+            >
+              <ZoomOut size={18} className="text-slate-600 dark:text-slate-300" />
+            </button>
+            <button
+              onClick={handleFit}
+              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              title="Fit to View"
+            >
+              <Maximize2 size={18} className="text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
+
+          {/* Tool Mode Group */}
+          <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <button
+              onClick={() => setToolMode('pointer')}
+              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+                toolMode === 'pointer'
+                  ? 'bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-white'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+              title="Pointer Mode - Click to select, Shift+drag to box select"
+            >
+              <MousePointer2 size={18} />
+            </button>
+            <button
+              onClick={() => setToolMode(toolMode === 'connect' ? 'pointer' : 'connect')}
+              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+                toolMode === 'connect'
+                  ? 'bg-amber-500 text-white'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+              title="Connect Mode - Click source → Click target"
+            >
+              <Link2 size={18} />
+            </button>
+            <button
+              onClick={() => setToolMode(toolMode === 'select' ? 'pointer' : 'select')}
+              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+                toolMode === 'select'
+                  ? 'bg-cyan-500 text-white'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+              title="Select Mode - Click or drag to select multiple"
+            >
+              <Square size={18} />
+            </button>
+            <button
+              onClick={() => setToolMode(toolMode === 'discovery' ? 'pointer' : 'discovery')}
+              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+                toolMode === 'discovery'
+                  ? 'bg-purple-500 text-white'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+              title="Discovery Mode - Find similar papers"
+            >
+              <Compass size={18} />
+            </button>
+            <button
+              onClick={() => setToolMode(toolMode === 'focus' ? 'pointer' : 'focus')}
+              className={`p-2.5 transition-all duration-200 ${
+                toolMode === 'focus'
+                  ? 'bg-violet-500 text-white'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+              title="Focus Mode - Spotlight paper connections"
+            >
+              <Focus size={18} />
+            </button>
+          </div>
+
+          {/* Options Group */}
+          <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="relative">
+              <button
+                onClick={() => { setShowFilters(!showFilters); setShowLayoutPicker(false); }}
+                className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+                  showFilters
+                    ? 'bg-indigo-500 text-white'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+                title="Filters"
+              >
+                <Filter size={18} />
+              </button>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowFilters(false); }}
+                className={`p-2.5 transition-all duration-200 ${
+                  showLayoutPicker
+                    ? 'bg-indigo-500 text-white'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+                title="Layout Options"
+              >
+                <LayoutGrid size={18} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Filter Toggle */}
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`p-2.5 rounded-xl shadow-lg border transition-all duration-200 ${
-            showFilters
-              ? 'bg-indigo-500 border-indigo-500 text-white'
-              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-          }`}
-          title="Filters"
-        >
-          <Filter size={18} />
-        </button>
+        {/* Right side - empty for balance, stats moved to bottom left */}
+        <div />
+      </div>
 
-        {/* Discovery Mode Toggle */}
-        <button
-          onClick={() => setDiscoveryMode(!discoveryMode)}
-          className={`p-2.5 rounded-xl shadow-lg border transition-all duration-200 ${
-            discoveryMode
-              ? 'bg-purple-500 border-purple-500 text-white'
-              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-          }`}
-          title="Discovery Mode - Click papers to find similar"
-        >
-          <Compass size={18} />
-        </button>
-
-        {/* Select Mode Toggle (for clustering) */}
-        <button
-          onClick={() => setSelectMode(!selectMode)}
-          className={`p-2.5 rounded-xl shadow-lg border transition-all duration-200 ${
-            selectMode
-              ? 'bg-cyan-500 border-cyan-500 text-white'
-              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-          }`}
-          title="Select Mode - Click papers to create clusters"
-        >
-          <Layers size={18} />
-        </button>
-
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="absolute top-0 left-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 min-w-[220px] animate-in fade-in slide-in-from-left-2 duration-200">
+      {/* Filter Panel - Positioned below toolbar, fixed position */}
+      {showFilters && (
+        <div className="absolute top-16 left-4 z-30 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 w-[240px] max-h-[calc(100%-120px)] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                 Filters
@@ -1502,42 +1993,417 @@ export function GraphView({
             </div>
           </div>
         )}
-      </div>
 
-      {/* Discovery Mode Banner */}
-      {discoveryMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-purple-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium flex items-center gap-2">
-          <Compass size={16} />
-          Discovery Mode: Click a paper to find similar
+      {/* Layout Picker Panel - Positioned below toolbar */}
+      {showLayoutPicker && (
+        <div className="absolute top-16 left-4 z-30 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 w-[220px] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Layout</h4>
+            <button
+              onClick={() => setShowLayoutPicker(false)}
+              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X size={14} className="text-slate-400" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { value: 'fcose', label: 'Auto', desc: 'Force-directed' },
+              { value: 'role-clustered', label: 'By Role', desc: 'Group by thesis role' },
+              { value: 'temporal', label: 'Timeline', desc: 'Left=old, Right=new' },
+              { value: 'scatter', label: 'Scatter', desc: 'Custom X/Y axes' },
+              { value: 'concentric', label: 'Citations', desc: 'High cites = center' },
+              { value: 'circle', label: 'Circle', desc: 'Grouped by role' },
+              { value: 'grid', label: 'Grid', desc: 'Sorted by year' },
+            ].map(({ value, label, desc }) => (
+              <button
+                key={value}
+                onClick={() => {
+                  setLayoutType(value as LayoutType);
+                  if (value !== 'scatter') setShowLayoutPicker(false);
+                }}
+                title={desc}
+                className={`px-3 py-2 text-xs rounded-lg transition-all duration-150 ${
+                  layoutType === value
+                    ? 'bg-indigo-500 text-white font-medium'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Scatter Plot Axis Configuration */}
+          {layoutType === 'scatter' && (
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-600 space-y-2">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">X-Axis</label>
+                <div className="flex gap-1">
+                  {(['year', 'citations', 'connections', 'added'] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setScatterXAxis(value)}
+                      className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
+                        scatterXAxis === value
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      {value === 'citations' ? 'Cites' : value === 'connections' ? 'Links' : value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-1">Y-Axis</label>
+                <div className="flex gap-1">
+                  {(['year', 'citations', 'connections', 'added'] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setScatterYAxis(value)}
+                      className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
+                        scatterYAxis === value
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      {value === 'citations' ? 'Cites' : value === 'connections' ? 'Links' : value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Select Mode Banner */}
-      {selectMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-cyan-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium flex items-center gap-2">
-          <Layers size={16} />
-          Select Mode: Click papers to group (Shift+Click)
+      {/* Tool Mode Banners - positioned below toolbar */}
+      {toolMode !== 'pointer' && (
+        <div className={`absolute top-16 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 ${
+          toolMode === 'connect' ? 'bg-amber-500 text-white' :
+          toolMode === 'select' ? 'bg-cyan-500 text-white' :
+          toolMode === 'discovery' ? 'bg-purple-500 text-white' :
+          toolMode === 'focus' ? 'bg-violet-500 text-white' : 'bg-slate-500 text-white'
+        }`}>
+          {toolMode === 'connect' && (
+            <>
+              <Link2 size={16} />
+              {connectSourceId ? (
+                <span className="flex items-center gap-1">
+                  <span className="opacity-60">Step 2:</span> Click target paper
+                  <ArrowRight size={14} />
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span className="opacity-60">Step 1:</span> Click source paper
+                </span>
+              )}
+            </>
+          )}
+          {toolMode === 'select' && (
+            <>
+              <Square size={16} />
+              Click papers or drag to box select
+            </>
+          )}
+          {toolMode === 'discovery' && (
+            <>
+              <Compass size={16} />
+              Click a paper to find similar
+            </>
+          )}
+          {toolMode === 'focus' && (
+            <>
+              <Focus size={16} />
+              Click a paper to spotlight its connections
+            </>
+          )}
+          <button
+            onClick={() => setToolMode('pointer')}
+            className="ml-2 p-1 hover:bg-white/20 rounded transition-colors"
+            title="Exit mode (Esc)"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
-      {/* Multi-select Action Bar */}
-      {selectedNodes.size >= 2 && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
-          <span className="text-sm text-slate-600 dark:text-slate-300">
-            {selectedNodes.size} papers selected
-          </span>
+      {/* Connection Type Picker */}
+      {showConnectionTypePicker && pendingConnection && (
+        <div
+          className="absolute z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 animate-in fade-in zoom-in-95 duration-150"
+          style={{ left: connectionPickerPos.x, top: connectionPickerPos.y, transform: 'translate(-50%, -50%)' }}
+        >
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 text-center">Connection Type</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {CONNECTION_TYPE_OPTIONS.map(({ value, label, color, Icon }) => (
+              <button
+                key={value}
+                onClick={() => handleCreateConnection(value)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
+              >
+                <Icon size={14} style={{ color }} />
+                <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+              </button>
+            ))}
+          </div>
           <button
-            onClick={() => setShowClusterModal(true)}
-            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors"
+            onClick={() => {
+              setShowConnectionTypePicker(false);
+              setPendingConnection(null);
+              setConnectSourceId(null);
+            }}
+            className="mt-2 w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
-            Create Cluster
+            Cancel
           </button>
-          <button
-            onClick={() => setSelectedNodes(new Set())}
-            className="px-3 py-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-sm transition-colors"
-          >
-            Clear
-          </button>
+        </div>
+      )}
+
+      {/* Box Selection Rectangle */}
+      {isBoxSelecting && boxSelectStart && boxSelectEnd && (
+        <div
+          className="absolute border-2 border-cyan-500 bg-cyan-500/10 pointer-events-none"
+          style={{
+            left: Math.min(boxSelectStart.x, boxSelectEnd.x),
+            top: Math.min(boxSelectStart.y, boxSelectEnd.y),
+            width: Math.abs(boxSelectEnd.x - boxSelectStart.x),
+            height: Math.abs(boxSelectEnd.y - boxSelectStart.y),
+          }}
+        />
+      )}
+
+      {/* Enhanced Multi-select Action Bar */}
+      {selectedNodes.size >= 1 && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3 animate-in fade-in slide-in-from-bottom-2 max-w-lg">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              {selectedNodes.size} selected
+            </span>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+
+            {selectedNodes.size >= 2 && (
+              <>
+                <button
+                  onClick={() => setShowClusterModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  title="Group into cluster"
+                >
+                  <Layers size={14} />
+                  Cluster
+                </button>
+                <button
+                  onClick={() => handleBulkConnect('same-topic')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  title="Connect selected papers in sequence"
+                >
+                  <Link2 size={14} />
+                  Link
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={() => setShowBulkActions(!showBulkActions)}
+              className={`p-1.5 rounded-lg transition-colors ${
+                showBulkActions ? 'bg-slate-200 dark:bg-slate-600' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+              title="More actions"
+            >
+              <MoreHorizontal size={18} className="text-slate-500 dark:text-slate-400" />
+            </button>
+
+            <button
+              onClick={selectAll}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="Select all"
+            >
+              <Square size={18} className="text-slate-500 dark:text-slate-400" />
+            </button>
+
+            <button
+              onClick={invertSelection}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="Invert selection"
+            >
+              <ArrowRight size={18} className="text-slate-500 dark:text-slate-400 rotate-180" />
+            </button>
+
+            <button
+              onClick={() => setSelectedNodes(new Set())}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              title="Clear selection"
+            >
+              <X size={18} className="text-slate-500 dark:text-slate-400" />
+            </button>
+          </div>
+
+          {/* Bulk Actions Dropdown */}
+          {showBulkActions && (
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-3">
+              {/* Connect with type */}
+              {selectedNodes.size >= 2 && (
+                <div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Connect As</div>
+                  <div className="flex gap-1 flex-wrap">
+                    {([
+                      { type: 'supports' as ConnectionType, label: 'Supports', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
+                      { type: 'contradicts' as ConnectionType, label: 'Contradicts', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' },
+                      { type: 'extends' as ConnectionType, label: 'Extends', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+                      { type: 'same-topic' as ConnectionType, label: 'Same Topic', color: 'bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-300' },
+                    ]).map(({ type, label, color }) => (
+                      <button
+                        key={type}
+                        onClick={() => handleBulkConnect(type)}
+                        className={`px-2 py-1 rounded text-xs font-medium ${color} hover:opacity-80 transition-opacity`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Set Role</div>
+                <div className="flex gap-1 flex-wrap">
+                  {(Object.entries(ROLE_COLORS) as [ThesisRole, typeof ROLE_COLORS[ThesisRole]][]).map(([role, colors]) => (
+                    <button
+                      key={role}
+                      onClick={() => handleBulkRoleChange(role)}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.bg }} />
+                      {colors.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Set Status</div>
+                <div className="flex gap-1 flex-wrap">
+                  {(['to-read', 'reading', 'read'] as ReadingStatus[]).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleBulkStatusChange(status)}
+                      className="px-2 py-1 rounded text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                    >
+                      {status.replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-600">
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                >
+                  <Trash2 size={12} />
+                  Delete selected
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu.visible && (
+        <div
+          className="absolute z-50 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-1 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+          style={{ left: contextMenu.x, top: contextMenu.y, transform: 'translate(-50%, 10px)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.type === 'node' && (
+            <>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId) onPaperSelect(contextMenu.targetId);
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Eye size={14} />
+                View Details
+              </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId) togglePinNode(contextMenu.targetId);
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Pin size={14} />
+                {contextMenu.targetId && pinnedNodes.has(contextMenu.targetId) ? 'Unpin' : 'Pin Position'}
+              </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId) {
+                    setToolMode('connect');
+                    setConnectSourceId(contextMenu.targetId);
+                  }
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Link2 size={14} />
+                Connect From Here
+              </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId) {
+                    const paper = papers.find(p => p.id === contextMenu.targetId);
+                    if (paper) {
+                      fetchSimilarPapers({
+                        id: paper.id,
+                        semanticScholarId: paper.semanticScholarId,
+                        doi: paper.doi,
+                        title: paper.title,
+                      });
+                      setToolMode('discovery');
+                    }
+                  }
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Compass size={14} />
+                Find Similar
+              </button>
+              <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId && confirm('Delete this paper?')) {
+                    deletePaper(contextMenu.targetId);
+                  }
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+              >
+                <Trash2 size={14} />
+                Delete Paper
+              </button>
+            </>
+          )}
+          {contextMenu.type === 'edge' && (
+            <>
+              <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                {contextMenu.targetData?.type as string || 'Connection'}
+              </div>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId && confirm('Delete this connection?')) {
+                    deleteConnection(contextMenu.targetId);
+                  }
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+              >
+                <Trash2 size={14} />
+                Delete Connection
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -1577,7 +2443,7 @@ export function GraphView({
       )}
 
       {/* Discovery Panel */}
-      {discoveryMode && (discoveryState.loading || discoveryState.papers.length > 0 || discoveryState.error) && (
+      {toolMode === 'discovery' && (discoveryState.loading || discoveryState.papers.length > 0 || discoveryState.error) && (
         <DiscoveryPanel
           papers={discoveryState.papers}
           loading={discoveryState.loading}
@@ -1603,74 +2469,73 @@ export function GraphView({
         />
       )}
 
-      {/* Stats Badge - Top Right */}
-      <div className="absolute top-4 right-4 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-3 py-2">
-        <div className="flex items-center gap-3 text-sm">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-indigo-500" />
-            <span className="font-medium text-slate-700 dark:text-slate-200">
-              {filteredPapers.length}
-            </span>
-            <span className="text-slate-400">papers</span>
-          </div>
-          {showEdges && filteredConnections.length > 0 && (
-            <>
-              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-slate-700 dark:text-slate-200">
-                  {filteredConnections.length}
-                </span>
-                <span className="text-slate-400">links</span>
-              </div>
-            </>
-          )}
-          {clusters.length > 0 && (
-            <>
-              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-slate-700 dark:text-slate-200">
-                  {clusters.length}
-                </span>
-                <span className="text-slate-400">clusters</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Compact Legend - Bottom Left */}
+      {/* Legend & Stats - Bottom Left */}
       <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-3 py-2.5">
-        <div className="flex items-center gap-3">
-          {(Object.entries(ROLE_COLORS) as [ThesisRole, (typeof ROLE_COLORS)[ThesisRole]][])
-            .filter(([role]) => activeRoles.has(role))
-            .map(([role, colors]) => (
-              <div key={role} className="flex items-center gap-1.5">
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ backgroundColor: colors.bg }}
-                />
-                <span className="text-xs text-slate-500 dark:text-slate-400">{colors.label}</span>
-              </div>
-            ))}
-          {discoveryMode && (
-            <>
-              <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-500/50 border border-purple-500 border-dashed" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">Discovered</span>
-              </div>
-            </>
-          )}
+        <div className="flex flex-col gap-2">
+          {/* Stats Row */}
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredPapers.length}</span>
+              <span className="text-slate-400">papers</span>
+            </div>
+            {showEdges && filteredConnections.length > 0 && (
+              <>
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredConnections.length}</span>
+                  <span className="text-slate-400">links</span>
+                </div>
+              </>
+            )}
+            {clusters.length > 0 && (
+              <>
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{clusters.length}</span>
+                  <span className="text-slate-400">clusters</span>
+                </div>
+              </>
+            )}
+          </div>
+          {/* Legend Row */}
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+            {(Object.entries(ROLE_COLORS) as [ThesisRole, (typeof ROLE_COLORS)[ThesisRole]][])
+              .filter(([role]) => activeRoles.has(role))
+              .map(([role, colors]) => (
+                <div key={role} className="flex items-center gap-1">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: colors.bg }}
+                  />
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{colors.label}</span>
+                </div>
+              ))}
+            {toolMode === 'discovery' && (
+              <>
+                <div className="w-px h-2.5 bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-purple-500/50 border border-purple-500 border-dashed" />
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Discovered</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Instructions - Bottom Right */}
       <div className="absolute bottom-4 right-4 text-[11px] text-slate-400 dark:text-slate-500">
-        {discoveryMode
+        {toolMode === 'discovery'
           ? 'Click paper to discover similar'
-          : selectMode
-          ? 'Click to select • Shift+Click for multiple'
-          : 'Click to select • Hover to explore • Scroll to zoom'}
+          : toolMode === 'select'
+          ? 'Click or drag to select multiple papers'
+          : toolMode === 'connect'
+          ? connectSourceId
+            ? '② Now click target paper to complete connection'
+            : '① Click source paper first'
+          : toolMode === 'focus'
+          ? 'Click paper to spotlight connections'
+          : 'Click to select • Shift+drag to box select • Right-click for menu'}
       </div>
 
       {/* Tooltip */}
