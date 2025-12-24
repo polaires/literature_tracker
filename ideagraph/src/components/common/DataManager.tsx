@@ -17,7 +17,7 @@ import {
 import JSZip from 'jszip';
 import { useAppStore } from '../../store/useAppStore';
 import { pdfStorage } from '../../services/pdfStorage';
-import type { ThesisRole } from '../../types';
+import type { ThesisRole, Paper } from '../../types';
 
 interface DataManagerProps {
   thesisId?: string;

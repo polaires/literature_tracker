@@ -11,11 +11,12 @@ interface ModalProps {
   className?: string; // For custom sizing
 }
 
+// Slightly wider defaults for a more spacious feel
 const sizeClasses = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-xl',
+  xl: 'max-w-2xl',
   full: 'max-w-4xl',
 };
 
@@ -87,42 +88,43 @@ export function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Backdrop */}
+      {/* Backdrop - softer, less harsh */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Modal Content */}
+      {/* Modal Content - softer shadows and borders */}
       <div
         ref={modalRef}
         tabIndex={-1}
         className={`
-          relative bg-white dark:bg-gray-800
-          rounded-xl shadow-2xl
+          relative bg-white dark:bg-zinc-900
+          rounded-2xl shadow-xl
+          border border-stone-200/60 dark:border-zinc-800
           w-full ${className || sizeClasses[size]}
           max-h-[90vh] overflow-hidden
           flex flex-col
           animate-in fade-in zoom-in-95 duration-200
         `}
       >
-        {/* Header - only show if title is provided */}
+        {/* Header - cleaner, more minimal */}
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-zinc-800">
             <h2
               id="modal-title"
-              className="text-lg font-semibold text-gray-900 dark:text-white"
+              className="text-lg font-semibold text-stone-800 dark:text-zinc-100"
             >
               {title}
             </h2>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 text-stone-400 hover:text-stone-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                 aria-label="Close modal"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             )}
           </div>

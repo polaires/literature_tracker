@@ -217,38 +217,30 @@ export function ArgumentMapView({ thesis, papers, onPaperSelect }: ArgumentMapVi
   const totalEvidence = papers.reduce((sum, p) => sum + p.evidence.length, 0);
 
   return (
-    <div className="h-full overflow-auto p-6 bg-slate-50 dark:bg-slate-950">
-      {/* Thesis Header */}
+    <div className="h-full overflow-auto p-6 bg-stone-50 dark:bg-zinc-950">
+      {/* Thesis Header - Clean, minimal style */}
       <div className="max-w-4xl mx-auto">
-        <div className="relative bg-gradient-to-br from-stone-700 via-stone-800 to-stone-900 rounded-2xl p-6 mb-8 text-white shadow-2xl overflow-hidden border border-stone-600/50">
-          {/* Subtle accent glows */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-stone-400/10 rounded-full blur-3xl" />
-          </div>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 mb-6 border border-stone-200 dark:border-zinc-800 shadow-sm">
+          <h2 className="text-xl font-semibold text-stone-800 dark:text-zinc-100 leading-tight">{thesis.title}</h2>
+          {thesis.description && (
+            <p className="text-stone-500 dark:text-zinc-400 text-sm leading-relaxed line-clamp-3 mt-2">
+              {thesis.description}
+            </p>
+          )}
 
-          <div className="relative">
-            <h2 className="text-2xl font-bold mb-3 leading-tight text-white">{thesis.title}</h2>
-            {thesis.description && (
-              <p className="text-stone-300 text-sm leading-relaxed line-clamp-3 mb-4">
-                {thesis.description}
-              </p>
-            )}
-
-            {/* Stats badges */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg text-sm border border-white/10">
-                <FileText size={14} className="text-stone-300" />
-                <span className="font-medium text-stone-200">{papers.length} papers</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg text-sm border border-white/10">
-                <MessageSquareQuote size={14} className="text-stone-300" />
-                <span className="font-medium text-stone-200">{totalArguments} arguments</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg text-sm border border-white/10">
-                <FlaskConical size={14} className="text-stone-300" />
-                <span className="font-medium text-stone-200">{totalEvidence} evidence</span>
-              </div>
+          {/* Stats badges - softer styling */}
+          <div className="flex items-center gap-2 flex-wrap mt-4 pt-4 border-t border-stone-100 dark:border-zinc-800">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-zinc-800 rounded-md text-xs">
+              <FileText size={12} className="text-stone-400 dark:text-zinc-500" />
+              <span className="font-medium text-stone-600 dark:text-zinc-400">{papers.length} papers</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-zinc-800 rounded-md text-xs">
+              <MessageSquareQuote size={12} className="text-stone-400 dark:text-zinc-500" />
+              <span className="font-medium text-stone-600 dark:text-zinc-400">{totalArguments} arguments</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-zinc-800 rounded-md text-xs">
+              <FlaskConical size={12} className="text-stone-400 dark:text-zinc-500" />
+              <span className="font-medium text-stone-600 dark:text-zinc-400">{totalEvidence} evidence</span>
             </div>
           </div>
         </div>
