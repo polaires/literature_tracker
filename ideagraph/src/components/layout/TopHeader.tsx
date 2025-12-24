@@ -157,7 +157,7 @@ export const TopHeader = memo(function TopHeader({
           </span>
           <span className="text-xs text-gray-400">papers</span>
           <span className="text-gray-300 dark:text-gray-600">·</span>
-          <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+          <span className="text-sm font-medium text-stone-600 dark:text-stone-400">
             {connectionCount}
           </span>
           <span className="text-xs text-gray-400">links</span>

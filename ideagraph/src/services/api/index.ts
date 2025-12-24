@@ -30,6 +30,11 @@ export interface PaperMetadata {
   pdfUrl: string | null;
   citationCount: number | null;
   tldr: string | null;
+  // External IDs for PDF resolution
+  arxivId: string | null;
+  pmcId: string | null;
+  pmid: string | null;
+  semanticScholarId: string | null;
 }
 
 // Extract DOI from various input formats
@@ -82,6 +87,11 @@ export async function fetchPaperMetadata(identifier: string): Promise<PaperMetad
       pdfUrl: paper.openAccessPdf?.url || null,
       citationCount: paper.citationCount,
       tldr: paper.tldr?.text || null,
+      // External IDs for PDF resolution
+      arxivId: paper.externalIds?.ArXiv || null,
+      pmcId: paper.externalIds?.PubMed ? `PMC${paper.externalIds.PubMed}` : null,
+      pmid: paper.externalIds?.PubMed || null,
+      semanticScholarId: paper.paperId || null,
     };
   } catch (e) {
     console.log('Semantic Scholar failed, trying CrossRef...', e);
@@ -107,6 +117,11 @@ export async function fetchPaperMetadata(identifier: string): Promise<PaperMetad
       pdfUrl: null,
       citationCount: paper['is-referenced-by-count'] || null,
       tldr: null,
+      // CrossRef doesn't provide these external IDs directly
+      arxivId: null,
+      pmcId: null,
+      pmid: null,
+      semanticScholarId: null,
     };
   } catch (e) {
     console.log('CrossRef also failed', e);

@@ -21,7 +21,7 @@ const ROLE_OPTIONS: { value: ThesisRole; label: string; color: string }[] = [
   { value: 'contradicts', label: 'Contradicts', color: 'bg-rose-500' },
   { value: 'method', label: 'Method', color: 'bg-blue-500' },
   { value: 'background', label: 'Background', color: 'bg-slate-500' },
-  { value: 'other', label: 'Other', color: 'bg-purple-500' },
+  { value: 'other', label: 'Other', color: 'bg-stone-500' },
 ];
 
 export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddModalProps) {

@@ -17,6 +17,8 @@ import {
 import { RetractionWarningBanner } from './RetractionWarningBanner';
 import { getCollectionTier, getColdStartMessage } from '../../services/ai/context';
 import { checkIntakePaper } from '../../services/intake/retractionCheck';
+import { PDFDownloadStatus } from './PDFDownloadStatus';
+import { pdfStorage } from '../../services/pdfStorage';
 
 interface AddPaperModalProps {
   thesisId: string;
@@ -75,6 +77,10 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
   } | null>(null);
   const [showRetractionWarning, setShowRetractionWarning] = useState(false);
 
+  // PDF download - generate a preview ID for pre-download
+  const [previewPaperId] = useState(() => crypto.randomUUID());
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+
   const handleFetch = async () => {
     if (!doiInput.trim() || isLoading) return;
 
@@ -118,10 +124,10 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!metadata || !takeaway.trim()) return;
 
-    addPaper({
+    const paper = addPaper({
       thesisId,
       doi: metadata.doi,
       title: metadata.title,
@@ -149,8 +155,13 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
       exclusionReason: null,
       exclusionNote: null,
       screenedAt: null,
-      semanticScholarId: null,
+      semanticScholarId: metadata.semanticScholarId,
     });
+
+    // If PDF was pre-downloaded, reassign it to the actual paper ID
+    if (pdfDownloaded) {
+      await pdfStorage.reassignPDF(previewPaperId, paper.id);
+    }
 
     onClose();
   };
@@ -173,6 +184,10 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
       pdfUrl: null,
       citationCount: null,
       tldr: null,
+      arxivId: null,
+      pmcId: null,
+      pmid: null,
+      semanticScholarId: null,
     });
     setStep('review');
   };
@@ -510,6 +525,32 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                     </p>
                   </details>
                 )}
+              </div>
+
+              {/* PDF Download Section */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    PDF Access
+                  </span>
+                  {metadata.pdfUrl && (
+                    <span className="text-xs text-green-600 dark:text-green-400">
+                      Open Access
+                    </span>
+                  )}
+                </div>
+                <PDFDownloadStatus
+                  paperId={previewPaperId}
+                  identifiers={{
+                    doi: metadata.doi,
+                    semanticScholarPdfUrl: metadata.pdfUrl,
+                    arxivId: metadata.arxivId,
+                    pmcId: metadata.pmcId,
+                    pmid: metadata.pmid,
+                  }}
+                  autoDownload={true}
+                  onDownloadComplete={setPdfDownloaded}
+                />
               </div>
 
               {/* AI Analysis Status - shows at top of form */}

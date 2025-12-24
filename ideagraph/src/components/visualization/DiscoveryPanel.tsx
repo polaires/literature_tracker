@@ -81,15 +81,15 @@ export function DiscoveryPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isSemanticSearch ? (
-              <Brain size={14} className="text-purple-500" />
+              <Brain size={14} className="text-stone-500" />
             ) : (
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-stone-500 animate-pulse" />
             )}
             <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {isSemanticSearch ? 'Semantically Similar' : 'Similar Papers'}
             </h4>
             {isSemanticSearch && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
+              <span className="text-[10px] px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 rounded-full">
                 AI
               </span>
             )}
@@ -124,7 +124,7 @@ export function DiscoveryPanel({
                   {/* Similarity score badge */}
                   {similarity && (
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded text-[10px] text-purple-700 dark:text-purple-300">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900/30 rounded text-[10px] text-stone-700 dark:text-stone-300">
                         <Target size={10} />
                         {Math.round((similarity.combinedScore || similarity.embeddingScore || 0) * 100)}%
                       </div>

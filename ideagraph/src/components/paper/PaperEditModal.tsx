@@ -183,8 +183,8 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                   disabled={isSuggestingTakeaway}
                   className={`flex items-center gap-1 px-2 py-1 text-sm rounded-lg transition-all ${
                     isSuggestingTakeaway
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
-                      : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                      ? 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 cursor-wait'
+                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900/20'
                   }`}
                   title="Suggest takeaway with AI"
                 >

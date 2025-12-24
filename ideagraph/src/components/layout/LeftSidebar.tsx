@@ -49,7 +49,7 @@ const ROLE_OPTIONS: { value: ThesisRole | 'all'; label: string; color?: string }
   { value: 'contradicts', label: 'Contradicts', color: 'bg-red-500' },
   { value: 'method', label: 'Method', color: 'bg-blue-500' },
   { value: 'background', label: 'Background', color: 'bg-gray-500' },
-  { value: 'other', label: 'Other', color: 'bg-purple-500' },
+  { value: 'other', label: 'Other', color: 'bg-stone-500' },
 ];
 
 const STATUS_OPTIONS: { value: ReadingStatus | 'all'; label: string }[] = [
@@ -377,7 +377,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                       paper.thesisRole === 'contradicts' ? 'bg-red-500' :
                       paper.thesisRole === 'method' ? 'bg-blue-500' :
                       paper.thesisRole === 'background' ? 'bg-gray-400' :
-                      'bg-purple-500'
+                      'bg-stone-500'
                     }`}
                   />
                   <div className="min-w-0 flex-1">
@@ -451,7 +451,7 @@ export const LeftSidebar = memo(function LeftSidebar({
             {/* AI & Settings */}
             <button
               onClick={() => openModal('aiSettings')}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900/20 rounded-lg"
             >
               <Sparkles size={16} />
               AI Settings

@@ -56,7 +56,7 @@ export function InlineRoleSuggestion({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 mt-1 text-xs text-purple-600 dark:text-purple-400">
+      <div className="flex items-center gap-2 mt-1 text-xs text-stone-600 dark:text-stone-400">
         <Loader2 size={12} className="animate-spin" />
         <span>Analyzing role...</span>
       </div>
@@ -69,7 +69,7 @@ export function InlineRoleSuggestion({
     return (
       <button
         onClick={onAnalyze}
-        className="flex items-center gap-1 mt-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+        className="flex items-center gap-1 mt-1 text-xs text-stone-600 dark:text-stone-400 hover:underline"
       >
         <Sparkles size={12} />
         <span>Get AI suggestion</span>
@@ -82,10 +82,10 @@ export function InlineRoleSuggestion({
   const roleColors = THESIS_ROLE_COLORS[suggestedRole];
 
   return (
-    <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+    <div className="mt-2 p-2 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Sparkles size={12} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <Sparkles size={12} className="text-stone-600 dark:text-stone-400 flex-shrink-0" />
           <span className="text-xs text-gray-600 dark:text-gray-300">Suggested:</span>
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors.bg} ${roleColors.text}`}>
             {roleColors.label}
@@ -103,7 +103,7 @@ export function InlineRoleSuggestion({
           ) : (
             <button
               onClick={() => onApply(suggestedRole)}
-              className="px-2 py-0.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              className="px-2 py-0.5 text-xs bg-stone-600 text-white rounded hover:bg-stone-700 transition-colors"
             >
               Apply
             </button>
@@ -115,7 +115,7 @@ export function InlineRoleSuggestion({
         <div className="mt-1">
           <button
             onClick={() => setShowReasoning(!showReasoning)}
-            className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+            className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-400 hover:underline"
           >
             {showReasoning ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             {showReasoning ? 'Hide' : 'Show'} reasoning
@@ -160,7 +160,7 @@ export function InlineTakeawaySuggestion({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 mt-1 text-xs text-purple-600 dark:text-purple-400">
+      <div className="flex items-center gap-2 mt-1 text-xs text-stone-600 dark:text-stone-400">
         <Loader2 size={12} className="animate-spin" />
         <span>Generating takeaway suggestion...</span>
       </div>
@@ -173,7 +173,7 @@ export function InlineTakeawaySuggestion({
     return (
       <button
         onClick={onAnalyze}
-        className="flex items-center gap-1 mt-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+        className="flex items-center gap-1 mt-1 text-xs text-stone-600 dark:text-stone-400 hover:underline"
       >
         <Sparkles size={12} />
         <span>Generate takeaway with AI</span>
@@ -185,11 +185,11 @@ export function InlineTakeawaySuggestion({
   const isApplied = currentTakeaway.trim() === suggestedTakeaway.trim();
 
   return (
-    <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+    <div className="mt-2 p-3 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={12} className="text-purple-600 dark:text-purple-400" />
+            <Sparkles size={12} className="text-stone-600 dark:text-stone-400" />
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
               AI Suggestion
             </span>
@@ -209,7 +209,7 @@ export function InlineTakeawaySuggestion({
           ) : (
             <button
               onClick={() => onApply(suggestedTakeaway)}
-              className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              className="px-2 py-1 text-xs bg-stone-600 text-white rounded hover:bg-stone-700 transition-colors"
             >
               Use
             </button>
@@ -218,10 +218,10 @@ export function InlineTakeawaySuggestion({
       </div>
 
       {alternatives.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-700">
+        <div className="mt-2 pt-2 border-t border-stone-200 dark:border-stone-700">
           <button
             onClick={() => setShowAlternatives(!showAlternatives)}
-            className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+            className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-400 hover:underline"
           >
             {showAlternatives ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             {alternatives.length} alternative{alternatives.length > 1 ? 's' : ''}
@@ -236,7 +236,7 @@ export function InlineTakeawaySuggestion({
                   <span className="text-gray-600 dark:text-gray-300 flex-1">{alt}</span>
                   <button
                     onClick={() => onApply(alt)}
-                    className="text-purple-600 dark:text-purple-400 hover:underline flex-shrink-0"
+                    className="text-stone-600 dark:text-stone-400 hover:underline flex-shrink-0"
                   >
                     Use
                   </button>
@@ -407,9 +407,9 @@ export function AIAnalysisStatus({
 
   if (isAnalyzing) {
     return (
-      <div className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-xs">
-        <Loader2 size={14} className="text-purple-600 dark:text-purple-400 animate-spin" />
-        <span className="text-purple-700 dark:text-purple-300">
+      <div className="flex items-center gap-2 p-2 bg-stone-50 dark:bg-stone-900/20 rounded-lg text-xs">
+        <Loader2 size={14} className="text-stone-600 dark:text-stone-400 animate-spin" />
+        <span className="text-stone-700 dark:text-stone-300">
           Analyzing paper for your thesis...
         </span>
       </div>
@@ -459,10 +459,10 @@ export function AIAnalysisStatus({
   return (
     <button
       onClick={onAnalyze}
-      className="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+      className="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-stone-50 to-amber-50 dark:from-stone-900/20 dark:to-amber-900/20 rounded-lg border border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 transition-colors"
     >
-      <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />
-      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+      <Sparkles size={16} className="text-stone-600 dark:text-stone-400" />
+      <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
         {getMessage()}
       </span>
     </button>

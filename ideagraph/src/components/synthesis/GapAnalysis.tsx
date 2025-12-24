@@ -59,7 +59,7 @@ interface GapAnalysisProps {
 
 const GAP_TYPE_CONFIG: Record<GapType, { icon: React.ReactNode; label: string; color: string }> = {
   knowledge: { icon: <BookOpen size={16} />, label: 'Knowledge Gap', color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30' },
-  methodological: { icon: <Beaker size={16} />, label: 'Methodological', color: 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30' },
+  methodological: { icon: <Beaker size={16} />, label: 'Methodological', color: 'text-stone-600 bg-stone-100 dark:text-stone-400 dark:bg-stone-900/30' },
   population: { icon: <Layers size={16} />, label: 'Population', color: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30' },
   theoretical: { icon: <Lightbulb size={16} />, label: 'Theoretical', color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30' },
   temporal: { icon: <Clock size={16} />, label: 'Temporal', color: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30' },
@@ -341,10 +341,10 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                 type="checkbox"
                 checked={usePlanBased}
                 onChange={(e) => setUsePlanBased(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                className="w-4 h-4 rounded border-gray-300 text-stone-600 focus:ring-stone-500"
               />
               <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                <Brain size={14} className="text-purple-500" />
+                <Brain size={14} className="text-stone-500" />
                 AI Analysis
               </span>
             </label>
@@ -380,7 +380,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
 
         {/* AI Analysis Progress */}
         {isPlanAnalyzing && planProgress && (
-          <div className="mt-2 flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+          <div className="mt-2 flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
             <Loader2 size={14} className="animate-spin" />
             {planProgress}
           </div>
@@ -427,26 +427,26 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
           <div className="mb-6">
             <button
               onClick={() => setShowPlanDetails(!showPlanDetails)}
-              className="w-full flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+              className="w-full flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-900/20 border border-stone-200 dark:border-stone-800 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-900/30 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Brain size={16} className="text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                <Brain size={16} className="text-stone-600 dark:text-stone-400" />
+                <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
                   Analysis Plan ({currentPlan.observations.length} observations)
                 </span>
               </div>
               {showPlanDetails ? (
-                <ChevronDown size={16} className="text-purple-500" />
+                <ChevronDown size={16} className="text-stone-500" />
               ) : (
-                <ChevronRight size={16} className="text-purple-500" />
+                <ChevronRight size={16} className="text-stone-500" />
               )}
             </button>
 
             {showPlanDetails && (
-              <div className="mt-2 p-4 bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50 rounded-lg space-y-3">
+              <div className="mt-2 p-4 bg-stone-50/50 dark:bg-stone-900/10 border border-stone-100 dark:border-stone-800/50 rounded-lg space-y-3">
                 {currentPlan.observations.map((obs, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <span className="px-2 py-0.5 text-xs bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 rounded capitalize">
+                    <span className="px-2 py-0.5 text-xs bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded capitalize">
                       {obs.category}
                     </span>
                     <div className="flex-1">
@@ -473,10 +473,10 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
         {/* AI-Suggested Gaps */}
         {aiGapSuggestions.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-3 flex items-center gap-2">
               <Brain size={16} />
               AI-Suggested Gaps (Review & Save)
-              <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
+              <span className="text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 rounded-full">
                 {aiGapSuggestions.length} verified
               </span>
             </h3>
@@ -487,7 +487,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                 return (
                   <div
                     key={suggestion.id}
-                    className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg"
+                    className="p-4 bg-stone-50 dark:bg-stone-900/20 border border-stone-200 dark:border-stone-800 rounded-lg"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
@@ -676,7 +676,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                         </h4>
                         <span className={`w-2 h-2 rounded-full ${priorityConfig.color}`} />
                         {gap.evidenceSource === 'inferred' && (
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+                          <span className="text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 rounded">
                             Auto-detected
                           </span>
                         )}

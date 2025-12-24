@@ -35,7 +35,7 @@ export function ConnectionSuggestionToast({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden max-w-md">
       {/* Header */}
-      <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border-b border-indigo-100 dark:border-indigo-800">
+      <div className="p-3 bg-gradient-to-r from-stone-50 to-amber-50 dark:from-stone-900/30 dark:to-amber-900/30 border-b border-stone-100 dark:border-stone-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800 rounded-lg">

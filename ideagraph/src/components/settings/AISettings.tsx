@@ -106,7 +106,7 @@ export const AISettings: React.FC = () => {
                     setConnectionStatus('idle');
                   }}
                   placeholder={apiBaseUrlInput ? 'sk-...' : 'sk-ant-api03-...'}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                 />
                 <button
                   onClick={() => setShowApiKey(!showApiKey)}
@@ -136,7 +136,7 @@ export const AISettings: React.FC = () => {
                     setConnectionStatus('idle');
                   }}
                   placeholder="https://api.anthropic.com/v1/messages"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
                 />
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   For OneAPI, OpenRouter, or other compatible providers
@@ -156,7 +156,7 @@ export const AISettings: React.FC = () => {
                       setConnectionStatus('idle');
                     }}
                     placeholder="e.g., gpt-4, claude-3-sonnet"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
                   />
                 </div>
               )}
@@ -168,7 +168,7 @@ export const AISettings: React.FC = () => {
             <button
               onClick={handleSaveApiKey}
               disabled={!apiKeyInput}
-              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              className="px-4 py-2 rounded-lg bg-stone-600 text-white hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
             >
               Save
             </button>
@@ -207,7 +207,7 @@ export const AISettings: React.FC = () => {
                 href="https://console.anthropic.com/settings/keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-600 hover:underline"
+                className="text-stone-600 hover:underline"
               >
                 console.anthropic.com
               </a>
@@ -237,7 +237,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings[key as keyof typeof settings] as boolean}
                   onChange={(e) => updateSettings({ [key]: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <Icon className="w-3.5 h-3.5 text-slate-400" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -254,7 +254,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.enableRetractionChecking ?? true}
                   onChange={(e) => updateSettings({ enableRetractionChecking: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Retraction checking</span>
@@ -266,7 +266,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.enableSemanticSearch ?? false}
                   onChange={(e) => updateSettings({ enableSemanticSearch: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <Search className="w-3.5 h-3.5 text-blue-500" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Semantic search</span>
@@ -278,7 +278,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.enableFeedbackLearning ?? true}
                   onChange={(e) => updateSettings({ enableFeedbackLearning: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <Brain className="w-3.5 h-3.5 text-green-500" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Learn from corrections</span>
@@ -290,7 +290,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.enablePlanBasedGaps ?? false}
                   onChange={(e) => updateSettings({ enablePlanBasedGaps: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <Database className="w-3.5 h-3.5 text-indigo-500" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Plan-based gap analysis</span>
@@ -327,7 +327,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.sendAbstractsToAI}
                   onChange={(e) => updateSettings({ sendAbstractsToAI: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Send paper abstracts for better suggestions</span>
               </label>
@@ -337,7 +337,7 @@ export const AISettings: React.FC = () => {
                   type="checkbox"
                   checked={settings.sendHighlightsToAI}
                   onChange={(e) => updateSettings({ sendHighlightsToAI: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Include PDF highlights for context</span>
               </label>

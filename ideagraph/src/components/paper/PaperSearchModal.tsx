@@ -397,7 +397,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                 className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                <Brain size={14} className="text-purple-500" />
+                <Brain size={14} className="text-stone-500" />
                 Semantic Search
               </span>
             </label>
@@ -679,7 +679,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                       {/* Hybrid search score indicator */}
                       {hybridInfo && (
                         <div className="flex items-center gap-2 mb-2 text-xs">
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-900/30 text-stone-700 dark:text-stone-300">
                             <Target size={10} />
                             <span>Match: {Math.round(hybridInfo.combinedScore * 100)}%</span>
                           </div>

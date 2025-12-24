@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, ExternalLink, Trash2, Edit2, Link2, Trash, FileText, Upload, BookOpen, Sparkles, Loader2, Search, CircleDot, Circle, CircleDashed, ThumbsUp, ThumbsDown, HelpCircle, MessageSquareQuote } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, ExternalLink, Trash2, Edit2, Link2, Trash, Upload, BookOpen, Sparkles, Loader2, Search, CircleDot, Circle, CircleDashed, ThumbsUp, ThumbsDown, HelpCircle, MessageSquareQuote } from 'lucide-react';
 import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { useAI } from '../../hooks/useAI';
@@ -10,6 +10,7 @@ import { PDFViewer, PDFUpload } from '../pdf';
 import { pdfStorage } from '../../services/pdfStorage';
 import { THESIS_ROLE_COLORS, READING_STATUS_COLORS, ARGUMENT_STRENGTH_COLORS, ARGUMENT_ASSESSMENT_COLORS } from '../../constants/colors';
 import { cleanAbstract } from '../../utils/textCleaner';
+import { PDFDownloadStatus } from './PDFDownloadStatus';
 
 // Icon mapping for argument strength
 const STRENGTH_ICONS = {
@@ -60,6 +61,18 @@ export function PaperDetail({
   const [hasPDF, setHasPDF] = useState(false);
   const [pdfMetadata, setPdfMetadata] = useState<{ filename: string; fileSize: number } | null>(null);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
+
+  // Build identifiers for PDF resolution
+  const pdfIdentifiers = useMemo(() => ({
+    doi: paper.doi,
+    semanticScholarPdfUrl: paper.pdfUrl,
+    arxivId: null, // TODO: Store arxivId in Paper type
+    pmcId: null,   // TODO: Store pmcId in Paper type
+    pmid: null,
+  }), [paper.doi, paper.pdfUrl]);
+
+  // Check if paper has identifiers that could resolve to a PDF
+  const canDownloadPdf = !!(paper.doi || paper.pdfUrl);
 
   // Check if paper has a stored PDF
   useEffect(() => {
@@ -326,8 +339,8 @@ export function PaperDetail({
                   disabled={isSuggestingConnections}
                   className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${
                     isSuggestingConnections
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
-                      : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                      ? 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 cursor-wait'
+                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900/20'
                   }`}
                 >
                   {isSuggestingConnections ? (
@@ -350,15 +363,15 @@ export function PaperDetail({
 
           {/* AI Suggestions */}
           {showAISuggestions && paperSuggestions.length > 0 && (
-            <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <div className="mb-3 p-3 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300 flex items-center gap-1">
                   <Sparkles size={12} />
                   AI Suggestions
                 </span>
                 <button
                   onClick={() => setShowAISuggestions(false)}
-                  className="text-xs text-purple-500 hover:text-purple-700"
+                  className="text-xs text-stone-500 hover:text-stone-700"
                 >
                   Hide
                 </button>
@@ -369,11 +382,11 @@ export function PaperDetail({
                   return (
                     <div
                       key={suggestion.id}
-                      className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-purple-100 dark:border-purple-900"
+                      className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-stone-100 dark:border-stone-900"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                          <span className="text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 rounded">
                             {suggestion.connectionType.replace('-', ' ')}
                           </span>
                           <span className="text-xs text-gray-400">
@@ -497,13 +510,35 @@ export function PaperDetail({
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowPDFUpload(true)}
-              className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-            >
-              <FileText size={20} />
-              <span>Add PDF for annotations</span>
-            </button>
+            <div className="space-y-3">
+              {/* Auto-download option */}
+              {canDownloadPdf && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    Try to download PDF automatically
+                  </p>
+                  <PDFDownloadStatus
+                    paperId={paper.id}
+                    identifiers={pdfIdentifiers}
+                    autoDownload={false}
+                    onDownloadComplete={(success) => {
+                      if (success) {
+                        setHasPDF(true);
+                        pdfStorage.getPDFMetadata(paper.id).then(setPdfMetadata);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+              {/* Manual upload option */}
+              <button
+                onClick={() => setShowPDFUpload(true)}
+                className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                <Upload size={20} />
+                <span>Or upload PDF manually</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -547,7 +582,7 @@ export function PaperDetail({
           {paper.semanticScholarId && (
             <button
               onClick={() => setShowCitationNetwork(true)}
-              className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1.5 px-3 py-1.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+              className="text-sm text-stone-600 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 flex items-center gap-1.5 px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-stone-900/20 rounded-lg transition-colors"
               title="Find related papers, citations, and references"
             >
               <Search size={16} />

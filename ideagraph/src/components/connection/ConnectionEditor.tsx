@@ -91,10 +91,10 @@ const CONNECTION_TYPES: {
     value: 'reviews',
     label: 'Reviews',
     description: 'One paper reviews the other',
-    iconColor: 'text-violet-500',
-    selectedBg: 'bg-violet-50 dark:bg-violet-900/30',
-    selectedBorder: 'border-violet-300 dark:border-violet-700',
-    selectedText: 'text-violet-700 dark:text-violet-300',
+    iconColor: 'text-stone-500',
+    selectedBg: 'bg-stone-50 dark:bg-stone-900/30',
+    selectedBorder: 'border-stone-300 dark:border-stone-700',
+    selectedText: 'text-stone-700 dark:text-stone-300',
     icon: <BookOpen size={16} />,
   },
   {
@@ -273,15 +273,15 @@ export function ConnectionEditor({
 
           {/* AI Suggestions */}
           {showAISuggestions && paperSuggestions.length > 0 && (
-            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <div className="p-3 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                   <Sparkles size={14} />
                   AI Suggestions
                 </span>
                 <button
                   onClick={() => setShowAISuggestions(false)}
-                  className="text-[10px] text-purple-500 hover:text-purple-700 dark:hover:text-purple-300"
+                  className="text-[10px] text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
                 >
                   Hide
                 </button>
@@ -293,7 +293,7 @@ export function ConnectionEditor({
                   return (
                     <div
                       key={suggestion.id}
-                      className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border border-purple-100 dark:border-purple-900"
+                      className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-slate-800 rounded border border-stone-100 dark:border-stone-900"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -483,8 +483,8 @@ export function ConnectionEditor({
               disabled={isSuggestingConnections}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
                 isSuggestingConnections
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                  : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                  ? 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400'
+                  : 'text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900/20'
               }`}
             >
               {isSuggestingConnections ? (

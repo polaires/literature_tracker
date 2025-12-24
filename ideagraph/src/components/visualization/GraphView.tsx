@@ -575,10 +575,6 @@ export function GraphView({
       ? autoClusters
           .filter(cluster => !expandedClusterIds.has(cluster.id))
           .map(cluster => {
-            // Get representative paper for styling
-            const repPaper = filteredPapers.find(p => p.id === cluster.representativePaperId);
-            const repRole = repPaper?.thesisRole || 'other';
-
             return {
               data: {
                 id: cluster.id,
@@ -1330,7 +1326,6 @@ export function GraphView({
           // Fixed spacing - use wider column spacing and larger vertical spacing for labels
           const columnSpacing = 140; // Wider columns to accommodate horizontal spread
           const verticalSpacing = 75; // More vertical space to prevent label overlap
-          const graphWidth = Math.max(700, uniqueYears.length * columnSpacing);
           const graphHeight = Math.max(500, maxPapersInYear * verticalSpacing);
           const marginX = 100;
           const marginY = 80;
@@ -2095,7 +2090,7 @@ export function GraphView({
               title: nodeData.label,
               takeaway: clusterPapers.map(p => `• ${p.title}`).slice(0, 5).join('\n') +
                 (clusterPapers.length > 5 ? `\n  ...and ${clusterPapers.length - 5} more` : ''),
-              authors: [`Click to expand ${clusterPapers.length} papers`],
+              authors: [{ name: `Click to expand ${clusterPapers.length} papers` }],
             });
             setTooltipPos({
               x: Math.min(renderedPos.x, containerRect.width - 280),
@@ -2419,7 +2414,7 @@ export function GraphView({
               onClick={() => setToolMode(toolMode === 'discovery' ? 'pointer' : 'discovery')}
               className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
                 toolMode === 'discovery'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-stone-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
               title="Discovery Mode - Find similar papers"
@@ -2430,7 +2425,7 @@ export function GraphView({
               onClick={() => setToolMode(toolMode === 'focus' ? 'pointer' : 'focus')}
               className={`p-2.5 transition-all duration-200 ${
                 toolMode === 'focus'
-                  ? 'bg-violet-500 text-white'
+                  ? 'bg-amber-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
               title="Focus Mode - Spotlight paper connections"
@@ -2618,7 +2613,7 @@ export function GraphView({
               { value: 'concentric', label: 'Impact', desc: 'High-cited papers at center', bestFor: 'Identifying key papers' },
               { value: 'circle', label: 'Circle', desc: 'Papers in a ring, grouped by role', bestFor: 'Overview presentations' },
               { value: 'grid', label: 'Grid', desc: 'Orderly grid, sorted by year', bestFor: 'Systematic review' },
-            ].map(({ value, label, desc, bestFor }) => (
+            ].map(({ value, label, desc }) => (
               <button
                 key={value}
                 onClick={() => {
@@ -2903,8 +2898,8 @@ export function GraphView({
         <div className={`absolute top-16 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 ${
           toolMode === 'connect' ? 'bg-amber-500 text-white' :
           toolMode === 'select' ? 'bg-cyan-500 text-white' :
-          toolMode === 'discovery' ? 'bg-purple-500 text-white' :
-          toolMode === 'focus' ? 'bg-violet-500 text-white' : 'bg-slate-500 text-white'
+          toolMode === 'discovery' ? 'bg-stone-500 text-white' :
+          toolMode === 'focus' ? 'bg-amber-500 text-white' : 'bg-slate-500 text-white'
         }`}>
           {toolMode === 'connect' && (
             <>
@@ -3334,7 +3329,7 @@ export function GraphView({
               <>
                 <div className="w-px h-2.5 bg-slate-200 dark:bg-slate-700" />
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-purple-500/50 border border-purple-500 border-dashed" />
+                  <div className="w-2 h-2 rounded-full bg-stone-500/50 border border-stone-500 border-dashed" />
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">Discovered</span>
                 </div>
               </>

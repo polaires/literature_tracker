@@ -181,7 +181,7 @@ export function AnnotationSidebar({
                             <div className="mt-2">
                               <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
                                 linkedItem.type === 'argument'
-                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                  ? 'bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
                                   : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                               }`}>
                                 {linkedItem.type === 'argument' ? (
@@ -273,7 +273,7 @@ export function AnnotationSidebar({
                                 onClick={() => setLinkType('argument')}
                                 className={`flex-1 text-xs px-2 py-1.5 rounded ${
                                   linkType === 'argument'
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                    ? 'bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                                 }`}
                               >
@@ -297,7 +297,7 @@ export function AnnotationSidebar({
                                   <button
                                     key={arg.id}
                                     onClick={() => handleLinkToArgument(annotation.id, arg.id)}
-                                    className="w-full text-left text-xs p-2 bg-gray-50 dark:bg-gray-700 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                    className="w-full text-left text-xs p-2 bg-gray-50 dark:bg-gray-700 rounded hover:bg-stone-50 dark:hover:bg-stone-900/20"
                                   >
                                     {arg.claim}
                                   </button>

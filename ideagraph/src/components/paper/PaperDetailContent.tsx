@@ -1,7 +1,7 @@
 // PaperDetailContent - Content component for the right panel paper detail view
 // This is the inner content extracted from PaperDetail for use in the new layout
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ExternalLink,
   BookOpen,
@@ -17,6 +17,7 @@ import {
   Sparkles,
   Loader2,
   X,
+  Upload,
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { usePanelContext } from '../../contexts/PanelContext';
@@ -25,6 +26,9 @@ import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { THESIS_ROLE_COLORS } from '../../constants/colors';
 import { Button } from '../ui';
 import { ConnectionEditor } from '../connection/ConnectionEditor';
+import { PDFDownloadStatus } from './PDFDownloadStatus';
+import { pdfStorage } from '../../services/pdfStorage';
+import { PDFUpload } from '../pdf';
 
 interface PaperDetailContentProps {
   paper: Paper;
@@ -67,6 +71,24 @@ export function PaperDetailContent({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [showConnectionEditor, setShowConnectionEditor] = useState(false);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [hasPDF, setHasPDF] = useState(false);
+
+  // Build identifiers for PDF resolution
+  const pdfIdentifiers = useMemo(() => ({
+    doi: paper.doi,
+    semanticScholarPdfUrl: paper.pdfUrl,
+    arxivId: null,
+    pmcId: null,
+    pmid: null,
+  }), [paper.doi, paper.pdfUrl]);
+
+  const canDownloadPdf = !!(paper.doi || paper.pdfUrl);
+
+  // Check if paper has a stored PDF
+  useEffect(() => {
+    pdfStorage.hasPDF(paper.id).then(setHasPDF);
+  }, [paper.id]);
 
   // AI connection suggestion helpers
   const canSuggestConnections = isAIConfigured && aiSettings.enableConnectionSuggestions && allPapers.length > 1;
@@ -288,8 +310,8 @@ export function PaperDetailContent({
                   disabled={isSuggestingConnections}
                   className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${
                     isSuggestingConnections
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 cursor-wait'
-                      : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                      ? 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 cursor-wait'
+                      : 'text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-900/20'
                   }`}
                 >
                   {isSuggestingConnections ? (
@@ -312,15 +334,15 @@ export function PaperDetailContent({
 
           {/* AI Suggestions */}
           {showAISuggestions && paperSuggestions.length > 0 && (
-            <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+            <div className="mb-3 p-3 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                <span className="text-xs font-medium text-stone-700 dark:text-stone-300 flex items-center gap-1">
                   <Sparkles size={12} />
                   AI Suggestions
                 </span>
                 <button
                   onClick={() => setShowAISuggestions(false)}
-                  className="text-xs text-purple-500 hover:text-purple-700"
+                  className="text-xs text-stone-500 hover:text-stone-700"
                 >
                   Hide
                 </button>
@@ -331,11 +353,11 @@ export function PaperDetailContent({
                   return (
                     <div
                       key={suggestion.id}
-                      className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-purple-100 dark:border-purple-900"
+                      className="flex items-start justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-stone-100 dark:border-stone-900"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                          <span className="text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 rounded">
                             {suggestion.connectionType.replace('-', ' ')}
                           </span>
                           <span className="text-xs text-gray-400">
@@ -409,6 +431,57 @@ export function PaperDetailContent({
           )}
         </div>
 
+        {/* PDF Section */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            PDF Document
+          </label>
+          <div className="mt-2">
+            {hasPDF ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                  <FileText size={16} />
+                  <span className="text-sm font-medium">PDF stored locally</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => openFullScreen('pdf', { paperId: paper.id })}
+                >
+                  Open
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Auto-download option */}
+                {canDownloadPdf && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      Try to download PDF automatically
+                    </p>
+                    <PDFDownloadStatus
+                      paperId={paper.id}
+                      identifiers={pdfIdentifiers}
+                      autoDownload={false}
+                      onDownloadComplete={(success) => {
+                        if (success) setHasPDF(true);
+                      }}
+                    />
+                  </div>
+                )}
+                {/* Manual upload option */}
+                <button
+                  onClick={() => setShowPDFUpload(true)}
+                  className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+                >
+                  <Upload size={16} />
+                  <span>Upload PDF manually</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Tags */}
         {paper.tags.length > 0 && (
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -470,6 +543,18 @@ export function PaperDetailContent({
           thesisId={thesisId}
           sourcePaper={paper}
           onClose={() => setShowConnectionEditor(false)}
+        />
+      )}
+
+      {/* PDF Upload Modal */}
+      {showPDFUpload && (
+        <PDFUpload
+          paperId={paper.id}
+          onUploadComplete={() => {
+            setHasPDF(true);
+            setShowPDFUpload(false);
+          }}
+          onClose={() => setShowPDFUpload(false)}
         />
       )}
     </div>

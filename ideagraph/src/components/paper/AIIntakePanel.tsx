@@ -79,16 +79,16 @@ export function AIIntakePanel({
   // Show analyze button when no analysis yet
   if (!analysis && !isLoading && !error) {
     return (
-      <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+      <div className="p-4 bg-gradient-to-r from-stone-50 to-amber-50 dark:from-stone-900/20 dark:to-amber-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
-            <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <div className="p-2 bg-stone-100 dark:bg-stone-800 rounded-lg">
+            <Sparkles className="w-5 h-5 text-stone-600 dark:text-stone-400" />
           </div>
           <div className="flex-1">
-            <h4 className="font-medium text-purple-900 dark:text-purple-100">
+            <h4 className="font-medium text-stone-900 dark:text-stone-100">
               AI-Powered Analysis
             </h4>
-            <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+            <p className="text-sm text-stone-700 dark:text-stone-300 mt-1">
               Get AI suggestions for thesis role, takeaway, and relevance score based on your research context.
             </p>
             <button
@@ -96,7 +96,7 @@ export function AIIntakePanel({
               disabled={!canAnalyze}
               className={`mt-3 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 canAnalyze
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  ? 'bg-stone-600 hover:bg-stone-700 text-white'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }`}
             >
@@ -104,7 +104,7 @@ export function AIIntakePanel({
               Analyze Paper
             </button>
             {!canAnalyze && (
-              <p className="text-xs text-purple-500 dark:text-purple-400 mt-2">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-2">
                 Configure AI settings to enable analysis
               </p>
             )}
@@ -117,14 +117,14 @@ export function AIIntakePanel({
   // Loading state
   if (isLoading) {
     return (
-      <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+      <div className="p-4 bg-stone-50 dark:bg-stone-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-purple-600 dark:text-purple-400 animate-spin" />
+          <Loader2 className="w-5 h-5 text-stone-600 dark:text-stone-400 animate-spin" />
           <div>
-            <p className="font-medium text-purple-900 dark:text-purple-100">
+            <p className="font-medium text-stone-900 dark:text-stone-100">
               Analyzing paper...
             </p>
-            <p className="text-sm text-purple-600 dark:text-purple-400">
+            <p className="text-sm text-stone-600 dark:text-stone-400">
               Evaluating relevance to your thesis
             </p>
           </div>
@@ -167,12 +167,12 @@ export function AIIntakePanel({
   const isTakeawayApplied = currentTakeaway === analysis.takeaway;
 
   return (
-    <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+    <div className="space-y-4 p-4 bg-gradient-to-r from-stone-50 to-amber-50 dark:from-stone-900/20 dark:to-amber-900/20 rounded-lg border border-stone-200 dark:border-stone-800">
       {/* Header with relevance score */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          <span className="font-medium text-purple-900 dark:text-purple-100">
+          <Sparkles className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+          <span className="font-medium text-stone-900 dark:text-stone-100">
             AI Analysis
           </span>
           {/* Feedback learning indicator */}
@@ -231,7 +231,7 @@ export function AIIntakePanel({
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
               isRoleApplied
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800/50'
+                : 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800/50'
             }`}
           >
             {isRoleApplied ? <Check size={12} /> : null}
@@ -263,7 +263,7 @@ export function AIIntakePanel({
             className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
               isTakeawayApplied
                 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800/50'
+                : 'bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800/50'
             }`}
           >
             {isTakeawayApplied ? <Check size={12} /> : null}
@@ -279,7 +279,7 @@ export function AIIntakePanel({
           <div className="mt-2">
             <button
               onClick={() => setShowAlternatives(!showAlternatives)}
-              className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+              className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-400 hover:underline"
             >
               {showAlternatives ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               {analysis.alternativeTakeaways.length} alternative{analysis.alternativeTakeaways.length > 1 ? 's' : ''}
@@ -294,7 +294,7 @@ export function AIIntakePanel({
                     <span className="text-gray-600 dark:text-gray-300">{alt}</span>
                     <button
                       onClick={() => onApplyTakeaway(alt)}
-                      className="text-purple-600 dark:text-purple-400 hover:underline flex-shrink-0"
+                      className="text-stone-600 dark:text-stone-400 hover:underline flex-shrink-0"
                     >
                       Use
                     </button>
@@ -315,7 +315,7 @@ export function AIIntakePanel({
             </span>
             <button
               onClick={() => onApplyArguments(analysis.arguments)}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-stone-100 dark:bg-stone-900/30 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800/50 transition-colors"
             >
               Apply All
             </button>
@@ -385,7 +385,7 @@ export function AIIntakePanel({
       <div className="flex justify-end">
         <button
           onClick={onAnalyze}
-          className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
+          className="text-xs text-stone-600 dark:text-stone-400 hover:underline"
         >
           Re-analyze
         </button>

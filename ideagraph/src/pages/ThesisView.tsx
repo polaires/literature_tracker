@@ -699,7 +699,7 @@ export function ThesisView() {
                     { value: 'contradicts' as const, label: 'Contradicts', color: 'bg-red-100 text-red-800' },
                     { value: 'method' as const, label: 'Method', color: 'bg-blue-100 text-blue-800' },
                     { value: 'background' as const, label: 'Background', color: 'bg-gray-200 text-gray-800' },
-                    { value: 'other' as const, label: 'Other', color: 'bg-purple-100 text-purple-800' },
+                    { value: 'other' as const, label: 'Other', color: 'bg-stone-100 text-stone-800' },
                   ].map((role) => (
                     <button
                       key={role.value}

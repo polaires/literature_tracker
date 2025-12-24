@@ -14,6 +14,20 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/semanticscholar/, ''),
         secure: true,
       },
+      // Proxy Unpaywall API requests
+      '/api/unpaywall': {
+        target: 'https://api.unpaywall.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/unpaywall/, ''),
+        secure: true,
+      },
+      // Proxy CORE API requests
+      '/api/core': {
+        target: 'https://api.core.ac.uk',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/core/, ''),
+        secure: true,
+      },
     },
   },
 })

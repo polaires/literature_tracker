@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   X,
   Download,
@@ -10,16 +10,21 @@ import {
   Trash2,
   HardDrive,
   FileSpreadsheet,
+  FileArchive,
+  Loader2,
+  Package,
 } from 'lucide-react';
+import JSZip from 'jszip';
 import { useAppStore } from '../../store/useAppStore';
-import type { Paper, ThesisRole } from '../../types';
+import { pdfStorage } from '../../services/pdfStorage';
+import type { ThesisRole } from '../../types';
 
 interface DataManagerProps {
   thesisId?: string;
   onClose: () => void;
 }
 
-type Tab = 'export' | 'import' | 'danger';
+type Tab = 'export' | 'import' | 'pdfs' | 'danger';
 
 interface ImportResult {
   success: boolean;
@@ -41,6 +46,283 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bibtexInputRef = useRef<HTMLInputElement>(null);
   const risInputRef = useRef<HTMLInputElement>(null);
+  const pdfZipInputRef = useRef<HTMLInputElement>(null);
+  const completeBackupInputRef = useRef<HTMLInputElement>(null);
+
+  // PDF backup state
+  const [pdfStats, setPdfStats] = useState<{ totalFiles: number; totalSize: number } | null>(null);
+  const [pdfExportProgress, setPdfExportProgress] = useState<{ current: number; total: number } | null>(null);
+  const [pdfImportProgress, setPdfImportProgress] = useState<{ current: number; total: number; filename: string } | null>(null);
+
+  // Load PDF stats on mount
+  useEffect(() => {
+    pdfStorage.getStorageStats().then(setPdfStats);
+  }, []);
+
+  // Format file size
+  const formatSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
+  // Export PDFs as zip
+  const handleExportPDFs = async () => {
+    setIsProcessing(true);
+    setPdfExportProgress({ current: 0, total: pdfStats?.totalFiles || 0 });
+    setImportResult(null);
+
+    try {
+      const blob = await pdfStorage.exportAllPDFs((current, total) => {
+        setPdfExportProgress({ current, total });
+      });
+
+      if (!blob) {
+        setImportResult({
+          success: false,
+          message: 'No PDFs to export',
+          details: 'Store some PDFs first before creating a backup',
+        });
+        return;
+      }
+
+      // Download the zip
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ideagraph-pdfs-backup-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setImportResult({
+        success: true,
+        message: 'PDF backup created successfully',
+        details: `Exported ${pdfStats?.totalFiles || 0} PDFs (${formatSize(pdfStats?.totalSize || 0)})`,
+      });
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Failed to create PDF backup',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsProcessing(false);
+      setPdfExportProgress(null);
+    }
+  };
+
+  // Import PDFs from zip
+  const handleImportPDFs = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    setPdfImportProgress({ current: 0, total: 0, filename: '' });
+    setImportResult(null);
+
+    try {
+      const result = await pdfStorage.importPDFsFromZip(file, {
+        onProgress: (current, total, filename) => {
+          setPdfImportProgress({ current, total, filename });
+        },
+        skipExisting: true,
+      });
+
+      // Refresh stats
+      const newStats = await pdfStorage.getStorageStats();
+      setPdfStats(newStats);
+
+      if (result.errors.length > 0) {
+        setImportResult({
+          success: result.imported > 0,
+          message: `Imported ${result.imported} PDFs, skipped ${result.skipped}`,
+          details: `${result.errors.length} errors: ${result.errors[0]}${result.errors.length > 1 ? ` (+${result.errors.length - 1} more)` : ''}`,
+        });
+      } else {
+        setImportResult({
+          success: true,
+          message: `Imported ${result.imported} PDFs`,
+          details: result.skipped > 0 ? `Skipped ${result.skipped} existing PDFs` : undefined,
+        });
+      }
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Failed to import PDF backup',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsProcessing(false);
+      setPdfImportProgress(null);
+      if (pdfZipInputRef.current) pdfZipInputRef.current.value = '';
+    }
+  };
+
+  // Complete backup export (data + PDFs in one zip)
+  const handleCompleteBackupExport = async () => {
+    setIsProcessing(true);
+    setPdfExportProgress({ current: 0, total: (pdfStats?.totalFiles || 0) + 1 });
+    setImportResult(null);
+
+    try {
+      const zip = new JSZip();
+
+      // Add ideagraph data as JSON
+      const data = exportData();
+      zip.file('ideagraph-data.json', data);
+      setPdfExportProgress({ current: 1, total: (pdfStats?.totalFiles || 0) + 1 });
+
+      // Add all PDFs
+      const db = await pdfStorage.getAllPDFMetadata();
+      for (let i = 0; i < db.length; i++) {
+        const meta = db[i];
+        const pdfData = await pdfStorage.getPDF(meta.id);
+        if (pdfData) {
+          const path = `pdfs/${meta.paperId}/${meta.filename}`;
+          zip.file(path, pdfData);
+        }
+        setPdfExportProgress({ current: i + 2, total: db.length + 1 });
+      }
+
+      // Add PDF manifest
+      zip.file('pdf-manifest.json', JSON.stringify(db, null, 2));
+
+      // Generate and download
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ideagraph-complete-backup-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setImportResult({
+        success: true,
+        message: 'Complete backup created successfully',
+        details: `Exported ${stats.theses} theses, ${stats.papers} papers, ${stats.connections} connections, and ${pdfStats?.totalFiles || 0} PDFs`,
+      });
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Failed to create complete backup',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsProcessing(false);
+      setPdfExportProgress(null);
+    }
+  };
+
+  // Complete backup import (data + PDFs from one zip)
+  const handleCompleteBackupImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    setPdfImportProgress({ current: 0, total: 0, filename: 'Reading backup...' });
+    setImportResult(null);
+
+    try {
+      const zip = await JSZip.loadAsync(file);
+
+      // Check for data file
+      const dataFile = zip.file('ideagraph-data.json');
+      if (!dataFile) {
+        throw new Error('Invalid backup: ideagraph-data.json not found');
+      }
+
+      // Import the data first
+      const dataText = await dataFile.async('text');
+      importData(dataText);
+      setPdfImportProgress({ current: 1, total: 2, filename: 'Data restored' });
+
+      // Check for PDF manifest
+      const manifestFile = zip.file('pdf-manifest.json');
+      let pdfResult = { imported: 0, skipped: 0, errors: [] as string[] };
+
+      if (manifestFile) {
+        const manifestText = await manifestFile.async('text');
+        const manifest = JSON.parse(manifestText) as Array<{
+          id: string;
+          paperId: string;
+          filename: string;
+          fileSize: number;
+          addedAt: string;
+          lastOpenedAt: string;
+        }>;
+
+        setPdfImportProgress({ current: 0, total: manifest.length, filename: '' });
+
+        for (let i = 0; i < manifest.length; i++) {
+          const entry = manifest[i];
+          setPdfImportProgress({ current: i + 1, total: manifest.length, filename: entry.filename });
+
+          try {
+            // Check if already exists
+            const exists = await pdfStorage.hasPDF(entry.paperId);
+            if (exists) {
+              pdfResult.skipped++;
+              continue;
+            }
+
+            // Find the PDF file in the zip
+            const pdfPath = `pdfs/${entry.paperId}/${entry.filename}`;
+            const pdfFile = zip.file(pdfPath);
+
+            if (!pdfFile) {
+              pdfResult.errors.push(`PDF not found: ${entry.filename}`);
+              continue;
+            }
+
+            const pdfData = await pdfFile.async('arraybuffer');
+
+            // Store using the internal method - we need to access the db directly
+            // For now, we'll use storePDF with a File object
+            const blob = new Blob([pdfData], { type: 'application/pdf' });
+            const fileObj = new File([blob], entry.filename, { type: 'application/pdf' });
+            await pdfStorage.storePDF(entry.paperId, fileObj);
+
+            pdfResult.imported++;
+          } catch (error) {
+            pdfResult.errors.push(
+              `Failed to import ${entry.filename}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+      }
+
+      // Refresh stats
+      const newStats = await pdfStorage.getStorageStats();
+      setPdfStats(newStats);
+
+      const details = [];
+      details.push('Data restored successfully');
+      if (pdfResult.imported > 0) details.push(`${pdfResult.imported} PDFs imported`);
+      if (pdfResult.skipped > 0) details.push(`${pdfResult.skipped} PDFs skipped (already exist)`);
+      if (pdfResult.errors.length > 0) details.push(`${pdfResult.errors.length} PDF errors`);
+
+      setImportResult({
+        success: true,
+        message: 'Complete backup restored',
+        details: details.join(', '),
+      });
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Failed to restore backup',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsProcessing(false);
+      setPdfImportProgress(null);
+      if (completeBackupInputRef.current) completeBackupInputRef.current.value = '';
+    }
+  };
 
   // Export as JSON
   const handleExportJSON = () => {
@@ -400,6 +682,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
           {[
             { id: 'export', label: 'Export', icon: Download },
             { id: 'import', label: 'Import', icon: Upload },
+            { id: 'pdfs', label: 'PDFs', icon: FileArchive },
             { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
           ].map((tab) => (
             <button
@@ -422,7 +705,57 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
           {/* Export Tab */}
           {activeTab === 'export' && (
             <div className="space-y-6">
-              {/* Full Backup */}
+              {/* Complete Backup (Data + PDFs) */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <Package className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-slate-900 dark:text-white">
+                        Complete Backup
+                      </h3>
+                      <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-full">
+                        Recommended
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Export everything in one file: theses, papers, connections, settings, AND all stored PDFs.
+                      Perfect for full backup or migrating to a new device.
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                      {stats.theses} theses, {stats.papers} papers, {stats.connections} connections, {pdfStats?.totalFiles || 0} PDFs ({formatSize(pdfStats?.totalSize || 0)})
+                    </p>
+                    {pdfExportProgress && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Creating backup... {pdfExportProgress.current} of {pdfExportProgress.total}
+                        </div>
+                        <div className="mt-2 h-2 bg-emerald-200 dark:bg-emerald-900/50 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 transition-all duration-300"
+                            style={{ width: `${(pdfExportProgress.current / pdfExportProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!pdfExportProgress && (
+                      <button
+                        onClick={handleCompleteBackupExport}
+                        disabled={isProcessing}
+                        className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <Download size={16} />
+                        {isProcessing ? 'Creating...' : 'Download Complete Backup'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Only Backup */}
               <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
@@ -430,18 +763,17 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
-                      Full Backup (JSON)
+                      Data Only (JSON)
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Export all theses, papers, connections, and settings. Use this for backups or
-                      transferring to another device.
+                      Export theses, papers, connections, and settings without PDFs. Smaller file size.
                     </p>
                     <button
                       onClick={handleExportJSON}
                       className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <Download size={16} />
-                      Download Backup
+                      Download Data Backup
                     </button>
                   </div>
                 </div>
@@ -536,7 +868,62 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                 </div>
               )}
 
-              {/* Import JSON */}
+              {/* Complete Backup Restore */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <Package className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-slate-900 dark:text-white">
+                        Restore Complete Backup
+                      </h3>
+                      <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-full">
+                        Recommended
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Restore everything from a complete backup: data AND PDFs. This will replace all current data.
+                    </p>
+                    {pdfImportProgress && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {pdfImportProgress.filename || `Restoring ${pdfImportProgress.current} of ${pdfImportProgress.total}...`}
+                        </div>
+                        {pdfImportProgress.total > 0 && (
+                          <div className="mt-2 h-2 bg-emerald-200 dark:bg-emerald-900/50 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-600 transition-all duration-300"
+                              style={{ width: `${(pdfImportProgress.current / pdfImportProgress.total) * 100}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      ref={completeBackupInputRef}
+                      type="file"
+                      accept=".zip,application/zip"
+                      onChange={handleCompleteBackupImport}
+                      className="hidden"
+                    />
+                    {!pdfImportProgress && (
+                      <button
+                        onClick={() => completeBackupInputRef.current?.click()}
+                        disabled={isProcessing}
+                        className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <Upload size={16} />
+                        {isProcessing ? 'Restoring...' : 'Choose Complete Backup'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Import JSON (Data Only) */}
               <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
@@ -544,10 +931,10 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
-                      Restore from Backup (JSON)
+                      Restore Data Only (JSON)
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Import a previously exported backup. This will replace all current data.
+                      Import data backup without PDFs. This will replace all current data.
                     </p>
                     <input
                       ref={fileInputRef}
@@ -562,7 +949,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                       className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <Upload size={16} />
-                      {isProcessing ? 'Processing...' : 'Choose File'}
+                      {isProcessing ? 'Processing...' : 'Choose JSON File'}
                     </button>
                   </div>
                 </div>
@@ -642,6 +1029,173 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* PDFs Tab */}
+          {activeTab === 'pdfs' && (
+            <div className="space-y-6">
+              {/* PDF Stats */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-stone-100 dark:bg-stone-900/30 flex items-center justify-center">
+                    <FileArchive className="w-5 h-5 text-stone-600 dark:text-stone-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      PDF Storage
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {pdfStats ? (
+                        <>
+                          {pdfStats.totalFiles} PDFs stored ({formatSize(pdfStats.totalSize)})
+                        </>
+                      ) : (
+                        'Loading...'
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Import Result */}
+              {importResult && (
+                <div
+                  className={`p-4 rounded-xl flex items-start gap-3 ${
+                    importResult.success
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800'
+                  }`}
+                >
+                  {importResult.success ? (
+                    <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p
+                      className={`font-medium ${
+                        importResult.success
+                          ? 'text-emerald-800 dark:text-emerald-200'
+                          : 'text-rose-800 dark:text-rose-200'
+                      }`}
+                    >
+                      {importResult.message}
+                    </p>
+                    {importResult.details && (
+                      <p
+                        className={`text-sm mt-0.5 ${
+                          importResult.success
+                            ? 'text-emerald-600 dark:text-emerald-300'
+                            : 'text-rose-600 dark:text-rose-300'
+                        }`}
+                      >
+                        {importResult.details}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Export PDFs */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-900/30 flex items-center justify-center flex-shrink-0">
+                    <Download className="w-6 h-6 text-stone-600 dark:text-stone-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      Backup PDFs
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Download all stored PDFs as a zip file. This backup can be restored on any device.
+                    </p>
+                    {pdfExportProgress && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Exporting {pdfExportProgress.current} of {pdfExportProgress.total} PDFs...
+                        </div>
+                        <div className="mt-2 h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-stone-600 transition-all duration-300"
+                            style={{ width: `${(pdfExportProgress.current / pdfExportProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!pdfExportProgress && (
+                      <button
+                        onClick={handleExportPDFs}
+                        disabled={isProcessing || !pdfStats || pdfStats.totalFiles === 0}
+                        className="mt-3 px-4 py-2 bg-stone-600 text-white rounded-lg hover:bg-stone-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <Download size={16} />
+                        {isProcessing ? 'Processing...' : 'Download PDF Backup'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Import PDFs */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-900/30 flex items-center justify-center flex-shrink-0">
+                    <Upload className="w-6 h-6 text-stone-600 dark:text-stone-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      Restore PDFs
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Import PDFs from a previous backup. Existing PDFs with the same ID will be skipped.
+                    </p>
+                    {pdfImportProgress && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Importing {pdfImportProgress.current} of {pdfImportProgress.total}...
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                          {pdfImportProgress.filename}
+                        </p>
+                        <div className="mt-2 h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-stone-600 transition-all duration-300"
+                            style={{ width: pdfImportProgress.total > 0 ? `${(pdfImportProgress.current / pdfImportProgress.total) * 100}%` : '0%' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <input
+                      ref={pdfZipInputRef}
+                      type="file"
+                      accept=".zip,application/zip"
+                      onChange={handleImportPDFs}
+                      className="hidden"
+                    />
+                    {!pdfImportProgress && (
+                      <button
+                        onClick={() => pdfZipInputRef.current?.click()}
+                        disabled={isProcessing}
+                        className="mt-3 px-4 py-2 bg-stone-600 text-white rounded-lg hover:bg-stone-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <Upload size={16} />
+                        {isProcessing ? 'Processing...' : 'Choose Backup File'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Note about Complete Backup */}
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                  <strong>Tip:</strong> Use <strong>Complete Backup</strong> in the Export tab to save
+                  both your data AND PDFs in a single file. This is the easiest way to back up everything.
+                </p>
               </div>
             </div>
           )}
