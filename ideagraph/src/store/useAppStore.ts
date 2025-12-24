@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import { CLUSTER_COLORS } from '../types';
 import type { AISettings, AITaskModelAssignment, ClaudeModelId } from '../services/ai/types';
+import { isUsingDefaultAPI } from '../services/ai/config';
 
 interface AppStore {
   // Data
@@ -553,6 +554,8 @@ export const useAppStore = create<AppStore>()(
       isAIConfigured: () => {
         const { aiSettings } = get();
         if (aiSettings.provider === 'mock') return true;
+        // If using default API (no user config), AI is configured
+        if (isUsingDefaultAPI(aiSettings.apiKey, aiSettings.apiBaseUrl)) return true;
         if (aiSettings.provider === 'claude' && aiSettings.apiKey?.startsWith('sk-')) return true;
         if (aiSettings.provider === 'openai' && aiSettings.apiKey?.startsWith('sk-')) return true;
         if (aiSettings.provider === 'ollama' && aiSettings.ollamaEndpoint) return true;

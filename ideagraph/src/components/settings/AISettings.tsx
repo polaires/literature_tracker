@@ -23,6 +23,7 @@ import { useAI } from '../../hooks/useAI';
 import { getSimilarityCacheStats, clearSimilarityCache } from '../../services/api/semanticScholar';
 import { getEmbeddingCacheStats, clearEmbeddingCache } from '../../services/api/semanticScholar';
 import { getRetractionCheckStats, clearRetractionCache } from '../../services/intake/retractionCheck';
+import { isUsingDefaultAPI } from '../../services/ai/config';
 
 export const AISettings: React.FC = () => {
   const {
@@ -39,6 +40,10 @@ export const AISettings: React.FC = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showCustomAPI, setShowCustomAPI] = useState(false);
+
+  // Check if using default API
+  const usingDefaultAPI = isUsingDefaultAPI(settings.apiKey, settings.apiBaseUrl);
 
   // Handle API key and endpoint save
   const handleSaveApiKey = () => {
@@ -85,48 +90,68 @@ export const AISettings: React.FC = () => {
           <h3 className="font-medium text-slate-900 dark:text-white">API Configuration</h3>
           {isConfigured && (
             <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              Connected
+              {usingDefaultAPI ? 'Ready' : 'Connected'}
             </span>
           )}
         </div>
 
         <div className="space-y-3">
-          {/* API Key */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              API Key
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKeyInput}
-                  onChange={(e) => {
-                    setApiKeyInput(e.target.value);
-                    setConnectionStatus('idle');
-                  }}
-                  placeholder={apiBaseUrlInput ? 'sk-...' : 'sk-ant-api03-...'}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
-                />
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                >
-                  {showApiKey ? 'Hide' : 'Show'}
-                </button>
+          {/* Default API Status */}
+          {usingDefaultAPI && !showCustomAPI && (
+            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm text-green-700 dark:text-green-300">
+                  AI features are ready to use
+                </span>
               </div>
+              <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+                Using built-in AI service. No configuration needed.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Custom Endpoint (Collapsible) */}
-          <details className="group">
+          {/* Custom API Configuration (Collapsible) */}
+          <details
+            className="group"
+            open={showCustomAPI || !usingDefaultAPI}
+            onToggle={(e) => setShowCustomAPI((e.target as HTMLDetailsElement).open)}
+          >
             <summary className="text-sm text-slate-500 dark:text-slate-400 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
-              Using a third-party provider? Click to configure
+              {usingDefaultAPI ? 'Want to use your own API? Click to configure' : 'Custom API Configuration'}
             </summary>
             <div className="mt-3 space-y-3 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
+              {/* API Key */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Custom API Endpoint
+                  API Key
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={apiKeyInput}
+                      onChange={(e) => {
+                        setApiKeyInput(e.target.value);
+                        setConnectionStatus('idle');
+                      }}
+                      placeholder="sk-..."
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      {showApiKey ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Endpoint */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  API Endpoint (optional)
                 </label>
                 <input
                   type="text"
@@ -135,84 +160,88 @@ export const AISettings: React.FC = () => {
                     setApiBaseUrlInput(e.target.value);
                     setConnectionStatus('idle');
                   }}
-                  placeholder="https://api.anthropic.com/v1/messages"
+                  placeholder="https://api.openai.com/v1/chat/completions"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
                 />
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  For OneAPI, OpenRouter, or other compatible providers
+                  For OpenAI, Anthropic, or other compatible providers
                 </p>
               </div>
 
-              {apiBaseUrlInput && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Model Name
-                  </label>
-                  <input
-                    type="text"
-                    value={customModelInput}
-                    onChange={(e) => {
-                      setCustomModelInput(e.target.value);
+              {/* Model Name */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Model Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={customModelInput}
+                  onChange={(e) => {
+                    setCustomModelInput(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder="e.g., gpt-4, claude-3-sonnet"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={handleSaveApiKey}
+                  disabled={!apiKeyInput}
+                  className="px-4 py-2 rounded-lg bg-stone-600 text-white hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleTestConnection}
+                  disabled={isTestingConnection}
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                  {isTestingConnection ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  Test
+                </button>
+
+                {!usingDefaultAPI && (
+                  <button
+                    onClick={() => {
+                      updateSettings({
+                        apiKey: null,
+                        apiBaseUrl: null,
+                        customModelName: null,
+                      });
+                      setApiKeyInput('');
+                      setApiBaseUrlInput('');
+                      setCustomModelInput('');
                       setConnectionStatus('idle');
                     }}
-                    placeholder="e.g., gpt-4, claude-3-sonnet"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent text-sm"
-                  />
-                </div>
-              )}
+                    className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  >
+                    Reset to Default
+                  </button>
+                )}
+
+                {connectionStatus === 'success' && (
+                  <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                    <Check className="w-4 h-4" />
+                    Success
+                  </span>
+                )}
+
+                {connectionStatus === 'error' && (
+                  <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
+                    <X className="w-4 h-4" />
+                    Failed
+                  </span>
+                )}
+              </div>
             </div>
           </details>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              onClick={handleSaveApiKey}
-              disabled={!apiKeyInput}
-              className="px-4 py-2 rounded-lg bg-stone-600 text-white hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-            >
-              Save
-            </button>
-            <button
-              onClick={handleTestConnection}
-              disabled={!apiKeyInput || isTestingConnection}
-              className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
-            >
-              {isTestingConnection ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Zap className="w-4 h-4" />
-              )}
-              Test
-            </button>
-
-            {connectionStatus === 'success' && (
-              <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
-                <Check className="w-4 h-4" />
-                Success
-              </span>
-            )}
-
-            {connectionStatus === 'error' && (
-              <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
-                <X className="w-4 h-4" />
-                Failed
-              </span>
-            )}
-          </div>
-
-          {!apiBaseUrlInput && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Get your API key from{' '}
-              <a
-                href="https://console.anthropic.com/settings/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-stone-600 hover:underline"
-              >
-                console.anthropic.com
-              </a>
-            </p>
-          )}
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import type { AIProvider, AIProviderType, AISettings } from '../types';
 import { ClaudeProvider, createClaudeProvider } from './claude';
 import { createMockProvider } from './mock';
+import { getEffectiveAPIConfig, isUsingDefaultAPI } from '../config';
 
 // Re-export providers
 export { ClaudeProvider, createClaudeProvider } from './claude';
@@ -45,19 +46,31 @@ export function getAIProvider(settings: AISettings): AIProvider {
 export function createAIProvider(settings: AISettings): AIProvider {
   const tier = settings.preferFastModel ? 'fast' : 'standard';
 
+  // Get effective API configuration (user config or defaults)
+  const effectiveConfig = getEffectiveAPIConfig(
+    settings.apiKey,
+    settings.apiBaseUrl,
+    settings.customModelName
+  );
+
   switch (settings.provider) {
     case 'claude':
+      // Use effective config which includes defaults if no user config
       return createClaudeProvider(
-        settings.apiKey ?? undefined,
+        effectiveConfig.apiKey,
         tier,
-        settings.apiBaseUrl ?? undefined,
-        settings.customModelName ?? undefined
+        effectiveConfig.baseUrl,
+        effectiveConfig.modelName
       );
 
     case 'openai':
-      // TODO: Implement OpenAI provider
-      console.warn('[AIProvider] OpenAI provider not yet implemented, falling back to mock');
-      return createMockProvider();
+      // OpenAI provider uses Claude provider with OpenAI-compatible API
+      return createClaudeProvider(
+        effectiveConfig.apiKey,
+        tier,
+        effectiveConfig.baseUrl,
+        effectiveConfig.modelName
+      );
 
     case 'ollama':
       // TODO: Implement Ollama provider
@@ -89,10 +102,14 @@ export function isProviderAvailable(type: AIProviderType, settings: AISettings):
   switch (type) {
     case 'claude':
       // Accept any sk- key (official sk-ant- or third-party sk-)
-      return !!settings.apiKey && settings.apiKey.startsWith('sk-');
+      // Also available if using default API (no user config)
+      return isUsingDefaultAPI(settings.apiKey, settings.apiBaseUrl) ||
+        (!!settings.apiKey && settings.apiKey.startsWith('sk-'));
 
     case 'openai':
-      return !!settings.apiKey && settings.apiKey.startsWith('sk-');
+      // Available with user API key or using default API
+      return isUsingDefaultAPI(settings.apiKey, settings.apiBaseUrl) ||
+        (!!settings.apiKey && settings.apiKey.startsWith('sk-'));
 
     case 'ollama':
       return !!settings.ollamaEndpoint;
