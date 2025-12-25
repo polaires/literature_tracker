@@ -52,3 +52,19 @@ export {
   parseScreeningSuggestions,
   type ScreeningSuggestion,
 } from './screening';
+
+export {
+  PDF_ASSISTANT_SYSTEM_PROMPT,
+  buildQuickSummaryPrompt,
+  buildKeyFindingsPrompt,
+  buildThesisRelevancePrompt,
+  buildMethodologyPrompt,
+  buildTakeawayPrompt,
+  parseTakeawayResponse,
+  getPromptBuilder,
+  estimateTokenUsage,
+  getRecommendedModel,
+  type PDFAIAction,
+  type PDFPromptContext,
+  type TakeawayResponse,
+} from './pdfSummary';
