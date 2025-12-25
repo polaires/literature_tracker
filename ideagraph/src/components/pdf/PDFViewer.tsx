@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   PdfLoader,
   PdfHighlighter,
@@ -72,9 +72,16 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
 
   const scrollViewerTo = useRef<(highlight: IHighlight) => void>(() => {});
 
-  // Get annotations for this paper
-  const annotations = getAnnotationsForPaper(paper.id);
-  const highlights = annotations.map(toHighlightFormat);
+  // Get annotations for this paper - memoize to prevent infinite loops
+  const annotations = useMemo(
+    () => getAnnotationsForPaper(paper.id),
+    [getAnnotationsForPaper, paper.id]
+  );
+
+  const highlights = useMemo(
+    () => annotations.map(toHighlightFormat),
+    [annotations]
+  );
 
   // Load PDF on mount
   useEffect(() => {
@@ -142,6 +149,34 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
     const highlight = toHighlightFormat(annotation);
     scrollViewerTo.current(highlight);
   }, []);
+
+  // Memoize enableAreaSelection to prevent PdfHighlighter re-renders
+  const enableAreaSelection = useCallback(
+    () => highlightMode === 'area',
+    [highlightMode]
+  );
+
+  // Memoize onScrollChange (currently a no-op but needs stable reference)
+  const onScrollChange = useCallback(() => {}, []);
+
+  // Memoize scrollRef callback
+  const scrollRef = useCallback((scrollTo: (highlight: IHighlight) => void) => {
+    scrollViewerTo.current = scrollTo;
+  }, []);
+
+  // Memoize onSelectionFinished to prevent infinite loops
+  const onSelectionFinished = useCallback(
+    (position: any, content: any, hideTipAndSelection: () => void) => {
+      handleAddHighlight({
+        position,
+        content,
+        comment: { text: '', emoji: '' },
+      });
+      hideTipAndSelection();
+      return null;
+    },
+    [handleAddHighlight]
+  );
 
   if (loading) {
     return (
@@ -290,24 +325,10 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
             {(pdfDocument) => (
               <PdfHighlighter
                 pdfDocument={pdfDocument}
-                enableAreaSelection={() => highlightMode === 'area'}
-                onScrollChange={() => {}}
-                scrollRef={(scrollTo) => {
-                  scrollViewerTo.current = scrollTo;
-                }}
-                onSelectionFinished={(
-                  position,
-                  content,
-                  hideTipAndSelection
-                ) => {
-                  handleAddHighlight({
-                    position,
-                    content,
-                    comment: { text: '', emoji: '' },
-                  });
-                  hideTipAndSelection();
-                  return null;
-                }}
+                enableAreaSelection={enableAreaSelection}
+                onScrollChange={onScrollChange}
+                scrollRef={scrollRef}
+                onSelectionFinished={onSelectionFinished}
                 highlightTransform={(
                   highlight,
                   index,
@@ -321,6 +342,10 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
                   const isAreaHighlight = highlight.content?.image;
                   const color = annotation?.color || 'yellow';
 
+                  // Note: AreaHighlight onChange is not memoized here because it needs
+                  // access to viewportToScaled and screenshot from the closure.
+                  // However, memoizing highlights and other props should prevent
+                  // the infinite loop issue.
                   const component = isAreaHighlight ? (
                     <AreaHighlight
                       isScrolledTo={isScrolledTo}

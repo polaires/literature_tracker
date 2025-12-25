@@ -1,7 +1,7 @@
 // AI Assistant Panel Component
 // Floating panel for AI-assisted PDF reading
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
   Brain,
   FileText,
@@ -109,41 +109,10 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   const [pdfText, setPdfText] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<ReturnType<typeof detectSections> | null>(null);
 
-  // Extract PDF text on mount
-  useEffect(() => {
-    async function extractText() {
-      try {
-        const pdf = await pdfStorage.getPDFByPaperId(paper.id);
-        if (pdf) {
-          const extraction = await extractPDFText(pdf.data);
-          if (extraction.success) {
-            setPdfText(extraction.fullText);
-            const sections = detectSections(extraction.fullText, extraction.pages);
-            setPdfSections(sections);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to extract PDF text:', err);
-      }
-    }
+  // Track whether auto-summarize has been triggered to prevent loops
+  const hasAutoSummarizedRef = useRef(false);
 
-    if (isOpen && !pdfText) {
-      extractText();
-    }
-  }, [isOpen, paper.id, pdfText]);
-
-  // Auto-summarize on first open
-  useEffect(() => {
-    if (isOpen && pdfText && !currentResult && !isLoading) {
-      // Small delay to let the panel animate in
-      const timer = setTimeout(() => {
-        handleAction('summarize');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, pdfText, currentResult, isLoading]);
-
-  // Handle AI action
+  // Handle AI action - defined before effects that use it
   const handleAction = useCallback(async (action: PDFAIAction) => {
     // Check if action requires thesis context
     if (action === 'thesis-relevance' && !thesis) {
@@ -241,6 +210,47 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       setLoadingAction(null);
     }
   }, [paper, thesis, pdfText, pdfSections, aiSettings]);
+
+  // Extract PDF text on mount
+  useEffect(() => {
+    async function extractText() {
+      try {
+        const pdf = await pdfStorage.getPDFByPaperId(paper.id);
+        if (pdf) {
+          const extraction = await extractPDFText(pdf.data);
+          if (extraction.success) {
+            setPdfText(extraction.fullText);
+            const sections = detectSections(extraction.fullText, extraction.pages);
+            setPdfSections(sections);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to extract PDF text:', err);
+      }
+    }
+
+    if (isOpen && !pdfText) {
+      extractText();
+    }
+  }, [isOpen, paper.id, pdfText]);
+
+  // Auto-summarize on first open - uses ref to prevent infinite loops
+  useEffect(() => {
+    // Only auto-summarize once per panel open
+    if (isOpen && pdfText && !currentResult && !isLoading && !hasAutoSummarizedRef.current) {
+      hasAutoSummarizedRef.current = true;
+      // Small delay to let the panel animate in
+      const timer = setTimeout(() => {
+        handleAction('summarize');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+
+    // Reset the ref when panel is closed
+    if (!isOpen) {
+      hasAutoSummarizedRef.current = false;
+    }
+  }, [isOpen, pdfText, currentResult, isLoading, handleAction]);
 
   // Copy result to clipboard
   const handleCopy = useCallback(() => {
