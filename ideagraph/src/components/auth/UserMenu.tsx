@@ -1,16 +1,28 @@
 import { useState } from 'react';
-import { User, LogOut, RefreshCw, ChevronDown } from 'lucide-react';
+import { User, LogOut, RefreshCw, ChevronDown, Cloud, CloudOff, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from './AuthModal';
+import { AdminDashboard } from './AdminDashboard';
+
+// Admin user email
+const ADMIN_EMAIL = 'ww2607@columbia.edu';
 
 export function UserMenu() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const handleLogout = async () => {
     await logout();
     setShowDropdown(false);
+  };
+
+  const handleSyncClick = () => {
+    // Coming soon - just show a message
+    alert('Cloud Sync coming soon!');
   };
 
   if (isLoading) {
@@ -61,6 +73,42 @@ export function UserMenu() {
               )}
             </div>
 
+            <div className="border-b border-gray-200 py-1 dark:border-gray-700">
+              <button
+                onClick={handleSyncClick}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                disabled
+              >
+                <Cloud className="h-4 w-4" />
+                Sync to Cloud
+                <span className="ml-auto text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Soon</span>
+              </button>
+              <button
+                onClick={handleSyncClick}
+                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                disabled
+              >
+                <CloudOff className="h-4 w-4" />
+                Sync from Cloud
+                <span className="ml-auto text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Soon</span>
+              </button>
+            </div>
+
+            {isAdmin && (
+              <div className="border-b border-gray-200 py-1 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    setShowAdminDashboard(true);
+                    setShowDropdown(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin Dashboard
+                </button>
+              </div>
+            )}
+
             <div className="py-1">
               <button
                 onClick={handleLogout}
@@ -72,6 +120,10 @@ export function UserMenu() {
             </div>
           </div>
         </>
+      )}
+
+      {showAdminDashboard && (
+        <AdminDashboard onClose={() => setShowAdminDashboard(false)} />
       )}
     </div>
   );
