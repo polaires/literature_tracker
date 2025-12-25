@@ -2336,14 +2336,14 @@ export function GraphView({
       )}
 
       {/* Control Panel - Top Horizontal Toolbar */}
-      <div className="absolute top-4 left-4 right-4 flex items-start justify-between pointer-events-none">
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 flex items-start justify-between pointer-events-none">
         {/* Left Toolbar Group */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
           {/* Quick Add Button */}
           {onOpenAddPaper && (
             <button
               onClick={onOpenAddPaper}
-              className="p-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-lg transition-colors"
+              className="p-2 sm:p-2.5 bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white rounded-xl shadow-lg transition-colors touch-manipulation"
               title="Add Paper"
             >
               <Plus size={18} />
@@ -2354,32 +2354,32 @@ export function GraphView({
           <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <button
               onClick={() => handleZoom(1.3)}
-              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-r border-slate-200 dark:border-slate-700"
+              className="p-2 sm:p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 transition-colors border-r border-slate-200 dark:border-slate-700 touch-manipulation"
               title="Zoom In"
             >
               <ZoomIn size={18} className="text-slate-600 dark:text-slate-300" />
             </button>
             <button
               onClick={() => handleZoom(0.7)}
-              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-r border-slate-200 dark:border-slate-700"
+              className="p-2 sm:p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 transition-colors border-r border-slate-200 dark:border-slate-700 touch-manipulation"
               title="Zoom Out"
             >
               <ZoomOut size={18} className="text-slate-600 dark:text-slate-300" />
             </button>
             <button
               onClick={handleFit}
-              className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              className="p-2 sm:p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 transition-colors touch-manipulation"
               title="Fit to View"
             >
               <Maximize2 size={18} className="text-slate-600 dark:text-slate-300" />
             </button>
           </div>
 
-          {/* Tool Mode Group */}
-          <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          {/* Tool Mode Group - hidden on small mobile, show on sm+ */}
+          <div className="hidden sm:flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <button
               onClick={() => setToolMode('pointer')}
-              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+              className={`p-2 sm:p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 touch-manipulation ${
                 toolMode === 'pointer'
                   ? 'bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -2390,7 +2390,7 @@ export function GraphView({
             </button>
             <button
               onClick={() => setToolMode(toolMode === 'connect' ? 'pointer' : 'connect')}
-              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+              className={`p-2 sm:p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 touch-manipulation ${
                 toolMode === 'connect'
                   ? 'bg-amber-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -2401,7 +2401,7 @@ export function GraphView({
             </button>
             <button
               onClick={() => setToolMode(toolMode === 'select' ? 'pointer' : 'select')}
-              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+              className={`p-2 sm:p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 touch-manipulation ${
                 toolMode === 'select'
                   ? 'bg-cyan-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -2412,7 +2412,7 @@ export function GraphView({
             </button>
             <button
               onClick={() => setToolMode(toolMode === 'discovery' ? 'pointer' : 'discovery')}
-              className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
+              className={`p-2 sm:p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 touch-manipulation ${
                 toolMode === 'discovery'
                   ? 'bg-stone-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -2423,7 +2423,7 @@ export function GraphView({
             </button>
             <button
               onClick={() => setToolMode(toolMode === 'focus' ? 'pointer' : 'focus')}
-              className={`p-2.5 transition-all duration-200 ${
+              className={`p-2 sm:p-2.5 transition-all duration-200 touch-manipulation ${
                 toolMode === 'focus'
                   ? 'bg-amber-500 text-white'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -3284,8 +3284,8 @@ export function GraphView({
         />
       )}
 
-      {/* Legend & Stats - Bottom Left */}
-      <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-3 py-2.5">
+      {/* Legend & Stats - Bottom Left - hidden on very small screens */}
+      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-2 sm:px-3 py-2 sm:py-2.5 max-w-[200px] sm:max-w-none">
         <div className="flex flex-col gap-2">
           {/* Stats Row */}
           <div className="flex items-center gap-3 text-xs">

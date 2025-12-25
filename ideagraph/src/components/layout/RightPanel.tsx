@@ -2,6 +2,8 @@ import { memo, useEffect, useRef } from 'react';
 import { X, FileText, ClipboardCheck, Compass } from 'lucide-react';
 import { usePanelContext, Z_INDEX } from '../../contexts/PanelContext';
 import { ResizeHandle } from './ResizeHandle';
+import { MobileDrawer } from '../ui/MobileDrawer';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface RightPanelProps {
   children: React.ReactNode;
@@ -26,6 +28,7 @@ export const RightPanel = memo(function RightPanel({
 }: RightPanelProps) {
   const { rightPanel, closeRightPanel, rightWidth, resizeRightPanel } = usePanelContext();
   const panelRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const handleClose = onClose || closeRightPanel;
   const Icon = ICON_MAP[icon];
@@ -39,6 +42,34 @@ export const RightPanel = memo(function RightPanel({
 
   if (!rightPanel) return null;
 
+  // Mobile view - use bottom drawer for better UX
+  if (isMobile) {
+    return (
+      <MobileDrawer
+        isOpen={!!rightPanel}
+        onClose={handleClose}
+        position="bottom"
+        title={title}
+        showCloseButton={true}
+      >
+        {subtitle && (
+          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {subtitle}
+              </p>
+            </div>
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {children}
+        </div>
+      </MobileDrawer>
+    );
+  }
+
+  // Desktop view
   return (
     <aside
       ref={panelRef}

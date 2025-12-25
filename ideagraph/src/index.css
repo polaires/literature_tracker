@@ -532,3 +532,120 @@ html {
     text-decoration: underline;
   }
 }
+
+/* =============================================================================
+   Responsive Typography
+   ============================================================================= */
+
+@media (max-width: 640px) {
+  /* Scale up body text for readability */
+  body {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  /* Larger headings on mobile for better hierarchy */
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem; }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Tablet sizing */
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.5rem; }
+}
+
+/* =============================================================================
+   Safe Area Insets
+   ============================================================================= */
+
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Fixed elements need safe area padding */
+.fixed-safe-top {
+  top: env(safe-area-inset-top);
+}
+
+.fixed-safe-bottom {
+  bottom: env(safe-area-inset-bottom);
+}
+
+/* =============================================================================
+   Mobile Drawer Animations
+   ============================================================================= */
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-in-bottom {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Touch manipulation for better touch response */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Prevent pull-to-refresh on certain elements */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* =============================================================================
+   Mobile-specific utilities
+   ============================================================================= */
+
+/* Mobile spacing adjustments */
+@media (max-width: 640px) {
+  .mobile-px { padding-left: 1rem; padding-right: 1rem; }
+  .mobile-py { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  
+  /* Compact buttons for inline use */
+  .compact-btn { min-height: 32px !important; min-width: 32px !important; }
+}
+
+/* Hide on mobile */
+@media (max-width: 639px) {
+  .hide-mobile { display: none !important; }
+}
+
+/* Show only on mobile */
+@media (min-width: 640px) {
+  .show-mobile-only { display: none !important; }
+}

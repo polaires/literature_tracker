@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { usePanelContext, PANEL_DEFAULTS } from '../../contexts/PanelContext';
 import { ResizeHandle } from './ResizeHandle';
+import { MobileDrawer } from '../ui/MobileDrawer';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import type { Paper, ThesisRole, ReadingStatus, ScreeningDecision } from '../../types';
 
 type SortField = 'title' | 'year' | 'citationCount' | 'addedAt' | 'readingStatus';
@@ -95,6 +97,7 @@ export const LeftSidebar = memo(function LeftSidebar({
   onSortChange,
 }: LeftSidebarProps) {
   const { leftCollapsed, setLeftCollapsed, leftWidth, resizeLeftPanel, openRightPanel, openModal } = usePanelContext();
+  const isMobile = useIsMobile();
 
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
@@ -117,8 +120,13 @@ export const LeftSidebar = memo(function LeftSidebar({
     onFilterScreeningChange('all');
   };
 
-  // Collapsed state - show only icons
-  if (leftCollapsed) {
+  // On mobile, when collapsed, don't render anything - access via MobileNav
+  if (leftCollapsed && isMobile) {
+    return null;
+  }
+
+  // Desktop collapsed state - show only icons
+  if (leftCollapsed && !isMobile) {
     return (
       <aside
         className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col items-center py-3 gap-2 flex-shrink-0"
@@ -175,6 +183,217 @@ export const LeftSidebar = memo(function LeftSidebar({
     );
   }
 
+  // On mobile, show as overlay drawer when expanded
+  if (isMobile) {
+    return (
+      <MobileDrawer
+        isOpen={!leftCollapsed}
+        onClose={() => setLeftCollapsed(true)}
+        position="left"
+        title={`Papers (${papers.length})`}
+      >
+        {/* Search */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search papers..."
+              className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Filter & Sort - larger touch targets */}
+        <div className="px-3 py-2 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => { setShowFilters(!showFilters); setShowSort(false); }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors touch-manipulation ${
+              showFilters || activeFiltersCount > 0
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            <Filter size={14} />
+            Filter
+            {activeFiltersCount > 0 && (
+              <span className="ml-1 w-5 h-5 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => { setShowSort(!showSort); setShowFilters(false); }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors touch-manipulation ${
+              showSort
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            {sortOrder === 'asc' ? <SortAsc size={14} /> : <SortDesc size={14} />}
+            Sort
+          </button>
+
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline ml-auto px-2 py-1"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {/* Filter Panel - mobile sized */}
+        {showFilters && (
+          <div className="px-3 py-3 border-b border-gray-200 dark:border-gray-700 space-y-3 bg-gray-50 dark:bg-gray-800/50">
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Role
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {ROLE_OPTIONS.map(({ value, label, color }) => (
+                  <button
+                    key={value}
+                    onClick={() => onFilterRoleChange(value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
+                      filterRole === value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+                    }`}
+                  >
+                    {color && <span className={`w-2.5 h-2.5 rounded-full ${color}`} />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Status
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {STATUS_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => onFilterStatusChange(value)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
+                      filterStatus === value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Screening
+              </label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {SCREENING_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => onFilterScreeningChange(value)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
+                      filterScreening === value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sort Panel - mobile sized */}
+        {showSort && (
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            {SORT_OPTIONS.map(({ field, label }) => (
+              <button
+                key={field}
+                onClick={() => onSortChange(field)}
+                className={`w-full px-3 py-2.5 text-left text-sm flex items-center justify-between rounded-lg touch-manipulation ${
+                  sortField === field ? 'text-indigo-600 dark:text-indigo-400 font-medium bg-white dark:bg-gray-700' : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                {label}
+                {sortField === field && (
+                  <span className="text-gray-400">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Paper List - mobile optimized */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {papers.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
+              No papers match filters
+            </div>
+          ) : (
+            <div className="py-1">
+              {papers.map((paper) => (
+                <button
+                  key={paper.id}
+                  onClick={() => {
+                    onPaperSelect(paper.id);
+                    setLeftCollapsed(true); // Close drawer on selection
+                  }}
+                  className={`w-full px-3 py-3 text-left transition-colors touch-manipulation ${
+                    selectedPaperId === paper.id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-3 border-indigo-500'
+                      : 'active:bg-gray-100 dark:active:bg-gray-700/50 border-l-3 border-transparent'
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
+                        paper.thesisRole === 'supports' ? 'bg-green-500' :
+                        paper.thesisRole === 'contradicts' ? 'bg-red-500' :
+                        paper.thesisRole === 'method' ? 'bg-blue-500' :
+                        paper.thesisRole === 'background' ? 'bg-gray-400' :
+                        'bg-stone-500'
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
+                        {paper.title}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {paper.year || 'No year'} · {paper.readingStatus.replace('-', ' ')}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </MobileDrawer>
+    );
+  }
+
+  // Desktop view
   return (
     <aside
       className="relative bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden"

@@ -11,13 +11,13 @@ interface ModalProps {
   className?: string; // For custom sizing
 }
 
-// Slightly wider defaults for a more spacious feel
+// Mobile-first responsive sizing - constrained on small screens, expand on larger
 const sizeClasses = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-xl',
-  xl: 'max-w-2xl',
-  full: 'max-w-4xl',
+  sm: 'max-w-[calc(100vw-2rem)] sm:max-w-md',
+  md: 'max-w-[calc(100vw-2rem)] sm:max-w-lg',
+  lg: 'max-w-[calc(100vw-2rem)] sm:max-w-xl',
+  xl: 'max-w-[calc(100vw-2rem)] sm:max-w-2xl',
+  full: 'max-w-[calc(100vw-2rem)] sm:max-w-4xl',
 };
 
 export function Modal({
@@ -109,12 +109,12 @@ export function Modal({
           animate-in fade-in zoom-in-95 duration-200
         `}
       >
-        {/* Header - cleaner, more minimal */}
+        {/* Header - cleaner, more minimal, responsive padding */}
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 dark:border-zinc-800">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-100 dark:border-zinc-800">
             <h2
               id="modal-title"
-              className="text-lg font-semibold text-stone-800 dark:text-zinc-100"
+              className="text-base sm:text-lg font-semibold text-stone-800 dark:text-zinc-100"
             >
               {title}
             </h2>
