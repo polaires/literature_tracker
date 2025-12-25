@@ -31,7 +31,10 @@ export function AnnotationSidebar({
   onUpdateAnnotation,
   colorMap,
 }: AnnotationSidebarProps) {
-  const { linkAnnotationToArgument, linkAnnotationToEvidence, updatePaper } = useAppStore();
+  // Use individual selectors to prevent unnecessary re-renders
+  const linkAnnotationToArgument = useAppStore((state) => state.linkAnnotationToArgument);
+  const linkAnnotationToEvidence = useAppStore((state) => state.linkAnnotationToEvidence);
+  const updatePaper = useAppStore((state) => state.updatePaper);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingComment, setEditingComment] = useState<string | null>(null);

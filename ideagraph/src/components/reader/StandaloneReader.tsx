@@ -27,6 +27,12 @@ import { useAppStore } from '../../store/useAppStore';
 import { pdfStorage } from '../../services/pdfStorage';
 import type { Thesis, Paper, ThesisRole } from '../../types';
 
+// Stable no-op callbacks to prevent PdfHighlighter re-renders
+const NOOP = () => {};
+const NOOP_FALSE = () => false;
+const NOOP_NULL = () => null;
+const EMPTY_HIGHLIGHTS: never[] = [];
+
 interface UploadedPDF {
   id: string;
   filename: string;
@@ -292,12 +298,12 @@ export function StandaloneReader({
             {(pdfDocument) => (
               <PdfHighlighter
                 pdfDocument={pdfDocument}
-                enableAreaSelection={() => false}
-                onScrollChange={() => {}}
-                scrollRef={() => {}}
-                onSelectionFinished={() => null}
-                highlightTransform={() => null}
-                highlights={[]}
+                enableAreaSelection={NOOP_FALSE}
+                onScrollChange={NOOP}
+                scrollRef={NOOP}
+                onSelectionFinished={NOOP_NULL}
+                highlightTransform={NOOP_NULL}
+                highlights={EMPTY_HIGHLIGHTS}
               />
             )}
           </PdfLoader>
