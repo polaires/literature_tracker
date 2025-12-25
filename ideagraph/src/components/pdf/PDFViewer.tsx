@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { PDFAnnotation, AnnotationColor, Paper, Thesis } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
+import { useShallow } from 'zustand/react/shallow';
 import { pdfStorage } from '../../services/pdfStorage';
 import { AnnotationSidebar } from './AnnotationSidebar';
 import { AIAssistantPanel } from './AIAssistantPanel';
@@ -59,7 +60,18 @@ function toHighlightFormat(annotation: PDFAnnotation): IHighlight {
 }
 
 export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PDFViewerProps) {
-  const { addAnnotation, updateAnnotation, deleteAnnotation, getAnnotationsForPaper } = useAppStore();
+  // Use individual selectors to prevent unnecessary re-renders
+  const addAnnotation = useAppStore((state) => state.addAnnotation);
+  const updateAnnotation = useAppStore((state) => state.updateAnnotation);
+  const deleteAnnotation = useAppStore((state) => state.deleteAnnotation);
+
+  // Get annotations directly from state with a selector and shallow comparison
+  // to prevent re-renders when the filtered result hasn't changed
+  const annotations = useAppStore(
+    useShallow((state) =>
+      state.annotations.filter((a) => a.paperId === paper.id)
+    )
+  );
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,12 +84,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
 
   const scrollViewerTo = useRef<(highlight: IHighlight) => void>(() => {});
 
-  // Get annotations for this paper - memoize to prevent infinite loops
-  const annotations = useMemo(
-    () => getAnnotationsForPaper(paper.id),
-    [getAnnotationsForPaper, paper.id]
-  );
-
+  // Memoize highlights to prevent infinite loops with PdfHighlighter
   const highlights = useMemo(
     () => annotations.map(toHighlightFormat),
     [annotations]
