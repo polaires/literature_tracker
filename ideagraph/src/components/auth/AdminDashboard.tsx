@@ -16,7 +16,8 @@ interface AdminSettings {
   syncEnabled: boolean;
   defaultApiProvider: 'claude' | 'openai' | 'ollama';
   defaultApiKey: string;
-  allowPublicRegistration: boolean;
+  defaultApiEndpoint: string;
+  defaultModelName: string;
 }
 
 interface AdminDashboardProps {
@@ -30,7 +31,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     syncEnabled: false,
     defaultApiProvider: 'claude',
     defaultApiKey: '',
-    allowPublicRegistration: true,
+    defaultApiEndpoint: '',
+    defaultModelName: '',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -296,18 +298,6 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       Enable cloud sync for all users
                     </span>
                   </label>
-
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={settings.allowPublicRegistration}
-                      onChange={(e) => setSettings({ ...settings, allowPublicRegistration: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Allow public user registration
-                    </span>
-                  </label>
                 </div>
               </div>
 
@@ -317,11 +307,14 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <Settings className="h-5 w-5 text-indigo-600" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Default API Settings</h3>
                 </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  These settings are used as defaults for users who don't have their own API configuration.
+                </p>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Default AI Provider
+                      AI Provider
                     </label>
                     <select
                       value={settings.defaultApiProvider}
@@ -336,7 +329,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Default API Key (for users without their own key)
+                      API Key
                     </label>
                     <input
                       type="password"
@@ -345,8 +338,37 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       placeholder="sk-..."
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      API Endpoint
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.defaultApiEndpoint}
+                      onChange={(e) => setSettings({ ...settings, defaultApiEndpoint: e.target.value })}
+                      placeholder="https://api.anthropic.com (leave empty for default)"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    />
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      This key will be used when users don't have their own API key configured.
+                      Custom API endpoint URL. Leave empty to use the provider's default endpoint.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Model Name
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.defaultModelName}
+                      onChange={(e) => setSettings({ ...settings, defaultModelName: e.target.value })}
+                      placeholder="claude-sonnet-4-20250514"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Model identifier to use for AI features.
                     </p>
                   </div>
                 </div>
@@ -360,13 +382,6 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 >
                   Save Settings
                 </button>
-              </div>
-
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Note:</strong> These settings require the admin API endpoints to be added to the Protein Engineering Tools server.
-                  Until then, changes will only be saved locally.
-                </p>
               </div>
             </div>
           )}
