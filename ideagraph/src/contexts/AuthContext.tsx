@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import type { User, AuthState, RegisterRequest, LoginRequest } from '../services/auth/types';
+import type { AuthState, RegisterRequest, LoginRequest } from '../services/auth/types';
 import * as authApi from '../services/auth/api';
 import { useAppStore } from '../store/useAppStore';
 
@@ -22,8 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     error: null,
   });
-
-  const store = useAppStore();
 
   const checkAuth = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
