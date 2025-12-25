@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings, Clock, AlertCircle, ChevronRight, BarChart3 } from 'lucide-react';
+import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings, Clock, AlertCircle, ChevronRight, BarChart3, FileText, Brain } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { loadSampleData } from '../utils/sampleData';
 import { loadEnhancedSampleData, workflowSummary } from '../utils/enhancedSampleData';
@@ -243,6 +243,37 @@ export function Home() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto">
+        {/* Quick Actions - PDF Reader */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('/reader')}
+            className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="relative flex items-center gap-6 rounded-2xl bg-white dark:bg-gray-900 px-6 py-5 transition-all group-hover:bg-opacity-95 dark:group-hover:bg-opacity-95">
+              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 flex items-center justify-center">
+                <FileText className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Read a PDF with AI
+                  </h3>
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
+                    New
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Upload any paper and get AI-powered summaries, key findings, and methodology extraction
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                <Brain className="w-5 h-5" />
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </button>
+        </div>
+
         {/* Forgotten Papers Alert */}
         {forgottenPapers.length > 0 && (
           <div className="mb-8 p-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl">

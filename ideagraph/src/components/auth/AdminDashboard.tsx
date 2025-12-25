@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Users, Settings, Cloud, Trash2, RefreshCw, Shield, Ban, Check } from 'lucide-react';
+import { X, Users, Settings, Cloud, Trash2, RefreshCw, Shield, Ban, Check, Zap } from 'lucide-react';
 import { getToken } from '../../services/auth/api';
+import { UsageTab } from '../admin/UsageTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://laudable-appreciation-production.up.railway.app';
 
@@ -25,7 +26,7 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ onClose }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'usage'>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [settings, setSettings] = useState<AdminSettings>({
     syncEnabled: false,
@@ -184,6 +185,17 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
           >
             <Settings className="h-4 w-4" />
             Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('usage')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'usage'
+                ? 'border-b-2 border-purple-600 text-purple-600'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Usage
           </button>
         </div>
 
@@ -384,6 +396,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 </button>
               </div>
             </div>
+          )}
+
+          {activeTab === 'usage' && (
+            <UsageTab
+              onError={(msg) => {
+                setError(msg);
+                setTimeout(() => setError(null), 5000);
+              }}
+              onSuccess={(msg) => {
+                setSuccessMessage(msg);
+                setTimeout(() => setSuccessMessage(null), 3000);
+              }}
+            />
           )}
         </div>
       </div>

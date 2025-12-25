@@ -23,6 +23,7 @@ import {
   FileText,
   PanelRight,
   Bot,
+  BookOpen,
 } from 'lucide-react';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import { useAppStore } from '../store/useAppStore';
@@ -388,9 +389,18 @@ export function ThesisView() {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-1">
               {thesis.title}
             </h1>
+            {/* PDF Reader Button - prominent in header */}
+            <button
+              onClick={() => navigate(`/reader?thesis=${thesisId}`)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+              title="Open AI PDF Reader"
+            >
+              <BookOpen size={18} />
+              <span className="font-medium">Read PDF with AI</span>
+            </button>
           </div>
           {thesis.description && (
             <p className="text-sm text-gray-600 dark:text-gray-400 ml-12">

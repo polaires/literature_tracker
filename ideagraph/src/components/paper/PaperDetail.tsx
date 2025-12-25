@@ -41,7 +41,8 @@ export function PaperDetail({
   thesisId,
   onClose,
 }: PaperDetailProps) {
-  const { deletePaper, deleteConnection, setSelectedPaper, updatePaper } = useAppStore();
+  const { deletePaper, deleteConnection, setSelectedPaper, updatePaper, theses } = useAppStore();
+  const thesis = theses.find(t => t.id === thesisId);
   const {
     suggestConnections,
     connectionSuggestions,
@@ -629,7 +630,9 @@ export function PaperDetail({
       {showPDFViewer && (
         <PDFViewer
           paper={paper}
+          thesis={thesis}
           onClose={() => setShowPDFViewer(false)}
+          showAIAssistant={true}
         />
       )}
 

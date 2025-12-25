@@ -17,15 +17,19 @@ import {
   Square,
   ChevronLeft,
   ChevronRight,
+  Brain,
 } from 'lucide-react';
-import type { PDFAnnotation, AnnotationColor, Paper } from '../../types';
+import type { PDFAnnotation, AnnotationColor, Paper, Thesis } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { pdfStorage } from '../../services/pdfStorage';
 import { AnnotationSidebar } from './AnnotationSidebar';
+import { AIAssistantPanel } from './AIAssistantPanel';
 
 interface PDFViewerProps {
   paper: Paper;
+  thesis?: Thesis;
   onClose: () => void;
+  showAIAssistant?: boolean;
 }
 
 // Map our annotation colors to CSS colors
@@ -54,7 +58,7 @@ function toHighlightFormat(annotation: PDFAnnotation): IHighlight {
   };
 }
 
-export function PDFViewer({ paper, onClose }: PDFViewerProps) {
+export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PDFViewerProps) {
   const { addAnnotation, updateAnnotation, deleteAnnotation, getAnnotationsForPaper } = useAppStore();
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -62,6 +66,7 @@ export function PDFViewer({ paper, onClose }: PDFViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeColor, setActiveColor] = useState<AnnotationColor>('yellow');
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showAIPanel, setShowAIPanel] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [highlightMode, setHighlightMode] = useState<'highlight' | 'area' | 'note'>('highlight');
 
@@ -257,6 +262,22 @@ export function PDFViewer({ paper, onClose }: PDFViewerProps) {
             >
               {showSidebar ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
+
+            {/* AI Assistant toggle */}
+            {showAIAssistant && (
+              <button
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                className={`p-2 rounded-lg flex items-center gap-1.5 ${
+                  showAIPanel
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+                title={showAIPanel ? 'Hide AI Assistant' : 'Show AI Assistant'}
+              >
+                <Brain size={18} />
+                <span className="text-sm">AI</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -380,6 +401,17 @@ export function PDFViewer({ paper, onClose }: PDFViewerProps) {
           onDeleteAnnotation={handleDeleteHighlight}
           onUpdateAnnotation={updateAnnotation}
           colorMap={COLOR_MAP}
+        />
+      )}
+
+      {/* AI Assistant Panel */}
+      {showAIAssistant && (
+        <AIAssistantPanel
+          paper={paper}
+          thesis={thesis}
+          isOpen={showAIPanel}
+          onToggle={() => setShowAIPanel(!showAIPanel)}
+          onClose={() => setShowAIPanel(false)}
         />
       )}
     </div>
