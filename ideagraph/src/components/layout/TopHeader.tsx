@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { usePanelContext } from '../../contexts/PanelContext';
 import { Button } from '../ui';
+import { UserMenu } from '../auth';
 
 export type ViewMode = 'list' | 'graph' | 'timeline' | 'arguments';
 
@@ -200,6 +201,9 @@ export const TopHeader = memo(function TopHeader({
             </button>
           </div>
         </div>
+
+        {/* User Menu */}
+        <UserMenu />
       </div>
     </header>
   );
