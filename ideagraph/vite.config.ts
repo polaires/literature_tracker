@@ -7,6 +7,19 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      // Proxy auth/sync API requests to backend server
+      '/api/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api/sync': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       // Proxy Semantic Scholar API requests to avoid CORS issues in development
       '/api/semanticscholar': {
         target: 'https://api.semanticscholar.org',

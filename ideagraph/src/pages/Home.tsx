@@ -6,6 +6,7 @@ import { loadSampleData } from '../utils/sampleData';
 import { loadEnhancedSampleData, workflowSummary } from '../utils/enhancedSampleData';
 import { loadCrisprReviewSampleData, crisprWorkflowSummary } from '../utils/crisprReviewPart5';
 import { DataManager } from '../components/common/DataManager';
+import { UserMenu } from '../components/auth';
 import type { Paper } from '../types';
 
 // Brand Logo Component
@@ -227,13 +228,16 @@ export function Home() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowDataManager(true)}
-            className="p-2.5 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors"
-            title="Settings & Data"
-          >
-            <Settings size={22} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDataManager(true)}
+              className="p-2.5 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors"
+              title="Settings & Data"
+            >
+              <Settings size={22} />
+            </button>
+            <UserMenu />
+          </div>
         </div>
       </header>
 
