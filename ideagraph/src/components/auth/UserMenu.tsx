@@ -38,9 +38,9 @@ export function UserMenu() {
       <>
         <button
           onClick={() => setShowAuthModal(true)}
-          className="flex items-center gap-2 rounded-full bg-orange-500 px-3 py-1.5 text-sm text-white hover:bg-orange-600 font-medium"
+          className="flex items-center gap-1.5 rounded-lg bg-stone-800 px-3 py-1.5 text-sm text-white hover:bg-stone-900 font-medium transition-colors"
         >
-          <User className="h-4 w-4" />
+          <User className="h-3.5 w-3.5" />
           Sign In
         </button>
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
@@ -54,7 +54,7 @@ export function UserMenu() {
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center gap-2 cursor-pointer hover:bg-stone-100 p-1 rounded-md transition-colors pr-2"
       >
-        <div className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold border border-orange-200">
+        <div className="w-6 h-6 bg-stone-200 text-stone-700 rounded-full flex items-center justify-center text-xs font-bold border border-stone-300">
           {user?.username?.charAt(0).toUpperCase()}{user?.username?.charAt(1)?.toUpperCase() || ''}
         </div>
         <span className="text-xs font-medium text-stone-600 hidden sm:block max-w-[100px] truncate">{user?.username}</span>
@@ -68,7 +68,7 @@ export function UserMenu() {
               <p className="text-sm font-medium text-stone-800">{user?.username}</p>
               <p className="truncate text-xs text-stone-500">{user?.email}</p>
               {!user?.email_verified && (
-                <p className="mt-1 text-xs text-orange-500">Email not verified</p>
+                <p className="mt-1 text-xs text-amber-600">Email not verified</p>
               )}
             </div>
 
