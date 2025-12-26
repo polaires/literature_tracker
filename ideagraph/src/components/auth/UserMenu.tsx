@@ -3,6 +3,7 @@ import { User, LogOut, RefreshCw, Cloud, CloudOff, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from './AuthModal';
 import { AdminDashboard } from './AdminDashboard';
+import { Button } from '../ui/Button';
 
 // Admin user email
 const ADMIN_EMAIL = 'ww2607@columbia.edu';
@@ -36,13 +37,13 @@ export function UserMenu() {
   if (!isAuthenticated) {
     return (
       <>
-        <button
+        <Button
           onClick={() => setShowAuthModal(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-stone-800 px-3 py-1.5 text-sm text-white hover:bg-stone-900 font-medium transition-colors"
+          icon={<User size={18} />}
+          className="whitespace-nowrap"
         >
-          <User className="h-3.5 w-3.5" />
-          Sign In
-        </button>
+          <span className="hidden md:inline">Sign In</span>
+        </Button>
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </>
     );
