@@ -338,17 +338,17 @@ export function InlineConnectionPreview({
   if (connections.length === 0) return null;
 
   return (
-    <div className="mt-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+    <div className="mt-2 p-2 bg-stone-50 dark:bg-stone-800/20 rounded-lg border border-stone-200 dark:border-stone-700">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={12} className="text-indigo-600 dark:text-indigo-400" />
-          <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+          <Sparkles size={12} className="text-stone-700 dark:text-stone-400" />
+          <span className="text-xs font-medium text-stone-800 dark:text-stone-300">
             {connections.length} potential connection{connections.length > 1 ? 's' : ''} found
           </span>
         </div>
         <button
           onClick={onViewConnections}
-          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="text-xs text-stone-700 dark:text-stone-400 hover:underline"
         >
           View all
         </button>

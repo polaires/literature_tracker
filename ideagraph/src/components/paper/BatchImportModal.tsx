@@ -160,7 +160,7 @@ export function BatchImportModal({ thesisId, onClose }: BatchImportModalProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <Upload className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <Upload className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Batch Import DOIs
           </h2>
@@ -195,7 +195,7 @@ export function BatchImportModal({ thesisId, onClose }: BatchImportModalProps) {
 https://doi.org/10.1126/science.abf4799
 10.1021/jacs.0c01932`}
                 rows={8}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent font-mono text-sm"
                 disabled={isImporting}
               />
             </div>
@@ -208,7 +208,7 @@ https://doi.org/10.1126/science.abf4799
               <select
                 value={defaultRole}
                 onChange={(e) => setDefaultRole(e.target.value as ThesisRole)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                 disabled={isImporting}
               >
                 <option value="background">Background</option>
@@ -263,7 +263,7 @@ https://doi.org/10.1126/science.abf4799
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
-                    className="bg-indigo-600 h-2 rounded-full transition-all"
+                    className="bg-stone-800 h-2 rounded-full transition-all"
                     style={{
                       width: `${
                         (results.filter((r) => r.status !== 'pending').length /
@@ -283,7 +283,7 @@ https://doi.org/10.1126/science.abf4799
                         <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600" />
                       )}
                       {result.status === 'loading' && (
-                        <Loader2 size={14} className="animate-spin text-indigo-600" />
+                        <Loader2 size={14} className="animate-spin text-stone-700" />
                       )}
                       {result.status === 'success' && (
                         <Check size={14} className="text-green-600" />

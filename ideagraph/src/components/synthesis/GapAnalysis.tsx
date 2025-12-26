@@ -689,7 +689,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => startEditing(gap)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded"
+                        className="p-1.5 text-gray-400 hover:text-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800/20 rounded"
                       >
                         <Edit2 size={14} />
                       </button>
@@ -776,7 +776,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Brief title for the gap"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
 
@@ -789,7 +789,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Detailed explanation of the gap and why it matters..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
 
@@ -801,7 +801,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value as GapType })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                   >
                     {Object.entries(GAP_TYPE_CONFIG).map(([type, config]) => (
                       <option key={type} value={type}>
@@ -820,7 +820,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                     onChange={(e) =>
                       setFormData({ ...formData, priority: e.target.value as GapPriority })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                   >
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
@@ -840,7 +840,7 @@ export function GapAnalysis({ thesisId, onClose }: GapAnalysisProps) {
                   }
                   placeholder="How could this gap be addressed in future research?"
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
 

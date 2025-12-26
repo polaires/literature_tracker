@@ -37,7 +37,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             transition-all
             ${error
               ? 'border-rose-300 dark:border-rose-800/50 focus:outline-none focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-500/20 focus:border-rose-400 dark:focus:border-rose-500/50'
-              : 'border-stone-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 focus:border-indigo-200 dark:focus:border-indigo-500/40'
+              : 'border-stone-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-500/20 focus:border-stone-300 dark:focus:border-stone-500/40'
             }
             disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-stone-50 dark:disabled:bg-zinc-900
             ${className}

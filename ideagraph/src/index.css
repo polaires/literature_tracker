@@ -23,6 +23,12 @@
   --brand-900: #1c1917;
   --brand-950: #0c0a09;
 
+  /* Cream Background System */
+  --cream-50: #FDFBF7;
+  --cream-100: #F5F5F4;
+  --cream-200: #E7E5E4;
+  --cream-300: #D6D3D1;
+
   /* Accent Color - Soft sage/muted blue-gray (Linear-inspired) */
   --accent-50: #f8fafc;
   --accent-100: #f1f5f9;
@@ -35,15 +41,17 @@
   --accent-800: #1e293b;
   --accent-900: #0f172a;
 
-  /* Primary Action Color - Soft indigo */
-  --primary-50: #eef2ff;
-  --primary-100: #e0e7ff;
-  --primary-200: #c7d2fe;
-  --primary-300: #a5b4fc;
-  --primary-400: #818cf8;
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
+  /* Primary Action Color - Stone (dark buttons) */
+  --primary-50: #fafaf9;
+  --primary-100: #f5f5f4;
+  --primary-200: #e7e5e4;
+  --primary-300: #d6d3d1;
+  --primary-400: #a8a29e;
+  --primary-500: #78716c;
+  --primary-600: #57534e;
+  --primary-700: #44403c;
+  --primary-800: #292524;
+  --primary-900: #1c1917;
 
   /* Semantic Role Colors - Softer, more muted versions */
   --role-supports: #34d399;     /* Softer emerald */
@@ -52,24 +60,24 @@
   --role-background: #94a3b8;   /* Muted slate */
   --role-other: #a78bfa;        /* Soft violet */
 
-  /* Surface Colors - Light Mode (Notion-like warm whites) */
+  /* Surface Colors - Light Mode (Cream-based warm whites) */
   --surface-0: #ffffff;
-  --surface-1: #fafaf9;           /* Warm off-white */
-  --surface-2: #f5f5f4;           /* Light warm gray */
-  --surface-3: #e7e5e4;           /* Subtle warm gray */
+  --surface-1: #FDFBF7;           /* Warm cream background */
+  --surface-2: #F5F5F4;           /* Light warm gray */
+  --surface-3: #E7E5E4;           /* Subtle warm gray */
   --surface-elevated: #ffffff;
 
-  /* Text Colors - Light Mode (Notion-inspired) */
-  --text-primary: #37352f;        /* Notion's default text */
-  --text-secondary: #6b7280;      /* Softer secondary */
-  --text-muted: #9ca3af;          /* Muted gray */
-  --text-placeholder: #d1d5db;
+  /* Text Colors - Light Mode (Stone palette) */
+  --text-primary: #44403C;        /* Stone-700 */
+  --text-secondary: #78716c;      /* Stone-500 */
+  --text-muted: #a8a29e;          /* Stone-400 */
+  --text-placeholder: #d6d3d1;    /* Stone-300 */
 
-  /* Border Colors - Light Mode (very subtle) */
-  --border-subtle: #f3f4f6;
-  --border-light: #e5e7eb;
-  --border-medium: #d1d5db;
-  --border-strong: #9ca3af;
+  /* Border Colors - Light Mode (Stone-based subtle) */
+  --border-subtle: #f5f5f4;       /* Stone-100 */
+  --border-light: #e7e5e4;        /* Stone-200 */
+  --border-medium: #d6d3d1;       /* Stone-300 */
+  --border-strong: #a8a29e;       /* Stone-400 */
 
   /* Shadows - Softer, more diffused */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
@@ -78,6 +86,7 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
   --shadow-soft: 0 2px 8px 0 rgb(0 0 0 / 0.04);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.02), 0 0 0 1px rgb(0 0 0 / 0.03);
 
   /* Radius - Softer, more rounded */
@@ -100,8 +109,8 @@
   --sidebar-collapsed: 52px;
   --panel-width: 400px;
 
-  /* Focus ring - Softer */
-  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--primary-200);
+  /* Focus ring - Stone-based */
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--primary-300);
 }
 
 /* Dark Mode Variables */
@@ -195,37 +204,38 @@ body {
   border-radius: var(--radius-lg);
 }
 
-/* Primary button - soft indigo */
+/* Primary button - stone dark */
 .btn-primary-soft {
-  background: var(--primary-500);
+  background: var(--primary-800);
   color: white;
   border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  transition: all var(--transition-normal);
+}
+
+.btn-primary-soft:hover {
+  background: var(--primary-900);
+  box-shadow: var(--shadow-hover);
+}
+
+.btn-primary-soft:active {
+  background: var(--primary-900);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Secondary button - white with stone border */
+.btn-secondary-soft {
+  background: var(--surface-0);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
 }
 
-.btn-primary-soft:hover {
-  background: var(--primary-600);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-primary-soft:active {
-  background: var(--primary-700);
-  box-shadow: var(--shadow-xs);
-}
-
-/* Secondary button - subtle background */
-.btn-secondary-soft {
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-normal);
-}
-
 .btn-secondary-soft:hover {
-  background: var(--surface-3);
+  background: var(--surface-2);
   border-color: var(--border-medium);
 }
 

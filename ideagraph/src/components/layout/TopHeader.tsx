@@ -43,13 +43,13 @@ function BrandLogo({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="headerBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="50%" stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#a855f7" />
+          <stop offset="0%" stopColor="#78716c" />
+          <stop offset="50%" stopColor="#57534e" />
+          <stop offset="100%" stopColor="#44403c" />
         </linearGradient>
         <linearGradient id="headerNodeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#c4b5fd" />
-          <stop offset="100%" stopColor="#a78bfa" />
+          <stop offset="0%" stopColor="#d6d3d1" />
+          <stop offset="100%" stopColor="#a8a29e" />
         </linearGradient>
       </defs>
       <circle cx="24" cy="24" r="22" fill="url(#headerBrandGradient)" />
@@ -90,7 +90,7 @@ export const TopHeader = memo(function TopHeader({
 
   return (
     <>
-      <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-3 sm:px-4 gap-2 sm:gap-4 flex-shrink-0 relative z-10 safe-area-top">
+      <header className="h-14 bg-[#FDFBF7]/80 dark:bg-gray-800 backdrop-blur-md border-b border-stone-200 dark:border-gray-700 flex items-center px-3 sm:px-4 gap-2 sm:gap-4 flex-shrink-0 relative z-10 safe-area-top">
         {/* Left: Logo & Navigation */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Logo - clickable to go home */}
@@ -106,12 +106,12 @@ export const TopHeader = memo(function TopHeader({
           </button>
 
           {/* Divider */}
-          <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-700" />
+          <div className="hidden sm:block w-px h-6 bg-stone-200 dark:bg-gray-700" />
 
           {/* Back button on small screens */}
           <button
             onClick={() => navigate('/')}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors sm:hidden touch-manipulation"
+            className="p-2 text-stone-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-700 rounded-lg transition-colors sm:hidden touch-manipulation"
             title="Back to theses"
           >
             <ArrowLeft size={18} />
@@ -120,7 +120,7 @@ export const TopHeader = memo(function TopHeader({
           {/* Sidebar toggle (tablet only - hidden on mobile, hidden on desktop) */}
           <button
             onClick={toggleLeftSidebar}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden sm:flex lg:hidden touch-manipulation"
+            className="p-2 text-stone-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden sm:flex lg:hidden touch-manipulation"
             title={leftCollapsed ? 'Show sidebar' : 'Hide sidebar'}
           >
             {leftCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
@@ -128,7 +128,7 @@ export const TopHeader = memo(function TopHeader({
 
           {/* Thesis title */}
           <div className="min-w-0 hidden sm:block">
-            <h1 className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate max-w-[150px] md:max-w-[200px] lg:max-w-[300px]">
+            <h1 className="text-sm font-medium text-stone-600 dark:text-gray-300 truncate max-w-[150px] md:max-w-[200px] lg:max-w-[300px]">
               {thesis.title}
             </h1>
           </div>
@@ -136,7 +136,7 @@ export const TopHeader = memo(function TopHeader({
 
         {/* Center: View Mode Tabs - hidden on mobile, shown via MobileNav instead */}
         <div className="flex-1 hidden sm:flex justify-center">
-          <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+          <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-gray-700/50 rounded-xl p-1">
             {viewModes.map(({ mode, icon: Icon, label }) => {
               const isActive = viewMode === mode;
               return (
@@ -145,8 +145,8 @@ export const TopHeader = memo(function TopHeader({
                   onClick={() => onViewModeChange(mode)}
                   className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-all touch-manipulation ${
                     isActive
-                      ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-600/50'
+                      ? 'bg-white dark:bg-gray-600 text-stone-800 dark:text-stone-300 shadow-sm'
+                      : 'text-stone-500 dark:text-gray-400 hover:text-stone-700 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-600/50'
                   }`}
                 >
                   <Icon size={16} />
@@ -159,14 +159,14 @@ export const TopHeader = memo(function TopHeader({
 
         {/* Mobile: Current view indicator (touch to open menu) */}
         <div className="flex-1 sm:hidden flex justify-center">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-gray-700/50 rounded-lg">
             {(() => {
               const current = viewModes.find(v => v.mode === viewMode);
               const Icon = current?.icon || List;
               return (
                 <>
-                  <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
-                  <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                  <Icon size={16} className="text-stone-700 dark:text-stone-400" />
+                  <span className="text-sm font-medium text-stone-700 dark:text-stone-400">
                     {current?.label}
                   </span>
                 </>
@@ -178,16 +178,16 @@ export const TopHeader = memo(function TopHeader({
         {/* Right: Stats & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Stats badge (hidden on mobile and tablet) */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-stone-50 dark:bg-gray-700/50 rounded-lg">
+            <span className="text-sm font-medium text-stone-700 dark:text-stone-400">
               {paperCount}
             </span>
-            <span className="text-xs text-gray-400">papers</span>
-            <span className="text-gray-300 dark:text-gray-600">·</span>
+            <span className="text-xs text-stone-400">papers</span>
+            <span className="text-stone-300 dark:text-gray-600">·</span>
             <span className="text-sm font-medium text-stone-600 dark:text-stone-400">
               {connectionCount}
             </span>
-            <span className="text-xs text-gray-400">links</span>
+            <span className="text-xs text-stone-400">links</span>
           </div>
 
           {/* PDF Reader Button - hidden on mobile */}
@@ -213,24 +213,24 @@ export const TopHeader = memo(function TopHeader({
               <ChevronDown size={14} className="ml-1 hidden md:block" />
             </Button>
 
-            <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+            <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-stone-200 dark:border-gray-700 py-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
               <button
                 onClick={() => openModal('addPaper')}
-                className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-3 transition-colors"
+                className="w-full px-4 py-2.5 text-left text-sm text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-stone-900/20 hover:text-stone-800 dark:hover:text-stone-300 flex items-center gap-3 transition-colors"
               >
                 <Plus size={16} />
                 Add by DOI
               </button>
               <button
                 onClick={() => openModal('searchPaper')}
-                className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-3 transition-colors"
+                className="w-full px-4 py-2.5 text-left text-sm text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-stone-900/20 hover:text-stone-800 dark:hover:text-stone-300 flex items-center gap-3 transition-colors"
               >
                 <Globe size={16} />
                 Search Semantic Scholar
               </button>
               <button
                 onClick={() => openModal('batchImport')}
-                className="w-full px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-3 transition-colors"
+                className="w-full px-4 py-2.5 text-left text-sm text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-stone-900/20 hover:text-stone-800 dark:hover:text-stone-300 flex items-center gap-3 transition-colors"
               >
                 <Upload size={16} />
                 Batch Import DOIs
@@ -241,7 +241,7 @@ export const TopHeader = memo(function TopHeader({
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="sm:hidden p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
+            className="sm:hidden p-2 text-stone-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
             aria-label="Open menu"
           >
             <Menu size={20} />

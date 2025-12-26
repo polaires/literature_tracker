@@ -321,7 +321,7 @@ export const AISettings: React.FC = () => {
                   onChange={(e) => updateSettings({ enablePlanBasedGaps: e.target.checked })}
                   className="rounded border-slate-300 text-stone-600 focus:ring-stone-500"
                 />
-                <Database className="w-3.5 h-3.5 text-indigo-500" />
+                <Database className="w-3.5 h-3.5 text-stone-500" />
                 <span className="text-sm text-slate-700 dark:text-slate-300">Plan-based gap analysis</span>
                 <span className="text-xs text-slate-400 ml-auto">More accurate</span>
               </label>

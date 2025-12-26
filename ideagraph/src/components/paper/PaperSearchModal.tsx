@@ -330,7 +330,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <Search className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <Search className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Search Papers
           </h2>
@@ -357,7 +357,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search by title, author, keywords..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
               autoFocus
             />
           </div>
@@ -372,13 +372,13 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
               showFilters || activeFilterCount > 0
-                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                ? 'border-stone-500 bg-stone-100 dark:bg-stone-800/20 text-stone-700 dark:text-stone-400'
                 : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             <Filter size={18} />
             {activeFilterCount > 0 && (
-              <span className="w-5 h-5 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+              <span className="w-5 h-5 text-xs bg-stone-800 text-white rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
@@ -394,7 +394,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                 type="checkbox"
                 checked={useHybridSearch}
                 onChange={(e) => setUseHybridSearch(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="w-4 h-4 rounded border-gray-300 text-stone-700 focus:ring-stone-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                 <Brain size={14} className="text-stone-500" />
@@ -411,7 +411,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
 
         {/* Hybrid search progress */}
         {hybridProgress && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+          <div className="mt-2 flex items-center gap-2 text-xs text-stone-700 dark:text-stone-400">
             <Loader2 size={12} className="animate-spin" />
             {hybridProgress}
           </div>
@@ -428,7 +428,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
               <button
                 key={keyword}
                 onClick={() => handleKeywordClick(keyword)}
-                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800/30 hover:text-stone-700 dark:hover:text-stone-400 transition-colors"
               >
                 {keyword}
               </button>
@@ -492,7 +492,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                     type="checkbox"
                     checked={openAccessOnly}
                     onChange={(e) => setOpenAccessOnly(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-gray-300 text-stone-700 focus:ring-stone-500"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">Open Access Only</span>
                 </label>
@@ -517,7 +517,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                     }}
                     className={`px-2 py-1 text-xs rounded-full transition-colors ${
                       selectedTypes.includes(type.value)
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-stone-800 text-white'
                         : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                     }`}
                   >
@@ -545,7 +545,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                     }}
                     className={`px-2 py-1 text-xs rounded-full transition-colors ${
                       selectedFields.includes(field)
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-stone-800 text-white'
                         : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                     }`}
                   >
@@ -559,7 +559,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
             {activeFilterCount > 0 && (
               <button
                 onClick={clearFilters}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="text-sm text-stone-700 dark:text-stone-400 hover:underline"
               >
                 Clear all filters
               </button>
@@ -570,14 +570,14 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
 
       {/* Selection Actions */}
       {selectedPapers.size > 0 && (
-        <div className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
-          <span className="text-sm text-indigo-700 dark:text-indigo-300">
+        <div className="px-6 py-2 bg-stone-100 dark:bg-stone-800/20 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between">
+          <span className="text-sm text-stone-700 dark:text-stone-300">
             {selectedPapers.size} paper{selectedPapers.size > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={clearSelection}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-stone-700 dark:text-stone-400 hover:underline"
             >
               Clear selection
             </button>
@@ -635,7 +635,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
               {results.filter((p) => !isPaperAdded(p)).length > 0 && (
                 <button
                   onClick={selectAll}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="text-stone-700 dark:text-stone-400 hover:underline"
                 >
                   Select all available
                 </button>
@@ -656,7 +656,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                     isAdded
                       ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
                       : isSelected
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                      ? 'border-stone-500 bg-stone-100 dark:bg-stone-800/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
@@ -667,8 +667,8 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                         onClick={() => toggleSelection(paper.paperId)}
                         className={`flex-shrink-0 w-5 h-5 mt-1 rounded border-2 flex items-center justify-center transition-colors ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-600 text-white'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                            ? 'border-stone-800 bg-stone-800 text-white'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-stone-400'
                         }`}
                       >
                         {isSelected && <Check size={12} />}
@@ -787,7 +787,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
                           href={`https://doi.org/${paper.externalIds.DOI}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors"
                         >
                           <ExternalLink size={12} />
                           DOI
@@ -815,7 +815,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
             {/* Loading more */}
             {isLoading && results.length > 0 && (
               <div className="text-center py-4">
-                <Loader2 className="animate-spin mx-auto text-indigo-600" size={24} />
+                <Loader2 className="animate-spin mx-auto text-stone-700" size={24} />
               </div>
             )}
           </div>
@@ -824,7 +824,7 @@ export function PaperSearchModal({ thesisId, onClose, initialQuery = '' }: Paper
         {/* Initial loading */}
         {isLoading && results.length === 0 && (
           <div className="text-center py-12">
-            <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={32} />
+            <Loader2 className="animate-spin mx-auto text-stone-700 mb-4" size={32} />
             <p className="text-gray-500 dark:text-gray-400">Searching...</p>
           </div>
         )}

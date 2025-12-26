@@ -68,20 +68,20 @@ export const MobileNav = memo(function MobileNav({
       />
 
       {/* Menu Panel */}
-      <div className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl animate-slide-in-right safe-area-inset flex flex-col">
+      <div className="absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-[#FDFBF7] dark:bg-gray-900 shadow-2xl animate-slide-in-right safe-area-inset flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <span className="text-lg font-semibold text-gray-900 dark:text-white">Menu</span>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-gray-700">
+          <span className="text-lg font-semibold text-stone-800 dark:text-white">Menu</span>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            className="p-2 -mr-2 text-stone-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-800 rounded-lg"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Thesis Info */}
-        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 bg-stone-50 dark:bg-gray-800/50 border-b border-stone-200 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
             Current Thesis
           </p>
@@ -101,8 +101,8 @@ export const MobileNav = memo(function MobileNav({
         </div>
 
         {/* View Modes */}
-        <div className="px-2 py-3 border-b border-gray-200 dark:border-gray-700">
-          <p className="px-2 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <div className="px-2 py-3 border-b border-stone-200 dark:border-gray-700">
+          <p className="px-2 text-xs text-stone-500 dark:text-gray-400 uppercase tracking-wider mb-2">
             View Mode
           </p>
           <div className="space-y-1">
@@ -112,8 +112,8 @@ export const MobileNav = memo(function MobileNav({
                 onClick={() => handleViewChange(mode)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   viewMode === mode
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-stone-200 dark:bg-stone-900/30 text-stone-800 dark:text-stone-300'
+                    : 'text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800'
                 }`}
               >
                 <Icon size={18} />
@@ -125,14 +125,14 @@ export const MobileNav = memo(function MobileNav({
 
         {/* Quick Actions */}
         <div className="px-2 py-3 flex-1">
-          <p className="px-2 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <p className="px-2 text-xs text-stone-500 dark:text-gray-400 uppercase tracking-wider mb-2">
             Quick Actions
           </p>
           <div className="space-y-1">
             {thesisId && (
               <button
                 onClick={() => handleAction(() => navigate(`/reader?thesis=${thesisId}`))}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-600 dark:text-indigo-400 transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-stone-100 to-stone-50 dark:from-stone-900/30 dark:to-stone-800/30 text-stone-700 dark:text-stone-400 transition-colors"
               >
                 <BookOpen size={18} />
                 Read PDF with AI
@@ -140,23 +140,23 @@ export const MobileNav = memo(function MobileNav({
             )}
             <button
               onClick={() => handleAction(() => openModal('addPaper'))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <Plus size={18} className="text-indigo-500" />
+              <Plus size={18} className="text-stone-600" />
               Add Paper
             </button>
             <button
               onClick={() => handleAction(() => openRightPanel('screening'))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Filter size={18} className="text-amber-500" />
               Screening
             </button>
             <button
               onClick={() => handleAction(() => openModal('aiSettings'))}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-700 dark:text-gray-300 hover:bg-stone-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <Settings size={18} className="text-gray-500" />
+              <Settings size={18} className="text-stone-500" />
               Settings
             </button>
           </div>

@@ -310,7 +310,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <FileText className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Export Review Outline
@@ -334,7 +334,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
           onClick={() => setActiveTab('preview')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'preview'
-              ? 'text-indigo-600 dark:text-indigo-400 border-indigo-600'
+              ? 'text-stone-700 dark:text-stone-400 border-stone-700'
               : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700'
           }`}
         >
@@ -345,7 +345,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
           onClick={() => setActiveTab('settings')}
           className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'settings'
-              ? 'text-indigo-600 dark:text-indigo-400 border-indigo-600'
+              ? 'text-stone-700 dark:text-stone-400 border-stone-700'
               : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700'
           }`}
         >
@@ -377,7 +377,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onChange={(e) =>
                       setOptions({ ...options, includeSections: e.target.checked })
                     }
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 text-stone-700 rounded"
                   />
                   <div className="flex items-center gap-2">
                     <ListTree size={18} className="text-gray-400" />
@@ -394,7 +394,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onChange={(e) =>
                       setOptions({ ...options, includeThemes: e.target.checked })
                     }
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 text-stone-700 rounded"
                   />
                   <div className="flex items-center gap-2">
                     <BookOpen size={18} className="text-gray-400" />
@@ -411,7 +411,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onChange={(e) =>
                       setOptions({ ...options, includeGaps: e.target.checked })
                     }
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 text-stone-700 rounded"
                   />
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={18} className="text-gray-400" />
@@ -428,7 +428,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onChange={(e) =>
                       setOptions({ ...options, includeEvidenceTable: e.target.checked })
                     }
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 text-stone-700 rounded"
                   />
                   <div className="flex items-center gap-2">
                     <Table2 size={18} className="text-gray-400" />
@@ -445,7 +445,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onChange={(e) =>
                       setOptions({ ...options, includeCitations: e.target.checked })
                     }
-                    className="w-4 h-4 text-indigo-600 rounded"
+                    className="w-4 h-4 text-stone-700 rounded"
                   />
                   <div className="flex items-center gap-2">
                     <FileText size={18} className="text-gray-400" />
@@ -469,7 +469,7 @@ export function ReviewOutlineExport({ thesisId, onClose }: ReviewOutlineExportPr
                     onClick={() => setOptions({ ...options, citationStyle: style })}
                     className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                       options.citationStyle === style
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                        ? 'border-stone-500 bg-stone-100 dark:bg-stone-800/30 text-stone-800 dark:text-stone-300'
                         : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >

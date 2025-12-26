@@ -690,7 +690,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
               onClick={() => setActiveTab(tab.id as Tab)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400'
+                  ? 'text-stone-700 dark:text-stone-400 border-b-2 border-stone-700 dark:border-stone-400'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -758,8 +758,8 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
               {/* Data Only Backup */}
               <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-                    <FileJson className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800/30 flex items-center justify-center flex-shrink-0">
+                    <FileJson className="w-6 h-6 text-stone-700 dark:text-stone-400" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -770,7 +770,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                     </p>
                     <button
                       onClick={handleExportJSON}
-                      className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      className="mt-3 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <Download size={16} />
                       Download Data Backup
@@ -926,8 +926,8 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
               {/* Import JSON (Data Only) */}
               <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-                    <FileJson className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800/30 flex items-center justify-center flex-shrink-0">
+                    <FileJson className="w-6 h-6 text-stone-700 dark:text-stone-400" />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -946,7 +946,7 @@ export function DataManager({ thesisId, onClose }: DataManagerProps) {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isProcessing}
-                      className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+                      className="mt-3 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <Upload size={16} />
                       {isProcessing ? 'Processing...' : 'Choose JSON File'}

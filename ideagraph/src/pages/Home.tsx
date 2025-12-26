@@ -22,13 +22,13 @@ function BrandLogo({ size = 48 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="homeBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="50%" stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#a855f7" />
+          <stop offset="0%" stopColor="#78716c" />
+          <stop offset="50%" stopColor="#57534e" />
+          <stop offset="100%" stopColor="#44403c" />
         </linearGradient>
         <linearGradient id="homeNodeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#c4b5fd" />
-          <stop offset="100%" stopColor="#a78bfa" />
+          <stop offset="0%" stopColor="#d6d3d1" />
+          <stop offset="100%" stopColor="#a8a29e" />
         </linearGradient>
       </defs>
       <circle cx="24" cy="24" r="22" fill="url(#homeBrandGradient)" />
@@ -213,7 +213,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-indigo-950/20">
+    <div className="min-h-screen p-8 bg-gradient-to-br from-[#FDFBF7] via-white to-stone-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-stone-950/20">
       {/* Header */}
       <header className="max-w-4xl mx-auto mb-12">
         <div className="flex items-start justify-between">
@@ -231,7 +231,7 @@ export function Home() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowDataManager(true)}
-              className="p-2.5 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors"
+              className="p-2.5 text-gray-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-900/20 rounded-xl transition-colors"
               title="Settings & Data"
             >
               <Settings size={22} />
@@ -247,18 +247,18 @@ export function Home() {
         <div className="mb-8">
           <button
             onClick={() => navigate('/reader')}
-            className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[2px] shadow-lg hover:shadow-xl transition-all"
+            className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-br from-stone-600 via-stone-700 to-stone-800 p-[2px] shadow-lg hover:shadow-xl transition-all"
           >
             <div className="relative flex items-center gap-6 rounded-2xl bg-white dark:bg-gray-900 px-6 py-5 transition-all group-hover:bg-opacity-95 dark:group-hover:bg-opacity-95">
-              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 flex items-center justify-center">
-                <FileText className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-800/50 dark:to-stone-700/50 flex items-center justify-center">
+                <FileText className="w-7 h-7 text-stone-700 dark:text-stone-400" />
               </div>
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Read a PDF with AI
                   </h3>
-                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800/50 text-stone-700 dark:text-stone-400">
                     New
                   </span>
                 </div>
@@ -266,7 +266,7 @@ export function Home() {
                   Upload any paper and get AI-powered summaries, key findings, and methodology extraction
                 </p>
               </div>
-              <div className="flex-shrink-0 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <div className="flex-shrink-0 flex items-center gap-2 text-stone-700 dark:text-stone-400">
                 <Brain className="w-5 h-5" />
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -306,7 +306,7 @@ export function Home() {
                             {thesis?.title} · Last accessed {daysAgo} days ago
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 flex-shrink-0 ml-2 transition-colors" />
+                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-stone-600 dark:group-hover:text-stone-400 flex-shrink-0 ml-2 transition-colors" />
                       </div>
                     );
                   })}
@@ -321,7 +321,7 @@ export function Home() {
           <div className="mb-8">
             <button
               onClick={() => setShowStats(!showStats)}
-              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-3"
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors mb-3"
             >
               <BarChart3 size={16} />
               {showStats ? 'Hide' : 'Show'} Reading Statistics
@@ -329,8 +329,8 @@ export function Home() {
 
             {showStats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
-                  <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                <div className="text-center p-3 bg-stone-100 dark:bg-stone-800/20 rounded-xl">
+                  <p className="text-3xl font-bold text-stone-700 dark:text-stone-400">
                     {readingStats.total}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Papers</p>
@@ -443,7 +443,7 @@ export function Home() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g., What are the limitations of AlphaFold for drug discovery?"
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                   autoFocus
                 />
               </div>
@@ -456,7 +456,7 @@ export function Home() {
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="A longer explanation of your research focus..."
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                 />
               </div>
               <div className="flex gap-3">
@@ -481,8 +481,8 @@ export function Home() {
         {/* Thesis List */}
         {activeTheses.length === 0 && !showNewThesisForm ? (
           <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-600">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-              <BookOpen size={32} className="text-indigo-500 dark:text-indigo-400" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 dark:bg-stone-800/30 flex items-center justify-center">
+              <BookOpen size={32} className="text-stone-600 dark:text-stone-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
               No research theses yet
@@ -537,12 +537,12 @@ export function Home() {
               return (
                 <div
                   key={thesis.id}
-                  className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer group"
+                  className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-stone-300 dark:hover:border-stone-700 transition-all cursor-pointer group"
                   onClick={() => handleOpenThesis(thesis.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-stone-700 dark:group-hover:text-stone-400 transition-colors">
                         {thesis.title}
                       </h3>
                       {thesis.description && (
@@ -551,7 +551,7 @@ export function Home() {
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-medium">
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-stone-800/20 text-stone-700 dark:text-stone-400 rounded-lg font-medium">
                           {thesisPapers.length} papers
                         </span>
                         <span className="text-gray-400 dark:text-gray-500">
@@ -652,7 +652,7 @@ export function Home() {
                             e.stopPropagation();
                             handleArchiveThesis(thesis.id, false);
                           }}
-                          className="p-2 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                          className="p-2 text-gray-500 hover:text-stone-700 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/20 rounded-lg transition-colors"
                           title="Restore"
                         >
                           <ArchiveRestore size={16} />

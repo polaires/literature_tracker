@@ -279,7 +279,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div>
           <div className="flex items-center gap-3">
-            <Network className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <Network className="w-5 h-5 text-stone-700 dark:text-stone-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Citation Network
             </h2>
@@ -352,14 +352,14 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
 
       {/* Selection Actions */}
       {selectedPapers.size > 0 && (
-        <div className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
-          <span className="text-sm text-indigo-700 dark:text-indigo-300">
+        <div className="px-6 py-2 bg-stone-100 dark:bg-stone-800/20 border-b border-stone-200 dark:border-stone-700 flex items-center justify-between">
+          <span className="text-sm text-stone-800 dark:text-stone-300">
             {selectedPapers.size} paper{selectedPapers.size > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={clearSelection}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="text-sm text-stone-700 dark:text-stone-400 hover:underline"
             >
               Clear selection
             </button>
@@ -383,7 +383,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
         {/* Loading */}
         {isLoading && (
           <div className="text-center py-12">
-            <Loader2 className="animate-spin mx-auto text-indigo-600 mb-4" size={32} />
+            <Loader2 className="animate-spin mx-auto text-stone-700 mb-4" size={32} />
             <p className="text-gray-500 dark:text-gray-400">
               Loading {activeTab === 'citing' ? 'citing papers' : activeTab === 'references' ? 'references' : 'recommendations'}...
             </p>
@@ -420,7 +420,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
               {currentResults.filter((p) => !isPaperAdded(p)).length > 0 && (
                 <button
                   onClick={selectAll}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="text-stone-700 dark:text-stone-400 hover:underline"
                 >
                   Select all available
                 </button>
@@ -440,7 +440,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
                     isAdded
                       ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
                       : isSelected
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                      ? 'border-stone-500 bg-stone-100 dark:bg-stone-800/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
@@ -451,8 +451,8 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
                         onClick={() => toggleSelection(p.paperId)}
                         className={`flex-shrink-0 w-5 h-5 mt-1 rounded border-2 flex items-center justify-center transition-colors ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-600 text-white'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                            ? 'border-stone-700 bg-stone-700 text-white'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-stone-400'
                         }`}
                       >
                         {isSelected && <Check size={12} />}
@@ -538,7 +538,7 @@ export function CitationNetworkModal({ thesisId, paper, onClose }: CitationNetwo
                           href={`https://doi.org/${p.externalIds.DOI}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors"
                         >
                           <ExternalLink size={12} />
                           DOI

@@ -177,7 +177,7 @@ export function PaperDetailContent({
                 href={`https://doi.org/${paper.doi}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="flex items-center gap-1 text-sm text-stone-700 dark:text-stone-400 hover:underline"
               >
                 <ExternalLink size={14} />
                 DOI
@@ -186,7 +186,7 @@ export function PaperDetailContent({
             {paper.pdfUrl && (
               <button
                 onClick={handleOpenPdf}
-                className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="flex items-center gap-1 text-sm text-stone-700 dark:text-stone-400 hover:underline"
               >
                 <FileText size={14} />
                 View PDF
@@ -207,7 +207,7 @@ export function PaperDetailContent({
                 onClick={() => handleRoleChange(role as ThesisRole)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   paper.thesisRole === role
-                    ? `${colors.bg} ${colors.text} ring-2 ring-offset-1 ring-indigo-500`
+                    ? `${colors.bg} ${colors.text} ring-2 ring-offset-1 ring-stone-500`
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
@@ -229,7 +229,7 @@ export function PaperDetailContent({
                 onClick={() => handleStatusChange(value)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   paper.readingStatus === value
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-stone-800 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
@@ -324,7 +324,7 @@ export function PaperDetailContent({
               )}
               <button
                 onClick={() => setShowConnectionEditor(true)}
-                className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded"
+                className="p-1 text-stone-700 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/30 rounded"
                 title="Add connection"
               >
                 <Plus size={16} />
@@ -417,7 +417,7 @@ export function PaperDetailContent({
                   >
                     <div className="flex items-center gap-2">
                       <Link2 size={12} className="text-gray-400 flex-shrink-0" />
-                      <span className="text-xs px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded">
+                      <span className="text-xs px-1.5 py-0.5 bg-stone-100 dark:bg-stone-800/30 text-stone-800 dark:text-stone-400 rounded">
                         {conn.type}
                       </span>
                     </div>
@@ -472,7 +472,7 @@ export function PaperDetailContent({
                 {/* Manual upload option */}
                 <button
                   onClick={() => setShowPDFUpload(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm"
+                  className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors text-sm"
                 >
                   <Upload size={16} />
                   <span>Upload PDF manually</span>

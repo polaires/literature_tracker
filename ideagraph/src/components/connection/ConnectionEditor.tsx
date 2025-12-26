@@ -234,8 +234,8 @@ export function ConnectionEditor({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-              <Link2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <div className="w-9 h-9 rounded-lg bg-stone-100 dark:bg-stone-800/30 flex items-center justify-center">
+              <Link2 className="w-4 h-4 text-stone-700 dark:text-stone-400" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">
@@ -393,7 +393,7 @@ export function ConnectionEditor({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search papers..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
               />
             </div>
 
@@ -419,7 +419,7 @@ export function ConnectionEditor({
                       onMouseLeave={() => setHoveredPaperId(null)}
                       className={`w-full px-3 py-2.5 text-left transition-colors ${
                         isSelected
-                          ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                          ? 'bg-stone-100 dark:bg-stone-800/20'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                     >
@@ -430,7 +430,7 @@ export function ConnectionEditor({
                               showExpanded ? '' : 'truncate'
                             } ${
                               isSelected
-                                ? 'text-indigo-700 dark:text-indigo-300'
+                                ? 'text-stone-800 dark:text-stone-300'
                                 : 'text-slate-900 dark:text-white'
                             }`}
                           >
@@ -442,13 +442,13 @@ export function ConnectionEditor({
                             {paper.year && ` (${paper.year})`}
                           </p>
                           {showExpanded && paper.takeaway && (
-                            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                            <p className="text-xs text-stone-700 dark:text-stone-400 mt-1">
                               {paper.takeaway}
                             </p>
                           )}
                         </div>
                         {isSelected && (
-                          <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-stone-700 flex items-center justify-center flex-shrink-0">
                             <Check size={10} className="text-white" />
                           </div>
                         )}
@@ -470,7 +470,7 @@ export function ConnectionEditor({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Why are these papers connected?"
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none"
             />
           </div>
         </div>
@@ -510,7 +510,7 @@ export function ConnectionEditor({
             <button
               onClick={handleCreate}
               disabled={!selectedPaper}
-              className="px-4 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-1.5 text-xs font-medium bg-stone-800 text-white rounded-lg hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Create Connection
             </button>

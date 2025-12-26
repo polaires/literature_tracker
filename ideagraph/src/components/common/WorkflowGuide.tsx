@@ -134,7 +134,7 @@ export function WorkflowGuide({ thesisId, onAction }: WorkflowGuideProps) {
             key={suggestion.id}
             className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
           >
-            <div className="w-6 h-6 rounded flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+            <div className="w-6 h-6 rounded flex items-center justify-center bg-stone-100 dark:bg-stone-800/50 text-stone-700 dark:text-stone-400 flex-shrink-0">
               {suggestion.icon}
             </div>
             <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0">
@@ -142,7 +142,7 @@ export function WorkflowGuide({ thesisId, onAction }: WorkflowGuideProps) {
             </span>
             <button
               onClick={() => onAction?.(suggestion.action)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium flex-shrink-0"
+              className="text-xs text-stone-700 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-300 font-medium flex-shrink-0"
             >
               {suggestion.actionLabel}
             </button>

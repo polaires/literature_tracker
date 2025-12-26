@@ -368,7 +368,7 @@ export function ThesisView() {
           </h2>
           <button
             onClick={() => navigate('/')}
-            className="text-indigo-600 hover:text-indigo-700"
+            className="text-stone-700 hover:text-stone-800"
           >
             Go back home
           </button>
@@ -395,7 +395,7 @@ export function ThesisView() {
             {/* PDF Reader Button - prominent in header */}
             <button
               onClick={() => navigate(`/reader?thesis=${thesisId}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-stone-700 to-stone-800 text-white rounded-lg hover:from-stone-800 hover:to-stone-900 transition-all shadow-md hover:shadow-lg"
               title="Open AI PDF Reader"
             >
               <BookOpen size={18} />
@@ -476,7 +476,7 @@ export function ThesisView() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search papers... (⌘F)"
-                  className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                 />
                 {searchQuery && (
                   <button
@@ -493,14 +493,14 @@ export function ThesisView() {
                 onClick={() => setShowFilterPanel(!showFilterPanel)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   showFilterPanel || activeFiltersCount > 0
-                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                    ? 'bg-stone-100 text-stone-800 dark:bg-stone-800/30 dark:text-stone-300'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 <Filter size={14} />
                 Filter
                 {activeFiltersCount > 0 && (
-                  <span className="ml-1 w-5 h-5 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+                  <span className="ml-1 w-5 h-5 text-xs bg-stone-800 text-white rounded-full flex items-center justify-center">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -536,7 +536,7 @@ export function ThesisView() {
                           onClick={() => handleSort(option.field)}
                           className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 ${
                             sortField === option.field
-                              ? 'text-indigo-600 dark:text-indigo-400 font-medium'
+                              ? 'text-stone-700 dark:text-stone-400 font-medium'
                               : 'text-gray-700 dark:text-gray-300'
                           }`}
                         >
@@ -583,7 +583,7 @@ export function ThesisView() {
             {papers.length > 0 && (
               <div className="relative group">
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-stone-100 dark:bg-stone-800/30 text-stone-800 dark:text-stone-400 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800/50 transition-colors"
                   title="Synthesis Tools"
                 >
                   <Grid3X3 size={16} />
@@ -624,7 +624,7 @@ export function ThesisView() {
               onClick={() => setShowWorkflowPanel(!showWorkflowPanel)}
               className={`p-2 rounded-lg transition-colors hidden lg:flex ${
                 showWorkflowPanel
-                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
+                  ? 'text-stone-700 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/30'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
               title={showWorkflowPanel ? 'Hide Workflow Guide' : 'Show Workflow Guide'}
@@ -717,8 +717,8 @@ export function ThesisView() {
                       className={`px-2 py-1 text-xs rounded-md transition-colors ${
                         filterRole === role.value
                           ? role.value === 'all'
-                            ? 'bg-indigo-600 text-white'
-                            : `${role.color} ring-2 ring-indigo-500 ring-offset-1`
+                            ? 'bg-stone-800 text-white'
+                            : `${role.color} ring-2 ring-stone-500 ring-offset-1`
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
@@ -747,7 +747,7 @@ export function ThesisView() {
                       onClick={() => setFilterStatus(status.value)}
                       className={`px-2 py-1 text-xs rounded-md transition-colors ${
                         filterStatus === status.value
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-stone-800 text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
@@ -776,8 +776,8 @@ export function ThesisView() {
                       className={`px-2 py-1 text-xs rounded-md transition-colors ${
                         filterScreening === screening.value
                           ? screening.value === 'all'
-                            ? 'bg-indigo-600 text-white'
-                            : `${screening.color} ring-2 ring-indigo-500 ring-offset-1`
+                            ? 'bg-stone-800 text-white'
+                            : `${screening.color} ring-2 ring-stone-500 ring-offset-1`
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
@@ -791,7 +791,7 @@ export function ThesisView() {
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearFilters}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="text-xs text-stone-700 dark:text-stone-400 hover:underline"
                 >
                   Clear all filters
                 </button>
@@ -816,7 +816,7 @@ export function ThesisView() {
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 transition-colors"
               >
                 <Plus size={20} />
                 Add Your First Paper
@@ -848,7 +848,7 @@ export function ThesisView() {
                       </p>
                       <button
                         onClick={clearFilters}
-                        className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="mt-2 text-sm text-stone-700 dark:text-stone-400 hover:underline"
                       >
                         Clear filters
                       </button>
@@ -860,7 +860,7 @@ export function ThesisView() {
                       onClick={() => setSelectedPaper(paper.id)}
                       className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border cursor-pointer transition-all ${
                         selectedPaperId === paper.id
-                          ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                          ? 'border-stone-500 ring-2 ring-stone-200 dark:ring-stone-800'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
@@ -871,7 +871,7 @@ export function ThesisView() {
                         {paper.authors.map((a) => a.name).join(', ')}
                         {paper.year && ` (${paper.year})`}
                       </p>
-                      <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
+                      <p className="text-sm text-stone-700 dark:text-stone-400 mt-2 font-medium">
                         Takeaway: {paper.takeaway}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
@@ -956,11 +956,11 @@ export function ThesisView() {
                             <div
                               className={`p-3 rounded-lg transition-all ${
                                 selectedPaperId === paper.id
-                                  ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                  ? 'bg-stone-100 dark:bg-stone-800/20'
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                               }`}
                             >
-                              <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                              <div className="text-sm font-medium text-stone-700 dark:text-stone-400">
                                 {paper.year}
                               </div>
                               <h4 className="font-medium text-gray-900 dark:text-white mt-1">
@@ -1119,7 +1119,7 @@ export function ThesisView() {
           <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
-                <Keyboard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <Keyboard className="w-5 h-5 text-stone-700 dark:text-stone-400" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Keyboard Shortcuts
                 </h2>

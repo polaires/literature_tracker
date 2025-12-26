@@ -284,7 +284,7 @@ function ThesisViewContent() {
           </h2>
           <button
             onClick={() => navigate('/')}
-            className="text-indigo-600 hover:text-indigo-700"
+            className="text-stone-700 hover:text-stone-800"
           >
             Go back home
           </button>
@@ -342,7 +342,7 @@ function ThesisViewContent() {
                 </p>
                 <button
                   onClick={() => openModal('addPaper')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 transition-colors"
                 >
                   <Plus size={20} />
                   Add Your First Paper
@@ -369,7 +369,7 @@ function ThesisViewContent() {
                         onClick={() => setSelectedPaper(paper.id)}
                         className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border cursor-pointer transition-all ${
                           selectedPaperId === paper.id
-                            ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                            ? 'border-stone-500 ring-2 ring-stone-200 dark:ring-stone-700'
                             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
@@ -380,7 +380,7 @@ function ThesisViewContent() {
                           {paper.authors.map((a) => a.name).join(', ')}
                           {paper.year && ` (${paper.year})`}
                         </p>
-                        <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
+                        <p className="text-sm text-stone-700 dark:text-stone-400 mt-2 font-medium">
                           Takeaway: {paper.takeaway}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -453,11 +453,11 @@ function ThesisViewContent() {
                             <div
                               className={`p-3 rounded-lg transition-all ${
                                 selectedPaperId === paper.id
-                                  ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                  ? 'bg-stone-100 dark:bg-stone-800/20'
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
                               }`}
                             >
-                              <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                              <div className="text-sm font-medium text-stone-700 dark:text-stone-400">
                                 {paper.year}
                               </div>
                               <h4 className="font-medium text-gray-900 dark:text-white mt-1">
@@ -588,7 +588,7 @@ function ThesisViewContent() {
           <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
-                <Keyboard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <Keyboard className="w-5 h-5 text-stone-700 dark:text-stone-400" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Keyboard Shortcuts
                 </h2>

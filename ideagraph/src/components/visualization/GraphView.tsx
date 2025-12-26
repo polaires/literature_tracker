@@ -971,7 +971,7 @@ export function GraphView({
           width: 'mapData(connectionCount, 1, 5, 2, 5)',
           opacity: 0.7,
           'line-style': 'solid',
-          // Use indigo to match cluster border color
+          // Use stone to match cluster border color
           'line-color': '#818cf8',
           'target-arrow-color': '#818cf8',
           'target-arrow-shape': 'triangle',
@@ -2328,7 +2328,7 @@ export function GraphView({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg">
             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-              <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-stone-500 border-t-transparent rounded-full animate-spin" />
               Arranging...
             </div>
           </div>
@@ -2343,7 +2343,7 @@ export function GraphView({
           {onOpenAddPaper && (
             <button
               onClick={onOpenAddPaper}
-              className="p-2 sm:p-2.5 bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white rounded-xl shadow-lg transition-colors touch-manipulation"
+              className="p-2 sm:p-2.5 bg-stone-700 hover:bg-stone-800 active:bg-stone-900 text-white rounded-xl shadow-lg transition-colors touch-manipulation"
               title="Add Paper"
             >
               <Plus size={18} />
@@ -2441,7 +2441,7 @@ export function GraphView({
                 onClick={() => { setShowFilters(!showFilters); setShowLayoutPicker(false); }}
                 className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
                   showFilters
-                    ? 'bg-indigo-500 text-white'
+                    ? 'bg-stone-700 text-white'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
                 }`}
                 title="Filters"
@@ -2454,7 +2454,7 @@ export function GraphView({
                 onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowFilters(false); }}
                 className={`p-2.5 transition-all duration-200 ${
                   showLayoutPicker
-                    ? 'bg-indigo-500 text-white'
+                    ? 'bg-stone-700 text-white'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
                 }`}
                 title="Layout Options"
@@ -2622,7 +2622,7 @@ export function GraphView({
                 }}
                 className={`w-full px-3 py-2 text-left rounded-lg transition-all duration-150 ${
                   layoutType === value
-                    ? 'bg-indigo-500 text-white'
+                    ? 'bg-stone-700 text-white'
                     : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
@@ -2631,12 +2631,12 @@ export function GraphView({
                     {label}
                   </span>
                   {value === 'hybrid' && (
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${layoutType === value ? 'bg-white/20 text-white' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'}`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${layoutType === value ? 'bg-white/20 text-white' : 'bg-stone-100 dark:bg-stone-800/30 text-stone-700 dark:text-stone-400'}`}>
                       NEW
                     </span>
                   )}
                 </div>
-                <p className={`text-[10px] mt-0.5 ${layoutType === value ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={`text-[10px] mt-0.5 ${layoutType === value ? 'text-stone-100' : 'text-slate-500 dark:text-slate-400'}`}>
                   {desc}
                 </p>
               </button>
@@ -2655,7 +2655,7 @@ export function GraphView({
                       onClick={() => setScatterXAxis(value)}
                       className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
                         scatterXAxis === value
-                          ? 'bg-indigo-500 text-white'
+                          ? 'bg-stone-700 text-white'
                           : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
@@ -2673,7 +2673,7 @@ export function GraphView({
                       onClick={() => setScatterYAxis(value)}
                       className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
                         scatterYAxis === value
-                          ? 'bg-indigo-500 text-white'
+                          ? 'bg-stone-700 text-white'
                           : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
@@ -2696,7 +2696,7 @@ export function GraphView({
                 <button
                   onClick={() => setShowPhantomEdges(!showPhantomEdges)}
                   className={`w-9 h-5 rounded-full transition-colors ${
-                    showPhantomEdges ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'
+                    showPhantomEdges ? 'bg-stone-700' : 'bg-slate-300 dark:bg-slate-600'
                   }`}
                 >
                   <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
@@ -2719,7 +2719,7 @@ export function GraphView({
                     ...prev,
                     similarityThreshold: parseInt(e.target.value) / 100
                   }))}
-                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-stone-500"
                 />
               </div>
 
@@ -2737,7 +2737,7 @@ export function GraphView({
                     ...prev,
                     similarityEdgeOpacity: parseInt(e.target.value) / 100
                   }))}
-                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-stone-500"
                 />
               </div>
 
@@ -2755,7 +2755,7 @@ export function GraphView({
                     ...prev,
                     thesisGravityStrength: parseInt(e.target.value) / 100
                   }))}
-                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-stone-500"
                 />
               </div>
 
@@ -2772,7 +2772,7 @@ export function GraphView({
                       setExpandedClusterIds(new Set()); // Reset expanded state
                     }}
                     className={`w-9 h-5 rounded-full transition-colors ${
-                      enableAutoClustering ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'
+                      enableAutoClustering ? 'bg-stone-700' : 'bg-slate-300 dark:bg-slate-600'
                     }`}
                   >
                     <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${
@@ -2794,7 +2794,7 @@ export function GraphView({
                         max="70"
                         value={clusterThreshold * 100}
                         onChange={(e) => setClusterThreshold(parseInt(e.target.value) / 100)}
-                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-stone-500"
                       />
                       <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
                         <span>Loose (more merging)</span>
@@ -2842,7 +2842,7 @@ export function GraphView({
                         onClick={() => setHybridConfig(prev => ({ ...prev, nodeColorMetric: mode }))}
                         className={`flex-1 px-2 py-1 text-[10px] rounded transition-all ${
                           hybridConfig.nodeColorMetric === mode
-                            ? 'bg-indigo-500 text-white'
+                            ? 'bg-stone-700 text-white'
                             : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
                         }`}
                       >
@@ -2871,7 +2871,7 @@ export function GraphView({
                         onClick={() => setHybridConfig(prev => ({ ...prev, nodeSizeMetric: mode }))}
                         className={`flex-1 px-1.5 py-1 text-[10px] rounded transition-all ${
                           hybridConfig.nodeSizeMetric === mode
-                            ? 'bg-indigo-500 text-white'
+                            ? 'bg-stone-700 text-white'
                             : 'bg-slate-50 dark:bg-slate-700 text-slate-500 hover:bg-slate-100'
                         }`}
                       >
@@ -3002,7 +3002,7 @@ export function GraphView({
               <>
                 <button
                   onClick={() => setShowClusterModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-700 hover:bg-stone-800 text-white text-sm font-medium rounded-lg transition-colors"
                   title="Group into cluster"
                 >
                   <Layers size={14} />
@@ -3235,7 +3235,7 @@ export function GraphView({
               value={newClusterName}
               onChange={(e) => setNewClusterName(e.target.value)}
               placeholder="Cluster name..."
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
               autoFocus
             />
             <div className="flex justify-end gap-2 mt-4">
@@ -3248,7 +3248,7 @@ export function GraphView({
               <button
                 onClick={handleCreateCluster}
                 disabled={!newClusterName.trim()}
-                className="px-4 py-2 bg-indigo-500 text-white rounded-lg disabled:opacity-50"
+                className="px-4 py-2 bg-stone-700 text-white rounded-lg disabled:opacity-50"
               >
                 Create
               </button>
@@ -3372,7 +3372,7 @@ export function GraphView({
               {hoveredPaper.year && <span className="ml-1">({hoveredPaper.year})</span>}
             </p>
             {hoveredPaper.takeaway && (
-              <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2 leading-relaxed">
+              <p className="text-xs text-stone-700 dark:text-stone-400 mt-2 leading-relaxed">
                 {hoveredPaper.takeaway}
               </p>
             )}

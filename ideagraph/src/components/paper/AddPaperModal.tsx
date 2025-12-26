@@ -315,7 +315,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       onChange={(e) => setDoiInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
                       placeholder="e.g., 10.1038/s41586-021-03819-2 or https://doi.org/..."
-                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                       autoFocus
                     />
                     <Button
@@ -357,7 +357,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       value={manualTitle}
                       onChange={(e) => setManualTitle(e.target.value)}
                       placeholder="Paper title..."
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                       autoFocus
                     />
                   </div>
@@ -375,7 +375,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                             value={author.name}
                             onChange={(e) => updateAuthor(index, e.target.value)}
                             placeholder={`Author ${index + 1} name...`}
-                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                           />
                           {manualAuthors.length > 1 && (
                             <button
@@ -389,7 +389,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       ))}
                       <button
                         onClick={addAuthor}
-                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                        className="text-sm text-stone-700 dark:text-stone-400 hover:underline flex items-center gap-1"
                       >
                         <Plus size={14} />
                         Add author
@@ -410,7 +410,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                         placeholder="2024"
                         min="1900"
                         max="2100"
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -422,7 +422,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                         value={manualJournal}
                         onChange={(e) => setManualJournal(e.target.value)}
                         placeholder="Nature, arXiv, etc."
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -437,7 +437,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       value={manualDoi}
                       onChange={(e) => setManualDoi(e.target.value)}
                       placeholder="10.1038/..."
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                     />
                   </div>
 
@@ -451,7 +451,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                       onChange={(e) => setManualAbstract(e.target.value)}
                       placeholder="Paper abstract..."
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none"
                     />
                   </div>
 
@@ -471,7 +471,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
           {/* Step 2: Fetching */}
           {step === 'fetching' && (
             <div className="text-center py-12">
-              <Loader2 className="animate-spin mx-auto text-indigo-600" size={48} />
+              <Loader2 className="animate-spin mx-auto text-stone-700" size={48} />
               <p className="mt-4 text-gray-600 dark:text-gray-400">
                 Fetching paper metadata...
               </p>
@@ -517,7 +517,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                 </div>
                 {metadata.abstract && (
                   <details className="mt-3">
-                    <summary className="text-sm text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                    <summary className="text-sm text-stone-700 dark:text-stone-400 cursor-pointer">
                       Show abstract
                     </summary>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -621,7 +621,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                         onClick={() => setThesisRole(role)}
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                           thesisRole === role
-                            ? `${colors.bg} ${colors.text} ring-2 ring-offset-2 ring-indigo-500`
+                            ? `${colors.bg} ${colors.text} ring-2 ring-offset-2 ring-stone-500`
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }`}
                       >
@@ -674,7 +674,7 @@ export function AddPaperModal({ thesisId, onClose }: AddPaperModalProps) {
                 <select
                   value={readingStatus}
                   onChange={(e) => setReadingStatus(e.target.value as ReadingStatus)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent"
                 >
                   <option value="to-read">To Read</option>
                   <option value="reading">Currently Reading</option>

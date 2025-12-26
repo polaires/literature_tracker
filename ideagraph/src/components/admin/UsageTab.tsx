@@ -308,7 +308,7 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
                                   setAdjustingUserId(visibleUserId);
                                 }
                               }}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                              className="p-1.5 text-slate-400 hover:text-stone-700 dark:hover:text-stone-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                               title={isAdjusting ? 'Cancel adjustment' : 'Adjust credits'}
                             >
                               {isAdjusting ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -334,7 +334,7 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
                                 <button
                                   onClick={() => handleAdjustCredits(visibleUserId)}
                                   disabled={isSubmitting || !adjustAmounts[visibleUserId]}
-                                  className="flex items-center gap-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="flex items-center gap-1 px-2 py-1 bg-stone-800 hover:bg-stone-900 text-white text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   {isSubmitting ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />

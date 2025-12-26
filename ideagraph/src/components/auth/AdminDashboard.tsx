@@ -316,7 +316,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               {/* Default API Settings */}
               <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4">
-                  <Settings className="h-5 w-5 text-indigo-600" />
+                  <Settings className="h-5 w-5 text-stone-700" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Default API Settings</h3>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">

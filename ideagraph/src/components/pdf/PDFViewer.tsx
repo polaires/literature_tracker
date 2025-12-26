@@ -208,7 +208,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900"
           >
             Close
           </button>
@@ -261,7 +261,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
                 onClick={() => setHighlightMode('highlight')}
                 className={`p-2 rounded ${
                   highlightMode === 'highlight'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-stone-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-600'
                 }`}
                 title="Highlight text"
@@ -272,7 +272,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
                 onClick={() => setHighlightMode('area')}
                 className={`p-2 rounded ${
                   highlightMode === 'area'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-stone-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-600'
                 }`}
                 title="Area selection"
@@ -283,7 +283,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
                 onClick={() => setHighlightMode('note')}
                 className={`p-2 rounded ${
                   highlightMode === 'note'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-stone-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-600'
                 }`}
                 title="Add note"
@@ -297,7 +297,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
               onClick={() => setShowSidebar(!showSidebar)}
               className={`p-2 rounded-lg ${
                 showSidebar
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-stone-800 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
               title={showSidebar ? 'Hide annotations' : 'Show annotations'}
@@ -311,7 +311,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
                 onClick={() => setShowAIPanel(!showAIPanel)}
                 className={`p-2 rounded-lg flex items-center gap-1.5 ${
                   showAIPanel
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-stone-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
                 title={showAIPanel ? 'Hide AI Assistant' : 'Show AI Assistant'}

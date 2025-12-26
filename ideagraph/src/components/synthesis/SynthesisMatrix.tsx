@@ -122,7 +122,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <Grid3X3 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <Grid3X3 className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Synthesis Matrix
@@ -144,7 +144,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
       <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <Tag size={16} className="text-indigo-500" />
+            <Tag size={16} className="text-stone-600" />
             <span className="text-gray-600 dark:text-gray-400">
               <strong className="text-gray-900 dark:text-white">{themes.length}</strong> themes
             </span>
@@ -230,7 +230,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setEditingTheme(theme)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded"
+                        className="p-1.5 text-gray-400 hover:text-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800/20 rounded"
                       >
                         <Edit2 size={14} />
                       </button>
@@ -259,7 +259,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                               key={paper.id}
                               className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
                                 isAssigned
-                                  ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                  ? 'bg-stone-100 dark:bg-stone-800/20'
                                   : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                               }`}
                               onClick={() => handleTogglePaperTheme(paper.id, theme.id, isAssigned)}
@@ -267,7 +267,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                               <div
                                 className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                                   isAssigned
-                                    ? 'bg-indigo-600 border-indigo-600'
+                                    ? 'bg-stone-800 border-stone-800'
                                     : 'border-gray-300 dark:border-gray-600'
                                 }`}
                               >
@@ -299,7 +299,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
             {/* Add Theme Button */}
             <button
               onClick={() => setShowAddTheme(true)}
-              className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors"
             >
               <Plus size={20} />
               Add Theme
@@ -346,7 +346,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                   value={newThemeName}
                   onChange={(e) => setNewThemeName(e.target.value)}
                   placeholder="e.g., Kinetic limitations, Experimental methods"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                   autoFocus
                 />
               </div>
@@ -360,7 +360,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                   onChange={(e) => setNewThemeDescription(e.target.value)}
                   placeholder="Brief description of what this theme covers..."
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
             </div>
@@ -397,7 +397,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                   onChange={(e) =>
                     setEditingTheme({ ...editingTheme, name: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
 
@@ -411,7 +411,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                     setEditingTheme({ ...editingTheme, description: e.target.value || null })
                   }
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500"
                 />
               </div>
 
@@ -425,7 +425,7 @@ export function SynthesisMatrix({ thesisId, onClose }: SynthesisMatrixProps) {
                       key={color}
                       onClick={() => setEditingTheme({ ...editingTheme, color })}
                       className={`w-8 h-8 rounded-full transition-transform ${
-                        editingTheme.color === color ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : ''
+                        editingTheme.color === color ? 'ring-2 ring-offset-2 ring-stone-500 scale-110' : ''
                       }`}
                       style={{ backgroundColor: color }}
                     />

@@ -180,7 +180,7 @@ export function ScreeningContent({ thesisId }: ScreeningContentProps) {
             onClick={() => { setShowMaybeOnly(false); setCurrentIndex(0); }}
             className={`px-2 py-1 text-xs rounded ${
               !showMaybeOnly
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-stone-800 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
             }`}
           >
@@ -207,7 +207,7 @@ export function ScreeningContent({ thesisId }: ScreeningContentProps) {
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
           <div
-            className="bg-indigo-600 h-1.5 rounded-full transition-all"
+            className="bg-stone-800 h-1.5 rounded-full transition-all"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -256,7 +256,7 @@ export function ScreeningContent({ thesisId }: ScreeningContentProps) {
                   href={`https://doi.org/${currentPaper.doi}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline"
+                  className="flex items-center gap-1 text-stone-700 dark:text-stone-400 hover:underline"
                 >
                   <ExternalLink size={12} />
                   DOI
@@ -282,11 +282,11 @@ export function ScreeningContent({ thesisId }: ScreeningContentProps) {
 
             {/* Current takeaway if exists */}
             {currentPaper.takeaway && currentPaper.takeaway !== 'Takeaway to be added after reading' && (
-              <div className="mt-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                <h4 className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">
+              <div className="mt-3 p-3 bg-stone-100 dark:bg-stone-800/20 rounded-lg">
+                <h4 className="text-xs font-medium text-stone-800 dark:text-stone-300 mb-1">
                   Takeaway
                 </h4>
-                <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                <p className="text-sm text-stone-700 dark:text-stone-400">
                   {currentPaper.takeaway}
                 </p>
               </div>

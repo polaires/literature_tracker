@@ -132,8 +132,8 @@ export function PDFDownloadStatus({
     return (
       <button
         onClick={handleDownload}
-        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400
-          hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors ${className}`}
+        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-stone-700 dark:text-stone-400
+          hover:bg-stone-100 dark:hover:bg-stone-800/20 rounded-lg transition-colors ${className}`}
       >
         <Download size={16} />
         <span>Download PDF</span>
@@ -145,7 +145,7 @@ export function PDFDownloadStatus({
   if (state === 'downloading') {
     return (
       <div className={`space-y-2 ${className}`}>
-        <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-400">
           <Loader2 size={16} className="animate-spin" />
           <span>{statusMessage}</span>
         </div>
@@ -192,8 +192,8 @@ export function PDFDownloadStatus({
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-                text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20
-                rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                text-stone-700 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/20
+                rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800/30 transition-colors"
             >
               <ExternalLink size={14} />
               Open via DOI
@@ -236,8 +236,8 @@ export function PDFDownloadStatus({
           <button
             onClick={handleDownload}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-              text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20
-              rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+              text-stone-700 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/20
+              rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800/30 transition-colors"
           >
             <RefreshCw size={14} />
             Retry
@@ -321,12 +321,12 @@ export function PDFDownloadBadge({
       onClick={handleDownload}
       disabled={isDownloading}
       className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium
-        text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20
-        rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors
+        text-stone-700 dark:text-stone-400 bg-stone-100 dark:bg-stone-800/20
+        rounded hover:bg-stone-100 dark:hover:bg-stone-800/30 transition-colors
         disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isDownloading ? (
-        <Loader2 size={12} className="animate-spin" />
+        <Loader2 size={12} className="animate-spin text-stone-600" />
       ) : (
         <Download size={12} />
       )}

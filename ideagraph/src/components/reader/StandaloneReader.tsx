@@ -280,7 +280,7 @@ export function StandaloneReader({
             onClick={() => setShowAIPanel(!showAIPanel)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
               showAIPanel
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-stone-800 text-white'
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
           >
@@ -349,7 +349,7 @@ export function StandaloneReader({
             disabled={!selectedThesis}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
               selectedThesis
-                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                ? 'bg-stone-800 hover:bg-stone-900 text-white'
                 : 'bg-slate-600 text-slate-400 cursor-not-allowed'
             }`}
           >
@@ -453,7 +453,7 @@ export function StandaloneReader({
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
                       !paperTitle || !paperTakeaway || paperTakeaway.length < 10 || isAdding
                         ? 'bg-slate-300 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed'
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-stone-800 hover:bg-stone-900 text-white'
                     }`}
                   >
                     {isAdding ? (

@@ -350,7 +350,7 @@ export function AIIntakePanel({
             className="flex items-center justify-between w-full"
           >
             <div className="flex items-center gap-2">
-              <Link2 size={14} className="text-indigo-500" />
+              <Link2 size={14} className="text-stone-600" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Potential Connections ({analysis.potentialConnections.length})
               </span>
@@ -362,7 +362,7 @@ export function AIIntakePanel({
               {analysis.potentialConnections.map((conn, i) => (
                 <li key={i} className="text-xs p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
                   <div className="flex items-center gap-2">
-                    <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-[10px]">
+                    <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800/30 text-stone-700 dark:text-stone-400 text-[10px]">
                       {conn.connectionType}
                     </span>
                     <span className="text-gray-600 dark:text-gray-300 truncate">

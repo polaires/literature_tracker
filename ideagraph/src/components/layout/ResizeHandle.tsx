@@ -86,8 +86,8 @@ export function ResizeHandle({ position, onResize, onResizeEnd, disabled = false
       <div
         className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 transition-colors ${
           isDragging
-            ? 'bg-indigo-500'
-            : 'bg-transparent group-hover:bg-indigo-400/50'
+            ? 'bg-stone-500'
+            : 'bg-transparent group-hover:bg-stone-400/50'
         }`}
       />
 

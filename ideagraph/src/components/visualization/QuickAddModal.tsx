@@ -84,7 +84,7 @@ export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddMod
             {paper.openAccessPdf?.url && onViewPdf && (
               <button
                 onClick={() => onViewPdf(paper.openAccessPdf!.url)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-stone-700 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/30 rounded-lg transition-colors"
               >
                 <FileText size={14} />
                 View PDF
@@ -143,7 +143,7 @@ export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddMod
               type="checkbox"
               checked={addAsScreening}
               onChange={(e) => setAddAsScreening(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
+              className="w-4 h-4 rounded border-slate-300 text-stone-600 focus:ring-stone-500"
             />
             <span className="text-sm text-slate-700 dark:text-slate-300">
               Add for screening (takeaway not required yet)
@@ -160,7 +160,7 @@ export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddMod
                 value={takeaway}
                 onChange={(e) => setTakeaway(e.target.value)}
                 placeholder="What's the key insight from this paper? (10-500 characters)"
-                className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent resize-none"
                 rows={3}
               />
               <p className="text-xs text-slate-400 mt-1">
@@ -182,7 +182,7 @@ export function QuickAddModal({ paper, onAdd, onCancel, onViewPdf }: QuickAddMod
             <button
               onClick={handleAdd}
               disabled={!canSubmit}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg transition-colors shadow-sm"
+              className="px-4 py-2 text-sm font-medium text-white bg-stone-700 hover:bg-stone-800 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-lg transition-colors shadow-sm"
             >
               Add to Thesis
             </button>

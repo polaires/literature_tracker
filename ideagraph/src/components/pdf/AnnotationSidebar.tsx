@@ -141,7 +141,7 @@ export function AnnotationSidebar({
                   <div
                     key={annotation.id}
                     className={`border-b border-gray-100 dark:border-gray-700 last:border-0 ${
-                      isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                      isSelected ? 'bg-stone-100 dark:bg-stone-800/20' : ''
                     }`}
                   >
                     {/* Main annotation row */}
@@ -252,7 +252,7 @@ export function AnnotationSidebar({
                               </button>
                               <button
                                 onClick={() => handleSaveComment(annotation.id)}
-                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                className="text-xs text-stone-700 hover:text-stone-800 font-medium"
                               >
                                 Save
                               </button>
@@ -353,7 +353,7 @@ export function AnnotationSidebar({
                         {annotation.selectedText && !annotation.exportedToTakeaway && (
                           <button
                             onClick={() => handleExportToTakeaway(annotation)}
-                            className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            className="flex items-center gap-1 text-xs text-stone-700 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-300"
                           >
                             <FileText size={12} />
                             Export to takeaway

@@ -165,7 +165,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30 focus:border-indigo-300 dark:focus:border-indigo-500/50 transition-all"
+              className="w-full px-3.5 py-2.5 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-500/30 focus:border-stone-300 dark:focus:border-stone-500/50 transition-all"
             />
           </div>
 
@@ -184,7 +184,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                   className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                     isSuggestingTakeaway
                       ? 'bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 cursor-wait'
-                      : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                      : 'text-stone-700 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-500/10'
                   }`}
                   title="Suggest takeaway with AI"
                 >
@@ -270,7 +270,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
               </label>
               <button
                 onClick={addArgument}
-                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 px-2.5 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-md transition-colors"
+                className="text-xs font-medium text-stone-700 dark:text-stone-400 flex items-center gap-1 px-2.5 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-500/10 rounded-md transition-colors"
               >
                 <Plus size={14} />
                 Add Argument
@@ -293,7 +293,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                           value={arg.claim}
                           onChange={(e) => updateArgument(arg.id, { claim: e.target.value })}
                           placeholder={`Argument ${index + 1}: What claim does the paper make?`}
-                          className="w-full px-3 py-2 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-sm placeholder:text-stone-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 focus:border-indigo-200 dark:focus:border-indigo-500/40 transition-all"
+                          className="w-full px-3 py-2 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-sm placeholder:text-stone-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-stone-100 dark:focus:ring-stone-500/20 focus:border-stone-200 dark:focus:border-stone-500/40 transition-all"
                         />
 
                         {/* Strength & Assessment Row - More compact, pill-based design */}
@@ -401,7 +401,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
               </label>
               <button
                 onClick={addEvidence}
-                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 px-2.5 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-md transition-colors"
+                className="text-xs font-medium text-stone-700 dark:text-stone-400 flex items-center gap-1 px-2.5 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-500/10 rounded-md transition-colors"
               >
                 <Plus size={14} />
                 Add Evidence
@@ -420,7 +420,7 @@ export function PaperEditModal({ paper, onClose, onSuccess }: PaperEditModalProp
                       value={ev.description}
                       onChange={(e) => updateEvidence(ev.id, { description: e.target.value })}
                       placeholder={`Evidence ${index + 1}...`}
-                      className="w-full px-3 py-2 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-sm placeholder:text-stone-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/20 focus:border-indigo-200 dark:focus:border-indigo-500/40 transition-all"
+                      className="w-full px-3 py-2 border border-stone-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-sm placeholder:text-stone-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-stone-100 dark:focus:ring-stone-500/20 focus:border-stone-200 dark:focus:border-stone-500/40 transition-all"
                     />
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-medium text-stone-400 dark:text-zinc-500 uppercase tracking-wider">Type</span>

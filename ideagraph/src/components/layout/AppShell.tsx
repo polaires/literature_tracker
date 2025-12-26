@@ -34,7 +34,7 @@ function AppShellInner({ children }: AppShellProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#FDFBF7] dark:bg-gray-900 overflow-hidden">
       {children}
     </div>
   );

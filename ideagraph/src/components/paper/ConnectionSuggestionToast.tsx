@@ -33,19 +33,19 @@ export function ConnectionSuggestionToast({
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden max-w-md">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-stone-200 dark:border-stone-800 overflow-hidden max-w-md">
       {/* Header */}
       <div className="p-3 bg-gradient-to-r from-stone-50 to-amber-50 dark:from-stone-900/30 dark:to-amber-900/30 border-b border-stone-100 dark:border-stone-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
-              <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+            <div className="p-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg">
+              <Sparkles size={14} className="text-stone-700 dark:text-stone-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+              <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
                 {suggestions.length} connection{suggestions.length > 1 ? 's' : ''} found
               </p>
-              <p className="text-xs text-indigo-600 dark:text-indigo-400 truncate">
+              <p className="text-xs text-stone-700 dark:text-stone-400 truncate">
                 for "{paperTitle.slice(0, 40)}..."
               </p>
             </div>
@@ -53,7 +53,7 @@ export function ConnectionSuggestionToast({
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="p-1 text-stone-600 hover:text-stone-800 dark:hover:text-stone-300"
             >
               {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
@@ -79,7 +79,7 @@ export function ConnectionSuggestionToast({
           {suggestions.length > 1 && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+              className="mt-2 text-xs text-stone-700 dark:text-stone-400 hover:underline"
             >
               +{suggestions.length - 1} more
             </button>
@@ -125,7 +125,7 @@ function SuggestionRow({
 
   return (
     <div className="flex items-start gap-2">
-      <Link2 size={14} className="text-indigo-500 mt-1 flex-shrink-0" />
+      <Link2 size={14} className="text-stone-600 mt-1 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${typeColors.bg} ${typeColors.text}`}>

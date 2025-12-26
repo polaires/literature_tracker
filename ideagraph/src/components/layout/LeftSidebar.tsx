@@ -129,7 +129,7 @@ export const LeftSidebar = memo(function LeftSidebar({
   if (leftCollapsed && !isMobile) {
     return (
       <aside
-        className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col items-center py-3 gap-2 flex-shrink-0"
+        className="bg-[#FDFBF7] dark:bg-gray-800 border-r border-stone-200 dark:border-gray-700 flex flex-col items-center py-3 gap-2 flex-shrink-0"
         style={{ width: PANEL_DEFAULTS.leftCollapsedWidth }}
       >
         <button
@@ -146,14 +146,14 @@ export const LeftSidebar = memo(function LeftSidebar({
           onClick={() => { setLeftCollapsed(false); setShowFilters(true); }}
           className={`p-2 rounded-lg transition-colors ${
             activeFiltersCount > 0
-              ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
+              ? 'text-stone-700 bg-stone-100 dark:bg-stone-900/30'
               : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           title="Filters"
         >
           <Filter size={18} />
           {activeFiltersCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-4 h-4 text-xs bg-stone-800 text-white rounded-full flex items-center justify-center">
               {activeFiltersCount}
             </span>
           )}
@@ -201,7 +201,7 @@ export const LeftSidebar = memo(function LeftSidebar({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search papers..."
-              className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
             />
             {searchQuery && (
               <button
@@ -220,14 +220,14 @@ export const LeftSidebar = memo(function LeftSidebar({
             onClick={() => { setShowFilters(!showFilters); setShowSort(false); }}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors touch-manipulation ${
               showFilters || activeFiltersCount > 0
-                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                ? 'bg-stone-200 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
             }`}
           >
             <Filter size={14} />
             Filter
             {activeFiltersCount > 0 && (
-              <span className="ml-1 w-5 h-5 text-xs bg-indigo-600 text-white rounded-full flex items-center justify-center">
+              <span className="ml-1 w-5 h-5 text-xs bg-stone-800 text-white rounded-full flex items-center justify-center">
                 {activeFiltersCount}
               </span>
             )}
@@ -237,7 +237,7 @@ export const LeftSidebar = memo(function LeftSidebar({
             onClick={() => { setShowSort(!showSort); setShowFilters(false); }}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors touch-manipulation ${
               showSort
-                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                ? 'bg-stone-200 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
             }`}
           >
@@ -248,7 +248,7 @@ export const LeftSidebar = memo(function LeftSidebar({
           {activeFiltersCount > 0 && (
             <button
               onClick={clearFilters}
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline ml-auto px-2 py-1"
+              className="text-sm text-stone-700 dark:text-stone-400 hover:underline ml-auto px-2 py-1"
             >
               Clear
             </button>
@@ -269,7 +269,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                     onClick={() => onFilterRoleChange(value)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
                       filterRole === value
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-stone-800 text-white'
                         : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
                     }`}
                   >
@@ -291,7 +291,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                     onClick={() => onFilterStatusChange(value)}
                     className={`px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
                       filterStatus === value
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-stone-800 text-white'
                         : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
                     }`}
                   >
@@ -312,7 +312,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                     onClick={() => onFilterScreeningChange(value)}
                     className={`px-3 py-1.5 text-sm rounded-lg transition-colors touch-manipulation ${
                       filterScreening === value
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-stone-800 text-white'
                         : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
                     }`}
                   >
@@ -332,7 +332,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                 key={field}
                 onClick={() => onSortChange(field)}
                 className={`w-full px-3 py-2.5 text-left text-sm flex items-center justify-between rounded-lg touch-manipulation ${
-                  sortField === field ? 'text-indigo-600 dark:text-indigo-400 font-medium bg-white dark:bg-gray-700' : 'text-gray-600 dark:text-gray-400'
+                  sortField === field ? 'text-stone-700 dark:text-stone-400 font-medium bg-white dark:bg-gray-700' : 'text-gray-600 dark:text-gray-400'
                 }`}
               >
                 {label}
@@ -361,7 +361,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                   }}
                   className={`w-full px-3 py-3 text-left transition-colors touch-manipulation ${
                     selectedPaperId === paper.id
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-3 border-indigo-500'
+                      ? 'bg-stone-100 dark:bg-stone-900/30 border-l-3 border-stone-500'
                       : 'active:bg-gray-100 dark:active:bg-gray-700/50 border-l-3 border-transparent'
                   }`}
                 >
@@ -396,7 +396,7 @@ export const LeftSidebar = memo(function LeftSidebar({
   // Desktop view
   return (
     <aside
-      className="relative bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden"
+      className="relative bg-[#FDFBF7] dark:bg-gray-800 border-r border-stone-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden"
       style={{ width: leftWidth }}
     >
       {/* Resize handle */}
@@ -425,7 +425,7 @@ export const LeftSidebar = memo(function LeftSidebar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search papers..."
-            className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-stone-500 focus:border-transparent"
           />
           {searchQuery && (
             <button
@@ -444,14 +444,14 @@ export const LeftSidebar = memo(function LeftSidebar({
           onClick={() => { setShowFilters(!showFilters); setShowSort(false); }}
           className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
             showFilters || activeFiltersCount > 0
-              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+              ? 'bg-stone-200 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
           }`}
         >
           <Filter size={12} />
           Filter
           {activeFiltersCount > 0 && (
-            <span className="ml-1 w-4 h-4 text-[10px] bg-indigo-600 text-white rounded-full flex items-center justify-center">
+            <span className="ml-1 w-4 h-4 text-[10px] bg-stone-800 text-white rounded-full flex items-center justify-center">
               {activeFiltersCount}
             </span>
           )}
@@ -461,7 +461,7 @@ export const LeftSidebar = memo(function LeftSidebar({
           onClick={() => { setShowSort(!showSort); setShowFilters(false); }}
           className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
             showSort
-              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+              ? 'bg-stone-200 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
           }`}
         >
@@ -472,7 +472,7 @@ export const LeftSidebar = memo(function LeftSidebar({
         {activeFiltersCount > 0 && (
           <button
             onClick={clearFilters}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline ml-auto"
+            className="text-xs text-stone-700 dark:text-stone-400 hover:underline ml-auto"
           >
             Clear
           </button>
@@ -494,8 +494,8 @@ export const LeftSidebar = memo(function LeftSidebar({
                   onClick={() => onFilterRoleChange(value)}
                   className={`flex items-center gap-1 px-2 py-0.5 text-xs rounded transition-colors ${
                     filterRole === value
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-indigo-300'
+                      ? 'bg-stone-800 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-stone-300'
                   }`}
                 >
                   {color && <span className={`w-2 h-2 rounded-full ${color}`} />}
@@ -517,8 +517,8 @@ export const LeftSidebar = memo(function LeftSidebar({
                   onClick={() => onFilterStatusChange(value)}
                   className={`px-2 py-0.5 text-xs rounded transition-colors ${
                     filterStatus === value
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-indigo-300'
+                      ? 'bg-stone-800 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-stone-300'
                   }`}
                 >
                   {label}
@@ -539,8 +539,8 @@ export const LeftSidebar = memo(function LeftSidebar({
                   onClick={() => onFilterScreeningChange(value)}
                   className={`px-2 py-0.5 text-xs rounded transition-colors ${
                     filterScreening === value
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-indigo-300'
+                      ? 'bg-stone-800 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:border-stone-300'
                   }`}
                 >
                   {label}
@@ -559,7 +559,7 @@ export const LeftSidebar = memo(function LeftSidebar({
               key={field}
               onClick={() => onSortChange(field)}
               className={`w-full px-2 py-1.5 text-left text-xs flex items-center justify-between rounded hover:bg-white dark:hover:bg-gray-700 ${
-                sortField === field ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-gray-600 dark:text-gray-400'
+                sortField === field ? 'text-stone-700 dark:text-stone-400 font-medium' : 'text-gray-600 dark:text-gray-400'
               }`}
             >
               {label}
@@ -585,7 +585,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                 onClick={() => onPaperSelect(paper.id)}
                 className={`w-full px-3 py-2 text-left transition-colors ${
                   selectedPaperId === paper.id
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-2 border-indigo-500'
+                    ? 'bg-stone-100 dark:bg-stone-900/30 border-l-2 border-stone-500'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-2 border-transparent'
                 }`}
               >

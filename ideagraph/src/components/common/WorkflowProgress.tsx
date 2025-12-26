@@ -160,7 +160,7 @@ export function WorkflowProgress({
               onClick={() => handleClick?.(activity.id)}
               className={`relative flex items-start gap-2 p-2.5 rounded-lg text-left transition-all ${
                 stats.hasAction
-                  ? 'bg-gray-50 dark:bg-gray-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800'
+                  ? 'bg-gray-50 dark:bg-gray-700/50 hover:bg-stone-100 dark:hover:bg-stone-800/20 hover:border-stone-200 dark:hover:border-stone-700'
                   : 'bg-gray-50 dark:bg-gray-700/50 opacity-60'
               } border border-transparent`}
             >
@@ -168,7 +168,7 @@ export function WorkflowProgress({
               <div
                 className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
                   stats.hasAction
-                    ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                    ? 'bg-stone-100 dark:bg-stone-800/50 text-stone-700 dark:text-stone-400'
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
                 }`}
               >

@@ -9,10 +9,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   shortcut?: string;
 }
 
-// Softer, Linear/Notion inspired button styles
+// Cream/Stone theme button styles
 const variantClasses = {
-  primary: 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-sm hover:shadow disabled:bg-indigo-300 dark:bg-indigo-600 dark:hover:bg-indigo-500 dark:disabled:bg-indigo-800',
-  secondary: 'bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 hover:bg-stone-200 dark:hover:bg-zinc-700 border border-stone-200 dark:border-zinc-700',
+  primary: 'bg-stone-800 text-white hover:bg-stone-900 shadow-sm hover:shadow disabled:bg-stone-400 dark:bg-stone-700 dark:hover:bg-stone-600 dark:disabled:bg-stone-800',
+  secondary: 'bg-white dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700 border border-stone-200 dark:border-zinc-700',
   ghost: 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800 hover:text-stone-800 dark:hover:text-zinc-200',
   danger: 'bg-rose-500 text-white hover:bg-rose-600 shadow-sm disabled:bg-rose-300 dark:bg-rose-600 dark:hover:bg-rose-500',
 };
@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           inline-flex items-center justify-center gap-1.5
           font-medium rounded-lg
           transition-all duration-150
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 dark:focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 dark:focus-visible:ring-stone-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900
           disabled:cursor-not-allowed disabled:opacity-50
           ${variantClasses[variant]}
           ${sizeClasses[size]}

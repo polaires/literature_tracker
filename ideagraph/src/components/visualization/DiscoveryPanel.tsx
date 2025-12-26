@@ -37,7 +37,7 @@ export function DiscoveryPanel({
     return (
       <div className="absolute top-4 right-16 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-right-2 duration-200">
         <div className="p-6 flex flex-col items-center justify-center">
-          <Loader2 size={24} className="text-indigo-500 animate-spin" />
+          <Loader2 size={24} className="text-stone-600 animate-spin" />
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
             Finding similar papers...
           </p>
@@ -142,7 +142,7 @@ export function DiscoveryPanel({
                       )}
                     </div>
                   )}
-                  <h5 className="text-sm font-medium text-slate-700 dark:text-slate-200 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <h5 className="text-sm font-medium text-slate-700 dark:text-slate-200 line-clamp-2 group-hover:text-stone-700 dark:group-hover:text-stone-400 transition-colors">
                     {paper.title}
                   </h5>
                   <p className="text-xs text-slate-400 mt-1 line-clamp-1">
@@ -165,7 +165,7 @@ export function DiscoveryPanel({
                 </div>
                 <Plus
                   size={16}
-                  className="text-slate-300 group-hover:text-indigo-500 transition-colors flex-shrink-0 mt-0.5"
+                  className="text-slate-300 group-hover:text-stone-600 transition-colors flex-shrink-0 mt-0.5"
                 />
               </div>
             </button>
@@ -177,7 +177,7 @@ export function DiscoveryPanel({
       <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
         <button
           onClick={onSearchMore}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-stone-700 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/30 rounded-lg transition-colors"
         >
           <Search size={14} />
           Search for more...

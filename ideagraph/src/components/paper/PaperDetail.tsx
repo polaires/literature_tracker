@@ -200,7 +200,7 @@ export function PaperDetail({
             </span>
             <button
               onClick={handleToggleReadingStatus}
-              className={`text-xs px-2 py-1 rounded-full transition-colors hover:ring-2 hover:ring-indigo-500 hover:ring-offset-1 ${statusColors.bg} ${statusColors.text}`}
+              className={`text-xs px-2 py-1 rounded-full transition-colors hover:ring-2 hover:ring-stone-500 hover:ring-offset-1 ${statusColors.bg} ${statusColors.text}`}
               title="Click to change reading status"
             >
               {statusColors.label}
@@ -233,7 +233,7 @@ export function PaperDetail({
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Takeaway
           </h3>
-          <p className="text-indigo-600 dark:text-indigo-400 font-medium">
+          <p className="text-stone-700 dark:text-stone-400 font-medium">
             {paper.takeaway}
           </p>
         </div>
@@ -242,7 +242,7 @@ export function PaperDetail({
         {paper.arguments.length > 0 && (
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-              <MessageSquareQuote size={16} className="text-indigo-500" />
+              <MessageSquareQuote size={16} className="text-stone-600" />
               Arguments ({paper.arguments.length})
             </h3>
             <div className="space-y-3">
@@ -354,7 +354,7 @@ export function PaperDetail({
               )}
               <button
                 onClick={() => setShowConnectionEditor(true)}
-                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                className="text-xs text-stone-700 dark:text-stone-400 hover:underline flex items-center gap-1"
               >
                 <Link2 size={14} />
                 Add
@@ -490,7 +490,7 @@ export function PaperDetail({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowPDFViewer(true)}
-                className="flex-1 flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                className="flex-1 flex items-center gap-2 p-3 bg-stone-100 dark:bg-stone-800/20 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-800/30 transition-colors"
               >
                 <BookOpen size={20} />
                 <div className="text-left">
@@ -534,7 +534,7 @@ export function PaperDetail({
               {/* Manual upload option */}
               <button
                 onClick={() => setShowPDFUpload(true)}
-                className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-stone-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors"
               >
                 <Upload size={20} />
                 <span>Or upload PDF manually</span>
@@ -550,7 +550,7 @@ export function PaperDetail({
               href={`https://doi.org/${paper.doi}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              className="text-sm text-stone-700 dark:text-stone-400 hover:underline flex items-center gap-1"
             >
               <ExternalLink size={14} />
               View on DOI
@@ -561,7 +561,7 @@ export function PaperDetail({
               href={paper.pdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              className="text-sm text-stone-700 dark:text-stone-400 hover:underline flex items-center gap-1"
             >
               <ExternalLink size={14} />
               Open PDF
@@ -592,7 +592,7 @@ export function PaperDetail({
           )}
           <button
             onClick={() => setShowEditModal(true)}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors font-medium"
+            className="text-sm text-stone-700 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-300 flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800/20 hover:bg-stone-200 dark:hover:bg-stone-800/30 rounded-lg transition-colors font-medium"
           >
             <Edit2 size={16} />
             Edit Paper

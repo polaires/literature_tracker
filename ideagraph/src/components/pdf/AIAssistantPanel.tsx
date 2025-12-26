@@ -273,7 +273,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
     return (
       <button
         onClick={onToggle}
-        className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-l-lg shadow-lg transition-all ${className}`}
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 px-3 py-3 bg-stone-800 hover:bg-stone-900 text-white rounded-l-lg shadow-lg transition-all ${className}`}
         title="Open AI Assistant"
       >
         <Brain className="w-5 h-5" />
@@ -287,7 +287,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          <Brain className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <h3 className="font-semibold text-slate-900 dark:text-white">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-1">
@@ -329,7 +329,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
               disabled={isDisabled}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                 isActive
-                  ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                  ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-800 dark:text-stone-300'
                   : isDisabled
                   ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'

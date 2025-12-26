@@ -95,7 +95,7 @@ export function PDFUpload({ paperId, onUploadComplete, onClose }: PDFUploadProps
             onClick={() => setMode('file')}
             className={`flex-1 px-4 py-3 text-sm font-medium ${
               mode === 'file'
-                ? 'text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400'
+                ? 'text-stone-700 border-b-2 border-stone-700 dark:text-stone-400'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
@@ -106,7 +106,7 @@ export function PDFUpload({ paperId, onUploadComplete, onClose }: PDFUploadProps
             onClick={() => setMode('url')}
             className={`flex-1 px-4 py-3 text-sm font-medium ${
               mode === 'url'
-                ? 'text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400'
+                ? 'text-stone-700 border-b-2 border-stone-700 dark:text-stone-400'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
           >
@@ -127,8 +127,8 @@ export function PDFUpload({ paperId, onUploadComplete, onClose }: PDFUploadProps
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 dragOver
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                  ? 'border-stone-500 bg-stone-100 dark:bg-stone-800/20'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-stone-400'
               }`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -143,7 +143,7 @@ export function PDFUpload({ paperId, onUploadComplete, onClose }: PDFUploadProps
               </p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                className="px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 disabled:opacity-50"
                 disabled={loading}
               >
                 {loading ? 'Uploading...' : 'Browse Files'}
@@ -177,7 +177,7 @@ export function PDFUpload({ paperId, onUploadComplete, onClose }: PDFUploadProps
               </p>
               <button
                 type="submit"
-                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 disabled:opacity-50 flex items-center justify-center gap-2"
                 disabled={loading || !url.trim()}
               >
                 {loading ? (
