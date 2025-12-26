@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -10,6 +11,7 @@ import {
   FileText,
   Filter,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import { usePanelContext } from '../../contexts/PanelContext';
 import type { ViewMode } from './TopHeader';
@@ -22,6 +24,7 @@ interface MobileNavProps {
   paperCount: number;
   connectionCount: number;
   thesisTitle: string;
+  thesisId?: string;
 }
 
 const viewModes: { mode: ViewMode; icon: typeof List; label: string }[] = [
@@ -39,7 +42,9 @@ export const MobileNav = memo(function MobileNav({
   paperCount,
   connectionCount,
   thesisTitle,
+  thesisId,
 }: MobileNavProps) {
+  const navigate = useNavigate();
   const { openModal, openRightPanel } = usePanelContext();
 
   if (!isOpen) return null;
@@ -124,6 +129,15 @@ export const MobileNav = memo(function MobileNav({
             Quick Actions
           </p>
           <div className="space-y-1">
+            {thesisId && (
+              <button
+                onClick={() => handleAction(() => navigate(`/reader?thesis=${thesisId}`))}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-600 dark:text-indigo-400 transition-colors"
+              >
+                <BookOpen size={18} />
+                Read PDF with AI
+              </button>
+            )}
             <button
               onClick={() => handleAction(() => openModal('addPaper'))}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

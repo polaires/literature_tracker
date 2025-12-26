@@ -1,7 +1,7 @@
 // Standalone PDF Reader Page
 // Upload and read PDFs with AI assistance before adding to thesis
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -27,7 +27,9 @@ export function Reader() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const theses = useAppStore((state) => state.theses.filter(t => !t.isArchived));
+  // Get all theses first, then filter with useMemo to avoid creating new arrays on each render
+  const allTheses = useAppStore((state) => state.theses);
+  const theses = useMemo(() => allTheses.filter(t => !t.isArchived), [allTheses]);
 
   // State
   const [uploadedPDF, setUploadedPDF] = useState<UploadedPDF | null>(null);
@@ -64,8 +66,11 @@ export function Reader() {
     try {
       const pdfData = await file.arrayBuffer();
 
+      // Make a copy of the ArrayBuffer for text extraction since pdfjs may transfer it
+      const pdfDataCopy = pdfData.slice(0);
+
       // Extract text for AI and reading time estimation
-      const extraction = await extractPDFText(pdfData);
+      const extraction = await extractPDFText(pdfDataCopy);
       const readingTime = extraction.success
         ? estimateReadingTime(extraction.wordCount)
         : undefined;
@@ -208,10 +213,11 @@ export function Reader() {
                 <button
                   key={thesis.id}
                   onClick={() => navigate(`/thesis/${thesis.id}`)}
-                  className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors text-left"
+                  className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors text-left overflow-hidden"
+                  title={thesis.title}
                 >
-                  <FileText className="w-5 h-5 text-slate-400" />
-                  <div className="flex-1 min-w-0">
+                  <FileText className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
                       {thesis.title}
                     </p>

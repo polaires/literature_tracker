@@ -2,6 +2,8 @@
 // This uses CDN to avoid Vite worker bundling complexity
 import { GlobalWorkerOptions, version } from 'pdfjs-dist';
 
-GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`;
+// Use unpkg CDN which is more reliable for ES modules
+// The mjs version is compatible with modern bundlers
+GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
 export { version };
