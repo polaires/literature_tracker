@@ -283,17 +283,17 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   }
 
   return (
-    <div className={`fixed right-0 top-0 h-full w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-l border-slate-200 dark:border-slate-700 shadow-xl z-40 flex flex-col ${className}`}>
+    <div className={`fixed right-0 top-0 h-full w-80 bg-[#FDFBF7]/95 dark:bg-slate-900/95 backdrop-blur-sm border-l border-stone-200 dark:border-slate-700 shadow-xl z-40 flex flex-col ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-stone-700 dark:text-stone-400" />
-          <h3 className="font-semibold text-slate-900 dark:text-white">AI Assistant</h3>
+          <h3 className="font-semibold text-stone-800 dark:text-white">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={onToggle}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+            className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded"
             title="Collapse"
           >
             <ChevronRight className="w-4 h-4" />
@@ -301,7 +301,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+              className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 rounded"
               title="Close"
             >
               <X className="w-4 h-4" />
@@ -311,12 +311,12 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       </div>
 
       {/* Usage meter */}
-      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+      <div className="px-4 py-2 border-b border-stone-100 dark:border-slate-800">
         <UsageMeter usage={usageDisplay} variant="compact" />
       </div>
 
       {/* Action buttons */}
-      <div className="p-3 space-y-1.5 border-b border-slate-100 dark:border-slate-800">
+      <div className="p-3 space-y-1.5 border-b border-stone-100 dark:border-slate-800">
         {ACTION_BUTTONS.map((btn) => {
           const isDisabled = isLoading || usageDisplay.isExhausted ||
             (btn.action === 'thesis-relevance' && !thesis);
@@ -331,8 +331,8 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
                 isActive
                   ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-800 dark:text-stone-300'
                   : isDisabled
-                  ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                  : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  ? 'bg-stone-50 dark:bg-slate-800/50 text-stone-400 dark:text-slate-500 cursor-not-allowed'
+                  : 'hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-700 dark:text-slate-300'
               }`}
               title={btn.description}
             >
@@ -357,7 +357,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         )}
 
         {isLoading && !currentResult && (
-          <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+          <div className="flex flex-col items-center justify-center py-8 text-stone-500 dark:text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
             <p className="text-sm">Analyzing paper...</p>
           </div>
@@ -366,12 +366,12 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         {currentResult && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+              <span className="text-xs font-medium text-stone-500 dark:text-slate-400 uppercase tracking-wide">
                 {getActionLabel(currentResult.action)}
               </span>
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-stone-500 hover:text-stone-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800 rounded"
                 title="Copy to clipboard"
               >
                 {copied ? (
@@ -388,7 +388,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
               </button>
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+              <div className="text-sm text-stone-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
                 {currentResult.content}
               </div>
             </div>
@@ -396,7 +396,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         )}
 
         {!isLoading && !currentResult && !error && (
-          <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-slate-500">
+          <div className="flex flex-col items-center justify-center py-8 text-stone-400 dark:text-slate-500">
             <Brain className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm text-center">
               Select an action above to get AI-powered insights about this paper
@@ -406,8 +406,8 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-        <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+      <div className="px-4 py-3 border-t border-stone-200 dark:border-slate-700 bg-stone-50 dark:bg-slate-800/50">
+        <p className="text-xs text-stone-500 dark:text-slate-400 text-center">
           AI responses are suggestions. Always verify important information.
         </p>
       </div>
