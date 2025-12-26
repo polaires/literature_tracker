@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { useAI } from '../../hooks/useAI';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Paper, ConnectionType } from '../../types';
 
 interface ConnectionEditorProps {
@@ -126,6 +127,7 @@ export function ConnectionEditor({
   onSuccess,
 }: ConnectionEditorProps) {
   const { papers, connections, createConnection } = useAppStore();
+  const { isAuthenticated } = useAuth();
 
   const {
     isConfigured: isAIConfigured,
@@ -150,8 +152,9 @@ export function ConnectionEditor({
     () => papers.filter((p) => p.thesisId === thesisId),
     [papers, thesisId]
   );
+  // AI suggestions require authentication
   const canSuggestConnections =
-    isAIConfigured && aiSettings.enableConnectionSuggestions && thesisPapers.length > 1;
+    isAuthenticated && isAIConfigured && aiSettings.enableConnectionSuggestions && thesisPapers.length > 1;
   const isSuggestingConnections = isAILoading && aiLoadingType === 'connection';
 
   const paperSuggestions = connectionSuggestions.filter(

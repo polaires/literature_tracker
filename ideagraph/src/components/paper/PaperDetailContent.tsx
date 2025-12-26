@@ -22,6 +22,7 @@ import {
 import { useAppStore } from '../../store/useAppStore';
 import { usePanelContext } from '../../contexts/PanelContext';
 import { useAI } from '../../hooks/useAI';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Paper, Connection, ThesisRole, ReadingStatus } from '../../types';
 import { THESIS_ROLE_COLORS } from '../../constants/colors';
 import { Button } from '../ui';
@@ -53,6 +54,7 @@ export function PaperDetailContent({
 }: PaperDetailContentProps) {
   const { updatePaper, deletePaper, setSelectedPaper } = useAppStore();
   const { openFullScreen, closeRightPanel } = usePanelContext();
+  const { isAuthenticated } = useAuth();
 
   // AI features
   const {
@@ -90,8 +92,8 @@ export function PaperDetailContent({
     pdfStorage.hasPDF(paper.id).then(setHasPDF);
   }, [paper.id]);
 
-  // AI connection suggestion helpers
-  const canSuggestConnections = isAIConfigured && aiSettings.enableConnectionSuggestions && allPapers.length > 1;
+  // AI connection suggestion helpers - requires authentication
+  const canSuggestConnections = isAuthenticated && isAIConfigured && aiSettings.enableConnectionSuggestions && allPapers.length > 1;
   const isSuggestingConnections = isAILoading && aiLoadingType === 'connection';
 
   const handleSuggestConnections = async () => {

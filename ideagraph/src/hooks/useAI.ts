@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getSuggestionManager,
   type AISettings,
@@ -81,6 +82,9 @@ export function useAI(): UseAIReturn {
   const updateAISettings = useAppStore(s => s.updateAISettings);
   const isAIConfigured = useAppStore(s => s.isAIConfigured);
 
+  // Authentication check - AI features require sign in
+  const { isAuthenticated } = useAuth();
+
   // Loading and error states
   const [state, setState] = useState<UseAIState>({
     isLoading: false,
@@ -119,8 +123,9 @@ export function useAI(): UseAIReturn {
     [connections, activeThesisId]
   );
 
-  // Check if AI is configured (use store method)
-  const isConfigured = isAIConfigured();
+  // Check if AI is configured AND user is authenticated
+  // AI features require both proper configuration and sign in
+  const isConfigured = isAuthenticated && isAIConfigured();
 
   // Get suggestion manager
   const manager = useMemo(
