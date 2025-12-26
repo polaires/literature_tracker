@@ -1,51 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Archive, ArchiveRestore, Trash2, Beaker, MoreVertical, Settings, Clock, AlertCircle, ChevronRight, BarChart3, FileText, Brain } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trash2, MoreVertical, Search, ChevronRight, Upload, Grid3X3, List, Filter } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { loadSampleData } from '../utils/sampleData';
 import { loadEnhancedSampleData, workflowSummary } from '../utils/enhancedSampleData';
 import { loadCrisprReviewSampleData, crisprWorkflowSummary } from '../utils/crisprReviewPart5';
 import { DataManager } from '../components/common/DataManager';
 import { UserMenu } from '../components/auth';
-import type { Paper } from '../types';
 
-// Brand Logo Component
-function BrandLogo({ size = 48 }: { size?: number }) {
+// Material Symbol Icon Component
+function MaterialIcon({ icon, className = '' }: { icon: string; className?: string }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="flex-shrink-0"
-    >
-      <defs>
-        <linearGradient id="homeBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#78716c" />
-          <stop offset="50%" stopColor="#57534e" />
-          <stop offset="100%" stopColor="#44403c" />
-        </linearGradient>
-        <linearGradient id="homeNodeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#d6d3d1" />
-          <stop offset="100%" stopColor="#a8a29e" />
-        </linearGradient>
-      </defs>
-      <circle cx="24" cy="24" r="22" fill="url(#homeBrandGradient)" />
-      <circle cx="24" cy="24" r="5" fill="white" />
-      <circle cx="14" cy="16" r="3" fill="url(#homeNodeGlow)" />
-      <circle cx="34" cy="16" r="3" fill="url(#homeNodeGlow)" />
-      <circle cx="12" cy="30" r="3" fill="url(#homeNodeGlow)" />
-      <circle cx="36" cy="30" r="3" fill="url(#homeNodeGlow)" />
-      <circle cx="24" cy="38" r="3" fill="url(#homeNodeGlow)" />
-      <line x1="24" y1="24" x2="14" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="24" y1="24" x2="34" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="24" y1="24" x2="12" y2="30" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="24" y1="24" x2="36" y2="30" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="24" y1="24" x2="24" y2="38" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="14" y1="16" x2="34" y2="16" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.4" strokeDasharray="2 2" />
-      <line x1="12" y1="30" x2="24" y2="38" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.4" strokeDasharray="2 2" />
-    </svg>
+    <span className={`material-symbols-outlined ${className}`} style={{ fontVariationSettings: "'FILL' 0, 'wght' 400" }}>
+      {icon}
+    </span>
   );
 }
 
@@ -53,7 +20,6 @@ export function Home() {
   const navigate = useNavigate();
   const {
     theses,
-    papers,
     createThesis,
     updateThesis,
     deleteThesis,
@@ -72,75 +38,8 @@ export function Home() {
   const [newDescription, setNewDescription] = useState('');
   const [showDataManager, setShowDataManager] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [showStats, setShowStats] = useState(false);
-
-  // Calculate forgotten papers (not accessed in 14+ days)
-  const forgottenPapers = useMemo(() => {
-    const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-    const activeThesisIds = theses.filter((t) => !t.isArchived).map((t) => t.id);
-
-    return papers
-      .filter((p) => {
-        const lastAccessed = new Date(p.lastAccessedAt).getTime();
-        return (
-          activeThesisIds.includes(p.thesisId) &&
-          lastAccessed < fourteenDaysAgo &&
-          p.readingStatus !== 'read' // Don't remind about fully read papers
-        );
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.lastAccessedAt).getTime() - new Date(b.lastAccessedAt).getTime()
-      )
-      .slice(0, 5); // Show max 5
-  }, [papers, theses]);
-
-  // Reading statistics
-  const readingStats = useMemo(() => {
-    const activeThesisIds = theses.filter((t) => !t.isArchived).map((t) => t.id);
-    const activePapers = papers.filter((p) => activeThesisIds.includes(p.thesisId));
-
-    const byStatus = {
-      'to-read': activePapers.filter((p) => p.readingStatus === 'to-read').length,
-      reading: activePapers.filter((p) => p.readingStatus === 'reading').length,
-      read: activePapers.filter((p) => p.readingStatus === 'read').length,
-      'to-revisit': activePapers.filter((p) => p.readingStatus === 'to-revisit').length,
-    };
-
-    const byRole = {
-      supports: activePapers.filter((p) => p.thesisRole === 'supports').length,
-      contradicts: activePapers.filter((p) => p.thesisRole === 'contradicts').length,
-      method: activePapers.filter((p) => p.thesisRole === 'method').length,
-      background: activePapers.filter((p) => p.thesisRole === 'background').length,
-      other: activePapers.filter((p) => p.thesisRole === 'other').length,
-    };
-
-    // Papers added in last 7 days
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const recentlyAdded = activePapers.filter(
-      (p) => new Date(p.addedAt).getTime() > sevenDaysAgo
-    ).length;
-
-    return {
-      total: activePapers.length,
-      byStatus,
-      byRole,
-      recentlyAdded,
-    };
-  }, [papers, theses]);
-
-  const getDaysAgo = (dateStr: string) => {
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-    return days;
-  };
-
-  const handleOpenPaper = (paper: Paper) => {
-    const thesis = theses.find((t) => t.id === paper.thesisId);
-    if (thesis) {
-      setActiveThesis(thesis.id);
-      navigate(`/thesis/${thesis.id}`);
-    }
-  };
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activeView, setActiveView] = useState<'all' | 'drafts' | 'archived'>('all');
 
   const handleArchiveThesis = (id: string, archive: boolean) => {
     updateThesis(id, { isArchived: archive });
@@ -172,12 +71,6 @@ export function Home() {
     navigate(`/thesis/${id}`);
   };
 
-  const handleLoadSampleData = () => {
-    const thesisId = loadSampleData(createThesis, addPaper, createConnection);
-    setActiveThesis(thesisId);
-    navigate(`/thesis/${thesisId}`);
-  };
-
   const handleLoadEnhancedDemo = () => {
     const result = loadEnhancedSampleData(
       createThesis,
@@ -193,7 +86,6 @@ export function Home() {
   };
 
   const handleLoadCrisprDemo = () => {
-    // Wrapper for createCluster to match expected signature
     const createClusterWrapper = (cluster: { name: string; thesisId: string; paperIds: string[] }) => {
       return createCluster(cluster.name, cluster.thesisId, cluster.paperIds);
     };
@@ -212,214 +104,71 @@ export function Home() {
     navigate(`/thesis/${result.thesisId}`);
   };
 
+  // Get unique tags from theses (could be extended later)
+  const tags = [
+    { name: 'Full Demo', color: 'bg-orange-400' },
+    { name: 'CRISPR', color: 'bg-emerald-400' },
+    { name: 'Simple', color: 'bg-blue-400' },
+  ];
+
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-[#FDFBF7] via-white to-stone-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-stone-950/20">
-      {/* Header */}
-      <header className="max-w-4xl mx-auto mb-12">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <BrandLogo size={56} />
-            <div>
-              <h1 className="text-4xl font-bold text-brand-gradient">
-                IdeaGraph
-              </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">
-                Catalog ideas, not just papers. Build your knowledge graph.
-              </p>
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] antialiased">
+      {/* Navigation Bar */}
+      <nav className="sticky top-0 z-50 bg-[#FDFBF7]/80 backdrop-blur-md border-b border-stone-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-14 items-center">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-stone-800 rounded-sm flex items-center justify-center shadow-sm">
+                <MaterialIcon icon="hub" className="text-white text-[18px]" />
+              </div>
+              <span className="font-semibold text-stone-800 tracking-tight text-lg">IdeaGraph</span>
+            </div>
+
+            {/* Nav Links */}
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-500">
+              <a className="text-stone-800" href="#">Dashboard</a>
+              <a className="hover:text-stone-800 transition-colors relative after:content-[''] after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1px] after:bg-stone-800 hover:after:w-full after:transition-all" href="#">Knowledge Graph</a>
+              <button
+                onClick={() => setShowDataManager(true)}
+                className="hover:text-stone-800 transition-colors relative after:content-[''] after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-[1px] after:bg-stone-800 hover:after:w-full after:transition-all"
+              >
+                Settings
+              </button>
+            </div>
+
+            {/* Right Section */}
+            <div className="flex items-center gap-3">
+              <button className="p-1.5 text-stone-400 hover:text-stone-600 rounded-md hover:bg-stone-100 transition-colors">
+                <Search size={20} />
+              </button>
+              <div className="h-4 w-px bg-stone-300 mx-1"></div>
+              <UserMenu />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowDataManager(true)}
-              className="p-2.5 text-gray-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-900/20 rounded-xl transition-colors"
-              title="Settings & Data"
-            >
-              <Settings size={22} />
-            </button>
-            <UserMenu />
-          </div>
         </div>
-      </header>
+      </nav>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto">
-        {/* Quick Actions - PDF Reader */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/reader')}
-            className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-br from-stone-600 via-stone-700 to-stone-800 p-[2px] shadow-lg hover:shadow-xl transition-all"
-          >
-            <div className="relative flex items-center gap-6 rounded-2xl bg-white dark:bg-gray-900 px-6 py-5 transition-all group-hover:bg-opacity-95 dark:group-hover:bg-opacity-95">
-              <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-800/50 dark:to-stone-700/50 flex items-center justify-center">
-                <FileText className="w-7 h-7 text-stone-700 dark:text-stone-400" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Read a PDF with AI
-                  </h3>
-                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800/50 text-stone-700 dark:text-stone-400">
-                    New
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Upload any paper and get AI-powered summaries, key findings, and methodology extraction
-                </p>
-              </div>
-              <div className="flex-shrink-0 flex items-center gap-2 text-stone-700 dark:text-stone-400">
-                <Brain className="w-5 h-5" />
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </div>
+      <main className="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div>
+            <div className="flex items-center gap-2 text-stone-400 text-xs font-medium mb-2 uppercase tracking-wider">
+              <span>Workspace</span>
+              <ChevronRight size={10} />
+              <span>Research</span>
             </div>
-          </button>
-        </div>
-
-        {/* Forgotten Papers Alert */}
-        {forgottenPapers.length > 0 && (
-          <div className="mb-8 p-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-800/30 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-amber-800 dark:text-amber-200 mb-1">
-                  Papers you might have forgotten
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300/80 mb-3">
-                  These papers haven't been accessed in over 2 weeks.
-                </p>
-                <div className="space-y-2">
-                  {forgottenPapers.map((paper) => {
-                    const thesis = theses.find((t) => t.id === paper.thesisId);
-                    const daysAgo = getDaysAgo(paper.lastAccessedAt);
-                    return (
-                      <div
-                        key={paper.id}
-                        onClick={() => handleOpenPaper(paper)}
-                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl cursor-pointer hover:shadow-md transition-all group"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {paper.title}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {thesis?.title} · Last accessed {daysAgo} days ago
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-stone-600 dark:group-hover:text-stone-400 flex-shrink-0 ml-2 transition-colors" />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold text-stone-800 tracking-tight">Overview</h1>
           </div>
-        )}
-
-        {/* Reading Statistics */}
-        {readingStats.total > 0 && (
-          <div className="mb-8">
-            <button
-              onClick={() => setShowStats(!showStats)}
-              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-stone-700 dark:hover:text-stone-400 transition-colors mb-3"
-            >
-              <BarChart3 size={16} />
-              {showStats ? 'Hide' : 'Show'} Reading Statistics
+          <div className="flex items-center gap-3">
+            <button className="px-4 py-2 bg-white border border-stone-200 text-stone-600 rounded-md text-sm font-medium hover:bg-stone-50 transition-colors shadow-sm flex items-center gap-2">
+              <Upload size={18} />
+              Import
             </button>
-
-            {showStats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="text-center p-3 bg-stone-100 dark:bg-stone-800/20 rounded-xl">
-                  <p className="text-3xl font-bold text-stone-700 dark:text-stone-400">
-                    {readingStats.total}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Papers</p>
-                </div>
-                <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    {readingStats.byStatus.read}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Read</p>
-                </div>
-                <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
-                  <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                    {readingStats.byStatus.reading}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Reading</p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                  <p className="text-3xl font-bold text-gray-600 dark:text-gray-400">
-                    {readingStats.byStatus['to-read']}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">To Read</p>
-                </div>
-
-                {/* Role breakdown */}
-                <div className="col-span-2 md:col-span-4 pt-4 mt-2 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">By Role:</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      {readingStats.byRole.supports} supporting
-                    </span>
-                    <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
-                      {readingStats.byRole.contradicts} contradicting
-                    </span>
-                    <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      {readingStats.byRole.method} methods
-                    </span>
-                    <span className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                      {readingStats.byRole.background} background
-                    </span>
-                  </div>
-                </div>
-
-                {readingStats.recentlyAdded > 0 && (
-                  <div className="col-span-2 md:col-span-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <Clock size={12} />
-                    {readingStats.recentlyAdded} papers added in the last 7 days
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-            Your Research
-          </h2>
-          <div className="flex items-center gap-2">
-            {activeTheses.length === 0 && (
-              <>
-                <button
-                  onClick={handleLoadSampleData}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors font-medium shadow-sm"
-                  title="Load simple demo (5 papers)"
-                >
-                  <Beaker size={18} />
-                  Simple Demo
-                </button>
-                <button
-                  onClick={handleLoadEnhancedDemo}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm"
-                  title={`Load comprehensive demo (${workflowSummary.totalPapers} papers with themes, gaps, and sections)`}
-                >
-                  <Beaker size={18} />
-                  Full Demo
-                </button>
-                <button
-                  onClick={handleLoadCrisprDemo}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium shadow-sm"
-                  title={`CRISPR Review Demo (${crisprWorkflowSummary.totalPapers} papers - mimics writing a biological review)`}
-                >
-                  <Beaker size={18} />
-                  CRISPR Review ({crisprWorkflowSummary.totalPapers})
-                </button>
-              </>
-            )}
             <button
               onClick={() => setShowNewThesisForm(true)}
-              className="flex items-center gap-2 px-4 py-2.5 btn-brand rounded-xl font-medium"
+              className="px-4 py-2 bg-stone-800 text-white rounded-md text-sm font-medium hover:bg-stone-700 transition-colors shadow-sm flex items-center gap-2"
             >
               <Plus size={18} />
               New Thesis
@@ -427,15 +176,99 @@ export function Home() {
           </div>
         </div>
 
+        {/* AI Analyze Paper Section */}
+        <div className="mb-12 group">
+          <div className="relative bg-white rounded-xl border border-stone-200 p-1 shadow-[0_2px_8px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
+            <button
+              onClick={() => navigate('/reader')}
+              className="w-full relative rounded-lg border border-dashed border-stone-300 bg-stone-50/50 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 group-hover:bg-stone-50 transition-colors text-left"
+            >
+              <div className="w-12 h-12 rounded-lg bg-white border border-stone-200 flex items-center justify-center shadow-sm text-stone-600 group-hover:scale-105 transition-transform duration-300">
+                <MaterialIcon icon="smart_toy" className="text-[24px]" />
+              </div>
+              <div className="flex-grow text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                  <h3 className="font-semibold text-stone-800">Analyze Paper with AI</h3>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-stone-200 text-stone-600 uppercase tracking-wide">Beta</span>
+                </div>
+                <p className="text-sm text-stone-500 max-w-xl">Drop a PDF here to instantly generate a knowledge graph node, extract methodology, and find related concepts.</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-1 text-xs font-semibold text-stone-500 bg-white border border-stone-200 px-3 py-1.5 rounded shadow-sm group-hover:text-stone-800 group-hover:border-stone-300 transition-all">
+                Select File
+                <ChevronRight size={14} />
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Your Research Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-stone-800">Your Research</h2>
+          <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1 shadow-sm">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1 rounded ${viewMode === 'grid' ? 'text-stone-800 bg-stone-100' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-50'}`}
+            >
+              <Grid3X3 size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1 rounded ${viewMode === 'list' ? 'text-stone-800 bg-stone-100' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-50'}`}
+            >
+              <List size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-2 mb-8 pb-4 border-b border-stone-200">
+          <span className="text-xs font-medium text-stone-400 mr-2">VIEWS</span>
+          <button
+            onClick={() => setActiveView('all')}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${activeView === 'all' ? 'bg-stone-200 text-stone-700' : 'hover:bg-stone-100 text-stone-500'}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setActiveView('drafts')}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${activeView === 'drafts' ? 'bg-stone-200 text-stone-700' : 'hover:bg-stone-100 text-stone-500'}`}
+          >
+            Drafts
+          </button>
+          <button
+            onClick={() => setActiveView('archived')}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${activeView === 'archived' ? 'bg-stone-200 text-stone-700' : 'hover:bg-stone-100 text-stone-500'}`}
+          >
+            Archived
+          </button>
+
+          <div className="w-px h-4 bg-stone-300 mx-2"></div>
+
+          <span className="text-xs font-medium text-stone-400 mr-2">TAGS</span>
+          {tags.map((tag) => (
+            <button
+              key={tag.name}
+              className="flex items-center gap-1.5 px-2 py-1 rounded bg-white border border-stone-200 hover:border-stone-300 transition-colors group"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${tag.color}`}></span>
+              <span className="text-xs font-medium text-stone-600 group-hover:text-stone-800">{tag.name}</span>
+            </button>
+          ))}
+
+          <button className="flex items-center justify-center w-6 h-6 rounded hover:bg-stone-100 text-stone-400 transition-colors ml-auto">
+            <Filter size={16} />
+          </button>
+        </div>
+
         {/* New Thesis Form */}
         {showNewThesisForm && (
-          <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+          <div className="mb-8 p-6 bg-white rounded-xl shadow-lg border border-stone-200">
+            <h3 className="text-lg font-semibold mb-4 text-stone-800">
               Create New Thesis
             </h3>
             <form onSubmit={handleCreateThesis}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-stone-700 mb-2">
                   Research Question / Hypothesis
                 </label>
                 <input
@@ -443,12 +276,12 @@ export function Home() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g., What are the limitations of AlphaFold for drug discovery?"
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-stone-200 rounded-lg bg-white text-stone-800 focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                   autoFocus
                 />
               </div>
               <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-stone-700 mb-2">
                   Description (optional)
                 </label>
                 <textarea
@@ -456,20 +289,20 @@ export function Home() {
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="A longer explanation of your research focus..."
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-stone-200 rounded-lg bg-white text-stone-800 focus:ring-2 focus:ring-stone-500 focus:border-transparent transition-all"
                 />
               </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 btn-brand rounded-xl font-medium"
+                  className="px-5 py-2.5 bg-stone-800 text-white rounded-lg hover:bg-stone-700 font-medium transition-colors"
                 >
                   Create Thesis
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowNewThesisForm(false)}
-                  className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                  className="px-5 py-2.5 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -478,52 +311,57 @@ export function Home() {
           </div>
         )}
 
-        {/* Thesis List */}
+        {/* Empty State / Thesis List */}
         {activeTheses.length === 0 && !showNewThesisForm ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-600">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 dark:bg-stone-800/30 flex items-center justify-center">
-              <BookOpen size={32} className="text-stone-600 dark:text-stone-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No research theses yet
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-              Create your first thesis to start building your knowledge graph of connected ideas.
-            </p>
-            <div className="flex flex-col items-center gap-3">
-              <button
-                onClick={() => setShowNewThesisForm(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 btn-brand rounded-xl font-medium"
-              >
-                <Plus size={18} />
-                Create Your First Thesis
-              </button>
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                <button
-                  onClick={handleLoadSampleData}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors font-medium shadow-sm text-sm"
-                >
-                  <Beaker size={16} />
-                  Simple (5)
-                </button>
-                <button
-                  onClick={handleLoadEnhancedDemo}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium shadow-sm text-sm"
-                >
-                  <Beaker size={16} />
-                  LLM Code ({workflowSummary.totalPapers})
-                </button>
-                <button
-                  onClick={handleLoadCrisprDemo}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors font-medium shadow-sm text-sm"
-                >
-                  <Beaker size={16} />
-                  CRISPR Review ({crisprWorkflowSummary.totalPapers})
-                </button>
+          <div className="relative bg-white border border-stone-200 rounded-xl min-h-[400px] flex flex-col items-center justify-center overflow-hidden">
+            {/* Dot Pattern Background */}
+            <div
+              className="absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage: 'radial-gradient(#44403C 1px, transparent 1px)',
+                backgroundSize: '24px 24px'
+              }}
+            ></div>
+
+            <div className="relative z-10 flex flex-col items-center max-w-md text-center px-6">
+              <div className="w-16 h-16 bg-stone-50 border border-stone-100 rounded-2xl flex items-center justify-center mb-6 shadow-sm rotate-3 transform transition-transform hover:rotate-6 duration-500">
+                <MaterialIcon icon="library_add" className="text-[32px] text-stone-400" />
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                CRISPR demo has {crisprWorkflowSummary.totalPapers} papers with {crisprWorkflowSummary.totalClusters} clusters - mimics writing a biological review
+              <h3 className="text-xl font-semibold text-stone-800 mb-2">Start your research journey</h3>
+              <p className="text-stone-500 mb-8 text-sm leading-relaxed">
+                You haven't created any theses yet. Begin by defining a research question or exploring our template library to see how the knowledge graph works.
               </p>
+              <div className="w-full space-y-3">
+                <button
+                  onClick={() => setShowNewThesisForm(true)}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-stone-800 hover:bg-stone-700 text-white rounded-lg text-sm font-medium transition-all shadow-md group"
+                >
+                  <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+                  Create New Thesis
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleLoadEnhancedDemo}
+                    className="flex flex-col items-start gap-1 p-3 border border-stone-200 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-all text-left group"
+                  >
+                    <span className="text-xs font-semibold text-stone-700 flex items-center gap-1">
+                      <MaterialIcon icon="article" className="text-[14px] text-orange-500" />
+                      LLM Code Review
+                    </span>
+                    <span className="text-[10px] text-stone-400 group-hover:text-stone-500">{workflowSummary.totalPapers} papers • 4 clusters</span>
+                  </button>
+                  <button
+                    onClick={handleLoadCrisprDemo}
+                    className="flex flex-col items-start gap-1 p-3 border border-stone-200 rounded-lg hover:border-stone-300 hover:bg-stone-50 transition-all text-left group"
+                  >
+                    <span className="text-xs font-semibold text-stone-700 flex items-center gap-1">
+                      <MaterialIcon icon="science" className="text-[14px] text-emerald-500" />
+                      CRISPR Study
+                    </span>
+                    <span className="text-[10px] text-stone-400 group-hover:text-stone-500">{crisprWorkflowSummary.totalPapers} papers • {crisprWorkflowSummary.totalClusters} clusters</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -537,24 +375,24 @@ export function Home() {
               return (
                 <div
                   key={thesis.id}
-                  className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-stone-300 dark:hover:border-stone-700 transition-all cursor-pointer group"
+                  className="p-6 bg-white rounded-xl shadow-sm border border-stone-200 hover:shadow-lg hover:border-stone-300 transition-all cursor-pointer group"
                   onClick={() => handleOpenThesis(thesis.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-stone-700 dark:group-hover:text-stone-400 transition-colors">
+                      <h3 className="text-lg font-semibold text-stone-800 mb-1 group-hover:text-stone-700 transition-colors">
                         {thesis.title}
                       </h3>
                       {thesis.description && (
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
+                        <p className="text-stone-500 text-sm mb-3 line-clamp-2">
                           {thesis.description}
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-stone-800/20 text-stone-700 dark:text-stone-400 rounded-lg font-medium">
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg font-medium">
                           {thesisPapers.length} papers
                         </span>
-                        <span className="text-gray-400 dark:text-gray-500">
+                        <span className="text-stone-400">
                           {daysAgo === 0
                             ? 'Updated today'
                             : daysAgo === 1
@@ -569,7 +407,7 @@ export function Home() {
                           e.stopPropagation();
                           setActiveMenuId(activeMenuId === thesis.id ? null : thesis.id);
                         }}
-                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
                       >
                         <MoreVertical size={18} />
                       </button>
@@ -584,13 +422,13 @@ export function Home() {
                               setActiveMenuId(null);
                             }}
                           />
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1.5 z-20">
+                          <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-20">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleArchiveThesis(thesis.id, true);
                               }}
-                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-stone-50 text-stone-700 transition-colors"
                             >
                               <Archive size={15} />
                               Archive
@@ -603,7 +441,7 @@ export function Home() {
                                 }
                                 setActiveMenuId(null);
                               }}
-                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors"
                             >
                               <Trash2 size={15} />
                               Delete
@@ -620,9 +458,9 @@ export function Home() {
         )}
 
         {/* Archived Theses */}
-        {archivedTheses.length > 0 && (
+        {archivedTheses.length > 0 && activeView === 'archived' && (
           <div className="mt-12">
-            <h3 className="flex items-center gap-2 text-lg font-medium text-gray-500 dark:text-gray-400 mb-4">
+            <h3 className="flex items-center gap-2 text-lg font-medium text-stone-500 mb-4">
               <Archive size={20} />
               Archived ({archivedTheses.length})
             </h3>
@@ -632,17 +470,17 @@ export function Home() {
                 return (
                   <div
                     key={thesis.id}
-                    className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                    className="group p-4 bg-stone-50 rounded-xl hover:bg-stone-100 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div
                         className="flex-1 cursor-pointer"
                         onClick={() => handleOpenThesis(thesis.id)}
                       >
-                        <h4 className="font-medium text-gray-700 dark:text-gray-300">
+                        <h4 className="font-medium text-stone-700">
                           {thesis.title}
                         </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-stone-500 mt-1">
                           {thesisPapers.length} papers
                         </p>
                       </div>
@@ -652,7 +490,7 @@ export function Home() {
                             e.stopPropagation();
                             handleArchiveThesis(thesis.id, false);
                           }}
-                          className="p-2 text-gray-500 hover:text-stone-700 dark:hover:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/20 rounded-lg transition-colors"
+                          className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-200 rounded-lg transition-colors"
                           title="Restore"
                         >
                           <ArchiveRestore size={16} />
@@ -664,7 +502,7 @@ export function Home() {
                               deleteThesis(thesis.id);
                             }
                           }}
-                          className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          className="p-2 text-stone-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete permanently"
                         >
                           <Trash2 size={16} />
@@ -678,6 +516,18 @@ export function Home() {
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-stone-200 bg-white py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center text-xs text-stone-400">
+          <p>&copy; 2023 IdeaGraph Inc. <span className="mx-2">&bull;</span> Privacy <span className="mx-2">&bull;</span> Terms</p>
+          <div className="flex gap-4 mt-2 md:mt-0">
+            <a className="hover:text-stone-600 transition-colors flex items-center gap-1" href="#">
+              <MaterialIcon icon="help" className="text-[14px]" /> Help Center
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* Data Manager Modal */}
       {showDataManager && (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, LogOut, RefreshCw, ChevronDown, Cloud, CloudOff, Shield } from 'lucide-react';
+import { User, LogOut, RefreshCw, Cloud, CloudOff, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from './AuthModal';
 import { AdminDashboard } from './AdminDashboard';
@@ -27,7 +27,7 @@ export function UserMenu() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-gray-400">
+      <div className="flex items-center gap-2 text-stone-400">
         <RefreshCw className="h-4 w-4 animate-spin" />
       </div>
     );
@@ -38,7 +38,7 @@ export function UserMenu() {
       <>
         <button
           onClick={() => setShowAuthModal(true)}
-          className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+          className="flex items-center gap-2 rounded-full bg-orange-500 px-3 py-1.5 text-sm text-white hover:bg-orange-600 font-medium"
         >
           <User className="h-4 w-4" />
           Sign In
@@ -52,56 +52,55 @@ export function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+        className="flex items-center gap-2 cursor-pointer hover:bg-stone-100 p-1 rounded-md transition-colors pr-2"
       >
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white">
-          {user?.username?.charAt(0).toUpperCase()}
+        <div className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold border border-orange-200">
+          {user?.username?.charAt(0).toUpperCase()}{user?.username?.charAt(1)?.toUpperCase() || ''}
         </div>
-        <span className="max-w-[100px] truncate">{user?.username}</span>
-        <ChevronDown className="h-4 w-4" />
+        <span className="text-xs font-medium text-stone-600 hidden sm:block max-w-[100px] truncate">{user?.username}</span>
       </button>
 
       {showDropdown && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-          <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.username}</p>
-              <p className="truncate text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+          <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-stone-200 bg-white py-1.5 shadow-lg">
+            <div className="border-b border-stone-200 px-4 py-2.5">
+              <p className="text-sm font-medium text-stone-800">{user?.username}</p>
+              <p className="truncate text-xs text-stone-500">{user?.email}</p>
               {!user?.email_verified && (
                 <p className="mt-1 text-xs text-orange-500">Email not verified</p>
               )}
             </div>
 
-            <div className="border-b border-gray-200 py-1 dark:border-gray-700">
+            <div className="border-b border-stone-200 py-1">
               <button
                 onClick={handleSyncClick}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-stone-400 cursor-not-allowed"
                 disabled
               >
                 <Cloud className="h-4 w-4" />
                 Sync to Cloud
-                <span className="ml-auto text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Soon</span>
+                <span className="ml-auto text-xs bg-stone-100 px-1.5 py-0.5 rounded">Soon</span>
               </button>
               <button
                 onClick={handleSyncClick}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-stone-400 cursor-not-allowed"
                 disabled
               >
                 <CloudOff className="h-4 w-4" />
                 Sync from Cloud
-                <span className="ml-auto text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">Soon</span>
+                <span className="ml-auto text-xs bg-stone-100 px-1.5 py-0.5 rounded">Soon</span>
               </button>
             </div>
 
             {isAdmin && (
-              <div className="border-b border-gray-200 py-1 dark:border-gray-700">
+              <div className="border-b border-stone-200 py-1">
                 <button
                   onClick={() => {
                     setShowAdminDashboard(true);
                     setShowDropdown(false);
                   }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50"
                 >
                   <Shield className="h-4 w-4" />
                   Admin Dashboard
@@ -112,7 +111,7 @@ export function UserMenu() {
             <div className="py-1">
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
                 Sign Out
