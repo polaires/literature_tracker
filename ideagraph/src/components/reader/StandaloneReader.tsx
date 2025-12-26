@@ -36,6 +36,7 @@ import { AIAssistantPanel } from '../pdf/AIAssistantPanel';
 import { UsageMeter } from '../pdf/UsageMeter';
 import { useUsage, calculateUsageDisplay } from '../../services/usage';
 import { useAppStore } from '../../store/useAppStore';
+import { useAuth } from '../../contexts/AuthContext';
 import { pdfStorage } from '../../services/pdfStorage';
 import type { Thesis, Paper, ThesisRole } from '../../types';
 
@@ -86,6 +87,7 @@ export function StandaloneReader({
 }: StandaloneReaderProps) {
   const addPaper = useAppStore((state) => state.addPaper);
   const addAnnotation = useAppStore((state) => state.addAnnotation);
+  const { isAuthenticated } = useAuth();
 
   // Use the proper React hook for usage tracking
   const usage = useUsage();
@@ -587,17 +589,28 @@ export function StandaloneReader({
           </div>
 
           {/* AI toggle */}
-          <button
-            onClick={() => setShowAIPanel(!showAIPanel)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              showAIPanel
-                ? 'bg-stone-800 text-white'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200'
-            }`}
-          >
-            <Brain className="w-4 h-4" />
-            <span className="text-sm">AI</span>
-          </button>
+          {isAuthenticated ? (
+            <button
+              onClick={() => setShowAIPanel(!showAIPanel)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                showAIPanel
+                  ? 'bg-stone-800 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200'
+              }`}
+            >
+              <Brain className="w-4 h-4" />
+              <span className="text-sm">AI</span>
+            </button>
+          ) : (
+            <button
+              disabled
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
+              title="Sign in to use AI features"
+            >
+              <Brain className="w-4 h-4" />
+              <span className="text-sm">AI</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -843,7 +856,7 @@ export function StandaloneReader({
         </div>
 
         {/* AI Assistant Panel */}
-        {showAIPanel && (
+        {showAIPanel && isAuthenticated && (
           <div className="w-80 flex-shrink-0 bg-[#FDFBF7] dark:bg-slate-800 border-l border-stone-200 dark:border-slate-700 flex flex-col overflow-hidden">
             <AIAssistantPanel
               paper={tempPaper}

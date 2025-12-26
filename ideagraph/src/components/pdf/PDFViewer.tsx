@@ -25,6 +25,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { pdfStorage } from '../../services/pdfStorage';
 import { AnnotationSidebar } from './AnnotationSidebar';
 import { AIAssistantPanel } from './AIAssistantPanel';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PDFViewerProps {
   paper: Paper;
@@ -64,6 +65,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
   const addAnnotation = useAppStore((state) => state.addAnnotation);
   const updateAnnotation = useAppStore((state) => state.updateAnnotation);
   const deleteAnnotation = useAppStore((state) => state.deleteAnnotation);
+  const { isAuthenticated } = useAuth();
 
   // Get annotations directly from state with a selector and shallow comparison
   // to prevent re-renders when the filtered result hasn't changed
@@ -307,18 +309,29 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
 
             {/* AI Assistant toggle */}
             {showAIAssistant && (
-              <button
-                onClick={() => setShowAIPanel(!showAIPanel)}
-                className={`p-2 rounded-lg flex items-center gap-1.5 ${
-                  showAIPanel
-                    ? 'bg-stone-800 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                }`}
-                title={showAIPanel ? 'Hide AI Assistant' : 'Show AI Assistant'}
-              >
-                <Brain size={18} />
-                <span className="text-sm">AI</span>
-              </button>
+              isAuthenticated ? (
+                <button
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className={`p-2 rounded-lg flex items-center gap-1.5 ${
+                    showAIPanel
+                      ? 'bg-stone-800 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                  title={showAIPanel ? 'Hide AI Assistant' : 'Show AI Assistant'}
+                >
+                  <Brain size={18} />
+                  <span className="text-sm">AI</span>
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="p-2 rounded-lg flex items-center gap-1.5 text-gray-600 cursor-not-allowed"
+                  title="Sign in to use AI features"
+                >
+                  <Brain size={18} />
+                  <span className="text-sm">AI</span>
+                </button>
+              )
             )}
           </div>
         </div>
@@ -437,7 +450,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
       )}
 
       {/* AI Assistant Panel */}
-      {showAIAssistant && (
+      {showAIAssistant && isAuthenticated && (
         <AIAssistantPanel
           paper={paper}
           thesis={thesis}
