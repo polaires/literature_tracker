@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Menu,
+  BookOpen,
 } from 'lucide-react';
 import { usePanelContext } from '../../contexts/PanelContext';
 import { Button } from '../ui';
@@ -189,6 +190,16 @@ export const TopHeader = memo(function TopHeader({
             <span className="text-xs text-gray-400">links</span>
           </div>
 
+          {/* PDF Reader Button - hidden on mobile */}
+          <Button
+            onClick={() => navigate(`/reader?thesis=${thesis.id}`)}
+            icon={<BookOpen size={18} />}
+            title="Open AI PDF Reader"
+            className="hidden sm:flex"
+          >
+            <span className="hidden md:inline">Read</span>
+          </Button>
+
           {/* Add Paper Dropdown - hidden on mobile */}
           <div className="relative group hidden sm:block">
             <Button
@@ -250,6 +261,7 @@ export const TopHeader = memo(function TopHeader({
         paperCount={paperCount}
         connectionCount={connectionCount}
         thesisTitle={thesis.title}
+        thesisId={thesis.id}
       />
     </>
   );

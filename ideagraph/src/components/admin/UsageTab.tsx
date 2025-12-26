@@ -9,12 +9,12 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  Plus,
   RotateCcw,
   AlertCircle,
   Check,
-  X,
   Loader2,
+  Plus,
+  X,
 } from 'lucide-react';
 import {
   fetchAllUsersUsage,
@@ -37,15 +37,32 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
   const [adjustingUserId, setAdjustingUserId] = useState<number | null>(null);
-  const [adjustAmount, setAdjustAmount] = useState<string>('');
-  const [adjustReason, setAdjustReason] = useState<string>('');
-  const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
+  const [adjustAmounts, setAdjustAmounts] = useState<Record<number, string>>({});
+  const [submittingUserId, setSubmittingUserId] = useState<number | null>(null);
   const [stats, setStats] = useState<{
     totalUsers: number;
     activeUsers: number;
     totalCreditsUsed: number;
     avgCreditsUsed: number;
   } | null>(null);
+
+  // Helper to get user ID (handles both 'id' and 'userId' from API)
+  const getUserId = (user: AdminUserUsage): number => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const u = user as any;
+    const id = u.userId ?? u.id ?? u.user_id;
+    return id;
+  };
+
+  // Helper to get user credits (API returns flat structure, not nested under usage)
+  const getUserCredits = (user: AdminUserUsage): { used: number; total: number } => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const u = user as any;
+    // Try flat API structure first, then nested usage object
+    const used = u.creditsUsed ?? u.usage?.usedCredits ?? 0;
+    const total = u.creditsLimit ?? u.usage?.totalCredits ?? 100;
+    return { used, total };
+  };
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -74,37 +91,36 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
   }, [fetchUsers]);
 
   // Handle credit adjustment
-  const handleAdjustCredits = async (userId: number) => {
-    const amount = parseInt(adjustAmount, 10);
+  const handleAdjustCredits = async (visibleUserId: number) => {
+    const amountStr = adjustAmounts[visibleUserId] || '';
+    const amount = parseInt(amountStr, 10);
     if (isNaN(amount) || amount === 0) {
       onError?.('Please enter a valid adjustment amount');
       return;
     }
 
-    if (!adjustReason.trim()) {
-      onError?.('Please provide a reason for the adjustment');
-      return;
-    }
-
-    setIsSubmittingAdjust(true);
+    setSubmittingUserId(visibleUserId);
+    setAdjustingUserId(null);
     try {
       const result = await adjustUserCredits({
-        userId,
+        userId: visibleUserId,
         adjustment: amount,
-        reason: adjustReason,
+        reason: 'Admin adjustment',
       });
 
       if (result?.success) {
         onSuccess?.(`Credits adjusted successfully. New total: ${result.newTotal}`);
-        setAdjustingUserId(null);
-        setAdjustAmount('');
-        setAdjustReason('');
+        setAdjustAmounts((prev) => {
+          const next = { ...prev };
+          delete next[visibleUserId];
+          return next;
+        });
         fetchUsers(); // Refresh data
       }
     } catch (error) {
       onError?.(error instanceof Error ? error.message : 'Failed to adjust credits');
     } finally {
-      setIsSubmittingAdjust(false);
+      setSubmittingUserId(null);
     }
   };
 
@@ -240,13 +256,17 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {users.map((user) => {
+                  const visibleUserId = getUserId(user);
+                  const credits = getUserCredits(user);
                   const usageDisplay = calculateUsageDisplay(user.usage);
-                  const isExpanded = expandedUserId === user.userId;
-                  const isAdjusting = adjustingUserId === user.userId;
+                  const isExpanded = expandedUserId === visibleUserId;
+                  const isAdjusting = adjustingUserId === visibleUserId;
+                  const isSubmitting = submittingUserId === visibleUserId;
 
                   return (
-                    <Fragment key={user.userId}>
-                      <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <Fragment key={visibleUserId}>
+                      {/* Main row */}
+                      <tr key={`main-${visibleUserId}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <td className="px-4 py-3">
                           <div>
                             <p className="font-medium text-slate-900 dark:text-white">
@@ -265,43 +285,74 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-slate-600 dark:text-slate-300">
-                            {user.usage?.usedCredits ?? 0} / {user.usage?.totalCredits ?? 100}
-                          </span>
+                          <div className="text-sm">
+                            <span className="text-slate-600 dark:text-slate-300">
+                              {credits.used} / {credits.total}
+                            </span>
+                            <p className="text-xs text-slate-400">
+                              Total: {credits.total}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
                           {formatDate(user.lastActive)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
+                            {/* Toggle adjust form button */}
                             <button
                               onClick={() => {
                                 if (isAdjusting) {
-                                  // Close form and clear values
                                   setAdjustingUserId(null);
-                                  setAdjustAmount('');
-                                  setAdjustReason('');
                                 } else {
-                                  // Open form for this user with cleared values
-                                  setAdjustingUserId(user.userId);
-                                  setAdjustAmount('');
-                                  setAdjustReason('');
+                                  setAdjustingUserId(visibleUserId);
                                 }
                               }}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                              title="Adjust credits"
+                              title={isAdjusting ? 'Cancel adjustment' : 'Adjust credits'}
                             >
                               {isAdjusting ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                             </button>
+                            {/* Inline adjustment input - shown when adjusting */}
+                            {isAdjusting && (
+                              <>
+                                <input
+                                  key={`input-${visibleUserId}`}
+                                  id={`adjust-input-${visibleUserId}`}
+                                  type="number"
+                                  value={adjustAmounts[visibleUserId] ?? ''}
+                                  onChange={(e) => {
+                                    const newValue = e.target.value;
+                                    setAdjustAmounts((prev) => ({
+                                      ...prev,
+                                      [visibleUserId]: newValue,
+                                    }));
+                                  }}
+                                  placeholder="±"
+                                  className="w-16 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-sm text-center"
+                                />
+                                <button
+                                  onClick={() => handleAdjustCredits(visibleUserId)}
+                                  disabled={isSubmitting || !adjustAmounts[visibleUserId]}
+                                  className="flex items-center gap-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isSubmitting ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </>
+                            )}
                             <button
-                              onClick={() => handleResetCredits(user.userId, user.username)}
+                              onClick={() => handleResetCredits(visibleUserId, user.username)}
                               className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                               title="Reset to default"
                             >
                               <RotateCcw className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => setExpandedUserId(isExpanded ? null : user.userId)}
+                              onClick={() => setExpandedUserId(isExpanded ? null : visibleUserId)}
                               className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
                               title="View history"
                             >
@@ -311,48 +362,9 @@ export function UsageTab({ onError, onSuccess }: UsageTabProps) {
                         </td>
                       </tr>
 
-                      {/* Adjustment Form */}
-                      {isAdjusting && (
-                        <tr key={`${user.userId}-adjust`} className="bg-indigo-50 dark:bg-indigo-900/20">
-                          <td colSpan={5} className="px-4 py-3">
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <label className="text-sm text-slate-600 dark:text-slate-400">
-                                  Adjust by:
-                                </label>
-                                <input
-                                  type="number"
-                                  value={adjustAmount}
-                                  onChange={(e) => setAdjustAmount(e.target.value)}
-                                  placeholder="+10 or -5"
-                                  className="w-24 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-sm"
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  value={adjustReason}
-                                  onChange={(e) => setAdjustReason(e.target.value)}
-                                  placeholder="Reason for adjustment"
-                                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-sm"
-                                />
-                              </div>
-                              <button
-                                onClick={() => handleAdjustCredits(user.userId)}
-                                disabled={isSubmittingAdjust}
-                                className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded"
-                              >
-                                <Check className="w-3 h-3" />
-                                Apply
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-
                       {/* Expanded History */}
                       {isExpanded && (
-                        <tr key={`${user.userId}-history`} className="bg-slate-50 dark:bg-slate-800/30">
+                        <tr key={`${visibleUserId}-history`} className="bg-slate-50 dark:bg-slate-800/30">
                           <td colSpan={5} className="px-4 py-3">
                             <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                               Recent Activity

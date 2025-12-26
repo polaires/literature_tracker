@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import type { AuthState, RegisterRequest, LoginRequest } from '../services/auth/types';
 import * as authApi from '../services/auth/api';
 import { useAppStore } from '../store/useAppStore';
+import { usageTracker } from '../services/usage';
 
 interface AuthContextType extends AuthState {
   login: (data: LoginRequest) => Promise<void>;
@@ -34,6 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Initialize usage tracker with user ID to fetch credits from server
+      if (user) {
+        await usageTracker.initialize(user.id);
+      }
     } catch {
       setState({
         user: null,
@@ -42,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Clear usage tracker for unauthenticated users
+      usageTracker.clearLocal();
     }
   }, []);
 
@@ -60,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Initialize usage tracker with user ID to fetch credits from server
+      await usageTracker.initialize(response.user.id);
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -81,6 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: null,
       });
+      // Initialize usage tracker with user ID to fetch credits from server
+      // For new registrations, the server should have created initial credits
+      await usageTracker.initialize(response.user.id);
     } catch (err) {
       setState((prev) => ({
         ...prev,
@@ -93,6 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await authApi.logout();
+    // Clear usage tracker on logout
+    usageTracker.clearLocal();
     setState({
       user: null,
       token: null,

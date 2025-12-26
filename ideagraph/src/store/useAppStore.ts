@@ -1042,6 +1042,9 @@ export const useAppStore = create<AppStore>()(
 // Multi-Tab Synchronization
 // =============================================================================
 
+// Flag to prevent re-broadcasting state updates received from other tabs
+let isApplyingExternalUpdate = false;
+
 // Initialize multi-tab sync if in browser environment
 if (typeof window !== 'undefined') {
   import('../services/storage/multiTabSync').then(({ multiTabSync }) => {
@@ -1057,6 +1060,9 @@ if (typeof window !== 'undefined') {
 
           // Extract state from Zustand persist format
           const actualState = externalState.state || externalState;
+
+          // Set flag to prevent re-broadcasting this update
+          isApplyingExternalUpdate = true;
 
           // Merge external state into current state
           useAppStore.setState((current) => ({
@@ -1075,8 +1081,12 @@ if (typeof window !== 'undefined') {
             aiSettings: actualState.aiSettings ?? current.aiSettings,
           }));
 
+          // Reset flag after state update is complete
+          isApplyingExternalUpdate = false;
+
           console.log('[MultiTabSync] Applied state update from another tab');
         } catch (e) {
+          isApplyingExternalUpdate = false;
           console.error('[MultiTabSync] Failed to apply state update:', e);
         }
       }
@@ -1093,6 +1103,10 @@ if (typeof window !== 'undefined') {
         aiSettings: state.aiSettings,
       }),
       () => {
+        // Don't re-broadcast if this update came from another tab
+        if (isApplyingExternalUpdate) {
+          return;
+        }
         // State changed, notify other tabs
         // The actual state is read from localStorage by other tabs
         multiTabSync.broadcastStateUpdate(['theses', 'papers', 'connections', 'annotations', 'settings', 'aiSettings']);

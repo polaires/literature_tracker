@@ -193,7 +193,7 @@ export function StandaloneReader({
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
       {/* Top bar */}
       <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -285,10 +285,16 @@ export function StandaloneReader({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* PDF Viewer */}
-        <div className={`flex-1 relative ${showAIPanel ? 'mr-80' : ''} transition-all`}>
-          <PdfLoader url={pdfUrl} beforeLoad={<div className="text-white p-4">Loading PDF...</div>}>
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* PDF Viewer - Container must be relative for absolute positioned PdfHighlighter */}
+        <div
+          className="flex-1 min-h-0 overflow-auto"
+          style={{ position: 'relative', width: '100%', height: '100%' }}
+        >
+          <PdfLoader
+            url={pdfUrl}
+            beforeLoad={<div className="text-white p-4">Loading PDF...</div>}
+          >
             {(pdfDocument) => (
               <PdfHighlighter
                 pdfDocument={pdfDocument}
@@ -305,7 +311,7 @@ export function StandaloneReader({
 
         {/* AI Assistant Panel */}
         {showAIPanel && (
-          <div className="w-80 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex flex-col">
+          <div className="w-80 flex-shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
             <AIAssistantPanel
               paper={tempPaper}
               thesis={selectedThesis || undefined}
