@@ -14,6 +14,7 @@ import {
   PanelLeft,
   Menu,
   BookOpen,
+  HelpCircle,
 } from 'lucide-react';
 import { usePanelContext } from '../../contexts/PanelContext';
 import { Button } from '../ui';
@@ -245,6 +246,15 @@ export const TopHeader = memo(function TopHeader({
             aria-label="Open menu"
           >
             <Menu size={20} />
+          </button>
+
+          {/* Help Button */}
+          <button
+            onClick={() => navigate('/help')}
+            className="hidden sm:flex p-2 text-stone-500 hover:text-stone-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-stone-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Help Center"
+          >
+            <HelpCircle size={20} />
           </button>
 
           {/* User Menu */}
