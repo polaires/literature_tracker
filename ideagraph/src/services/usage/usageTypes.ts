@@ -140,8 +140,10 @@ export function calculateUsageDisplay(usage: UserUsage | null | undefined): Usag
  * Check if user can perform an action
  */
 export function canPerformAction(usage: UserUsage, action: PDFAIAction): boolean {
-  const cost = ACTION_CREDIT_COSTS[action];
-  return usage.usedCredits + cost <= usage.totalCredits;
+  const cost = ACTION_CREDIT_COSTS[action] ?? 1;
+  const usedCredits = usage?.usedCredits ?? 0;
+  const totalCredits = usage?.totalCredits ?? 100;
+  return usedCredits + cost <= totalCredits;
 }
 
 /**
