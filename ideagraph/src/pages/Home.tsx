@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Archive, ArchiveRestore, Trash2, MoreVertical, Search, ChevronRight, Upload, Grid3X3, List, Filter } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trash2, Search, ChevronRight, Upload, Grid3X3, List } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { loadEnhancedSampleData, workflowSummary } from '../utils/enhancedSampleData';
 import { loadCrisprReviewSampleData, crisprWorkflowSummary } from '../utils/crisprReviewPart5';
 import { DataManager } from '../components/common/DataManager';
 import { UserMenu } from '../components/auth';
+import { ThesisCard, PapersTable, RecentActivity, FilterDropdown } from '../components/home';
+import type { ThesisRole, ReadingStatus, ScreeningDecision } from '../types';
 
 // Material Symbol Icon Component
 function MaterialIcon({ icon, className = '' }: { icon: string; className?: string }) {
@@ -20,11 +22,13 @@ export function Home() {
   const navigate = useNavigate();
   const {
     theses,
+    papers,
     createThesis,
     updateThesis,
     deleteThesis,
     setActiveThesis,
     getPapersForThesis,
+    getScreeningStats,
     addPaper,
     createConnection,
     createTheme,
@@ -37,13 +41,99 @@ export function Home() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [showDataManager, setShowDataManager] = useState(false);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeView, setActiveView] = useState<'all' | 'drafts' | 'archived'>('all');
 
+  // Filter state
+  const [filterThesis, setFilterThesis] = useState<string | 'all'>('all');
+  const [filterRole, setFilterRole] = useState<ThesisRole | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<ReadingStatus | 'all'>('all');
+  const [filterScreening, setFilterScreening] = useState<ScreeningDecision | 'all'>('all');
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+
+  // Aggregate tags from all papers
+  const allTags = useMemo(() => {
+    const tagCounts = new Map<string, number>();
+    papers.forEach(paper => {
+      paper.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    });
+    return Array.from(tagCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [papers]);
+
+  // Tag colors - deterministic based on tag name
+  const TAG_COLORS = ['bg-orange-400', 'bg-emerald-400', 'bg-blue-400', 'bg-violet-400', 'bg-rose-400', 'bg-amber-400', 'bg-cyan-400', 'bg-pink-400'];
+  const getTagColor = (tag: string) => {
+    const hash = tag.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return TAG_COLORS[hash % TAG_COLORS.length];
+  };
+
+  // Filter papers
+  const filteredPapers = useMemo(() => {
+    return papers.filter(p => {
+      if (filterThesis !== 'all' && p.thesisId !== filterThesis) return false;
+      if (filterRole !== 'all' && p.thesisRole !== filterRole) return false;
+      if (filterStatus !== 'all' && p.readingStatus !== filterStatus) return false;
+      if (filterScreening !== 'all' && p.screeningDecision !== filterScreening) return false;
+      if (selectedTags.size > 0 && !p.tags.some(t => selectedTags.has(t))) return false;
+      return true;
+    });
+  }, [papers, filterThesis, filterRole, filterStatus, filterScreening, selectedTags]);
+
+  // Get thesis stats for cards
+  const getThesisStats = (thesisId: string) => {
+    const thesisPapers = getPapersForThesis(thesisId);
+    const stats = getScreeningStats(thesisId);
+    const readCount = thesisPapers.filter(p => p.readingStatus === 'read').length;
+    const progress = thesisPapers.length > 0 ? (readCount / thesisPapers.length) * 100 : 0;
+    return { paperCount: thesisPapers.length, screeningStats: stats, readingProgress: progress };
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filters: {
+    thesis: string | 'all';
+    role: ThesisRole | 'all';
+    status: ReadingStatus | 'all';
+    screening: ScreeningDecision | 'all';
+  }) => {
+    setFilterThesis(filters.thesis);
+    setFilterRole(filters.role);
+    setFilterStatus(filters.status);
+    setFilterScreening(filters.screening);
+  };
+
+  const handleClearFilters = () => {
+    setFilterThesis('all');
+    setFilterRole('all');
+    setFilterStatus('all');
+    setFilterScreening('all');
+    setSelectedTags(new Set());
+  };
+
+  const toggleTag = (tagName: string) => {
+    setSelectedTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tagName)) {
+        next.delete(tagName);
+      } else {
+        next.add(tagName);
+      }
+      return next;
+    });
+  };
+
+  // Paper click handler for table and recent activity
+  const handlePaperClick = (paperId: string, thesisId: string) => {
+    setActiveThesis(thesisId);
+    navigate(`/thesis/${thesisId}?paper=${paperId}`);
+  };
+
   const handleArchiveThesis = (id: string, archive: boolean) => {
     updateThesis(id, { isArchived: archive });
-    setActiveMenuId(null);
   };
 
   const activeTheses = theses.filter((t) => !t.isArchived);
@@ -104,12 +194,6 @@ export function Home() {
     navigate(`/thesis/${result.thesisId}`);
   };
 
-  // Get unique tags from theses (could be extended later)
-  const tags = [
-    { name: 'Full Demo', color: 'bg-orange-400' },
-    { name: 'CRISPR', color: 'bg-emerald-400' },
-    { name: 'Simple', color: 'bg-blue-400' },
-  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFBF7] antialiased">
@@ -242,22 +326,43 @@ export function Home() {
             Archived
           </button>
 
-          <div className="w-px h-4 bg-stone-300 mx-2"></div>
+          {allTags.length > 0 && (
+            <>
+              <div className="w-px h-4 bg-stone-300 mx-2"></div>
+              <span className="text-xs font-medium text-stone-400 mr-2">TAGS</span>
+              {allTags.map((tag) => (
+                <button
+                  key={tag.name}
+                  onClick={() => toggleTag(tag.name)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded border transition-colors group ${
+                    selectedTags.has(tag.name)
+                      ? 'bg-stone-800 border-stone-800 text-white'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${getTagColor(tag.name)}`}></span>
+                  <span className={`text-xs font-medium ${selectedTags.has(tag.name) ? 'text-white' : 'text-stone-600 group-hover:text-stone-800'}`}>
+                    {tag.name}
+                  </span>
+                  <span className={`text-[10px] ${selectedTags.has(tag.name) ? 'text-stone-300' : 'text-stone-400'}`}>
+                    {tag.count}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
 
-          <span className="text-xs font-medium text-stone-400 mr-2">TAGS</span>
-          {tags.map((tag) => (
-            <button
-              key={tag.name}
-              className="flex items-center gap-1.5 px-2 py-1 rounded bg-white border border-stone-200 hover:border-stone-300 transition-colors group"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${tag.color}`}></span>
-              <span className="text-xs font-medium text-stone-600 group-hover:text-stone-800">{tag.name}</span>
-            </button>
-          ))}
-
-          <button className="flex items-center justify-center w-6 h-6 rounded hover:bg-stone-100 text-stone-400 transition-colors ml-auto">
-            <Filter size={16} />
-          </button>
+          <div className="ml-auto">
+            <FilterDropdown
+              theses={theses}
+              filterThesis={filterThesis}
+              filterRole={filterRole}
+              filterStatus={filterStatus}
+              filterScreening={filterScreening}
+              onFilterChange={handleFilterChange}
+              onClear={handleClearFilters}
+            />
+          </div>
         </div>
 
         {/* New Thesis Form */}
@@ -364,97 +469,48 @@ export function Home() {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {activeTheses.map((thesis) => {
-              const thesisPapers = getPapersForThesis(thesis.id);
-              const daysAgo = Math.floor(
-                (Date.now() - new Date(thesis.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
-              );
+        ) : viewMode === 'grid' ? (
+          /* Grid View: Thesis Cards + Recent Activity */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Thesis Cards */}
+            <div className="lg:col-span-2 space-y-4">
+              {activeTheses.map((thesis) => {
+                const stats = getThesisStats(thesis.id);
+                return (
+                  <ThesisCard
+                    key={thesis.id}
+                    thesis={thesis}
+                    paperCount={stats.paperCount}
+                    screeningStats={stats.screeningStats}
+                    readingProgress={stats.readingProgress}
+                    onOpen={() => handleOpenThesis(thesis.id)}
+                    onArchive={(archive) => handleArchiveThesis(thesis.id, archive)}
+                    onDelete={() => {
+                      if (confirm('Delete this thesis and all its papers?')) {
+                        deleteThesis(thesis.id);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
 
-              return (
-                <div
-                  key={thesis.id}
-                  className="p-6 bg-white rounded-xl shadow-sm border border-stone-200 hover:shadow-lg hover:border-stone-300 transition-all cursor-pointer group"
-                  onClick={() => handleOpenThesis(thesis.id)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-stone-800 mb-1 group-hover:text-stone-700 transition-colors">
-                        {thesis.title}
-                      </h3>
-                      {thesis.description && (
-                        <p className="text-stone-500 text-sm mb-3 line-clamp-2">
-                          {thesis.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg font-medium">
-                          {thesisPapers.length} papers
-                        </span>
-                        <span className="text-stone-400">
-                          {daysAgo === 0
-                            ? 'Updated today'
-                            : daysAgo === 1
-                            ? 'Updated yesterday'
-                            : `Updated ${daysAgo} days ago`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuId(activeMenuId === thesis.id ? null : thesis.id);
-                        }}
-                        className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
-                      >
-                        <MoreVertical size={18} />
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      {activeMenuId === thesis.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveMenuId(null);
-                            }}
-                          />
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-stone-200 py-1.5 z-20">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchiveThesis(thesis.id, true);
-                              }}
-                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-stone-50 text-stone-700 transition-colors"
-                            >
-                              <Archive size={15} />
-                              Archive
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm('Delete this thesis and all its papers?')) {
-                                  deleteThesis(thesis.id);
-                                }
-                                setActiveMenuId(null);
-                              }}
-                              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-red-50 text-red-600 transition-colors"
-                            >
-                              <Trash2 size={15} />
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {/* Recent Activity Sidebar */}
+            <div className="lg:col-span-1">
+              <RecentActivity
+                papers={filteredPapers}
+                theses={theses}
+                onPaperClick={handlePaperClick}
+              />
+            </div>
           </div>
+        ) : (
+          /* List View: Papers Table */
+          <PapersTable
+            papers={filteredPapers}
+            theses={theses}
+            onPaperClick={handlePaperClick}
+          />
         )}
 
         {/* Archived Theses */}
