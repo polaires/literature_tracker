@@ -8,7 +8,7 @@ import {
   BookOpen,
   Download,
 } from 'lucide-react';
-import type { HelpSection, HelpStep } from './helpData';
+import type { HelpSection } from './helpData';
 import { TutorialStep } from './TutorialStep';
 
 // Icon mapping

@@ -39,7 +39,16 @@ class UsageTracker {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Ensure all required fields exist with defaults
+        return {
+          userId: parsed.userId ?? null,
+          totalCredits: parsed.totalCredits ?? 100,
+          usedCredits: parsed.usedCredits ?? 0,
+          resetDate: parsed.resetDate ?? null,
+          lastUpdated: parsed.lastUpdated ?? new Date().toISOString(),
+          history: Array.isArray(parsed.history) ? parsed.history : [],
+        };
       }
     } catch (error) {
       console.error('Failed to load usage from storage:', error);
@@ -271,13 +280,14 @@ export function useUsage(): UserUsage {
   const [usage] = useState<UserUsage>(() => {
     const current = usageTracker.getUsage();
     // Return a copy to avoid mutation issues
+    // Use defensive checks for history in case of corrupted storage
     return {
-      userId: current.userId,
-      totalCredits: current.totalCredits,
-      usedCredits: current.usedCredits,
-      resetDate: current.resetDate,
-      lastUpdated: current.lastUpdated,
-      history: [...current.history],
+      userId: current.userId ?? null,
+      totalCredits: current.totalCredits ?? 100,
+      usedCredits: current.usedCredits ?? 0,
+      resetDate: current.resetDate ?? null,
+      lastUpdated: current.lastUpdated ?? new Date().toISOString(),
+      history: Array.isArray(current.history) ? [...current.history] : [],
     };
   });
 

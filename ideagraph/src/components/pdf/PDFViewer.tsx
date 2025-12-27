@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
+  Sparkles,
 } from 'lucide-react';
 import type { PDFAnnotation, AnnotationColor, Paper, Thesis } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
@@ -25,6 +26,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { pdfStorage } from '../../services/pdfStorage';
 import { AnnotationSidebar } from './AnnotationSidebar';
 import { AIAssistantPanel } from './AIAssistantPanel';
+import { ExtractionPanel } from './ExtractionPanel';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PDFViewerProps {
@@ -81,6 +83,7 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
   const [activeColor, setActiveColor] = useState<AnnotationColor>('yellow');
   const [showSidebar, setShowSidebar] = useState(true);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showExtractionPanel, setShowExtractionPanel] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [highlightMode, setHighlightMode] = useState<'highlight' | 'area' | 'note'>('highlight');
 
@@ -307,6 +310,33 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
               {showSidebar ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
 
+            {/* Extraction Panel toggle */}
+            {showAIAssistant && (
+              isAuthenticated ? (
+                <button
+                  onClick={() => setShowExtractionPanel(!showExtractionPanel)}
+                  className={`p-2 rounded-lg flex items-center gap-1.5 ${
+                    showExtractionPanel
+                      ? 'bg-amber-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                  title={showExtractionPanel ? 'Hide Knowledge Extractor' : 'Extract Knowledge'}
+                >
+                  <Sparkles size={18} />
+                  <span className="text-sm">Extract</span>
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="p-2 rounded-lg flex items-center gap-1.5 text-gray-600 cursor-not-allowed"
+                  title="Sign in to use extraction features"
+                >
+                  <Sparkles size={18} />
+                  <span className="text-sm">Extract</span>
+                </button>
+              )
+            )}
+
             {/* AI Assistant toggle */}
             {showAIAssistant && (
               isAuthenticated ? (
@@ -457,6 +487,17 @@ export function PDFViewer({ paper, thesis, onClose, showAIAssistant = true }: PD
           isOpen={showAIPanel}
           onToggle={() => setShowAIPanel(!showAIPanel)}
           onClose={() => setShowAIPanel(false)}
+        />
+      )}
+
+      {/* Extraction Panel */}
+      {showAIAssistant && isAuthenticated && (
+        <ExtractionPanel
+          paper={paper}
+          thesis={thesis}
+          isOpen={showExtractionPanel}
+          onToggle={() => setShowExtractionPanel(!showExtractionPanel)}
+          onClose={() => setShowExtractionPanel(false)}
         />
       )}
     </div>

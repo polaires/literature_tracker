@@ -14,6 +14,10 @@ import type {
   EvidenceSynthesis,
   PaperCluster,
   GraphCustomization,
+  PaperIdeaGraph,
+  ExtractedFinding,
+  ExtractionStatus,
+  ReviewStatus,
 } from '../types';
 import { CLUSTER_COLORS, DEFAULT_GRAPH_CUSTOMIZATION } from '../types';
 import type { AISettings, AITaskModelAssignment, ClaudeModelId } from '../services/ai/types';
@@ -34,6 +38,9 @@ interface AppStore {
 
   // Clustering data (Phase 4)
   clusters: PaperCluster[];
+
+  // Paper IdeaGraph extraction data
+  paperGraphs: PaperIdeaGraph[];
 
   // Active state
   activeThesisId: string | null;
@@ -147,6 +154,18 @@ interface AppStore {
   removePaperFromCluster: (paperId: string, clusterId: string) => void;
   getClustersForThesis: (thesisId: string) => PaperCluster[];
   getClusterForPaper: (paperId: string) => PaperCluster | undefined;
+
+  // Paper IdeaGraph actions
+  createPaperGraph: (paperId: string) => PaperIdeaGraph;
+  updatePaperGraph: (id: string, updates: Partial<PaperIdeaGraph>) => void;
+  deletePaperGraph: (id: string) => void;
+  getPaperGraphForPaper: (paperId: string) => PaperIdeaGraph | undefined;
+  updateExtractionStatus: (id: string, status: ExtractionStatus, error?: string) => void;
+  updateReviewStatus: (id: string, status: ReviewStatus) => void;
+  addFinding: (graphId: string, finding: ExtractedFinding) => void;
+  updateFinding: (graphId: string, findingId: string, updates: Partial<ExtractedFinding>) => void;
+  deleteFinding: (graphId: string, findingId: string) => void;
+  verifyFinding: (graphId: string, findingId: string, verified: boolean) => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -213,6 +232,7 @@ export const useAppStore = create<AppStore>()(
       researchGaps: [],
       evidenceSyntheses: [],
       clusters: [],
+      paperGraphs: [],
       activeThesisId: null,
       selectedPaperId: null,
       settings: defaultSettings,
@@ -242,10 +262,22 @@ export const useAppStore = create<AppStore>()(
       },
 
       deleteThesis: (id) => {
+        // Collect paper IDs to delete for cascade cleanup
+        const paperIdsToDelete = new Set(
+          get().papers.filter((p) => p.thesisId === id).map((p) => p.id)
+        );
+
         set((state) => ({
           theses: state.theses.filter((t) => t.id !== id),
           papers: state.papers.filter((p) => p.thesisId !== id),
           connections: state.connections.filter((c) => c.thesisId !== id),
+          annotations: state.annotations.filter((a) => !paperIdsToDelete.has(a.paperId)),
+          paperGraphs: state.paperGraphs.filter((g) => !paperIdsToDelete.has(g.paperId)),
+          clusters: state.clusters.filter((c) => c.thesisId !== id),
+          reviewSections: state.reviewSections.filter((s) => s.thesisId !== id),
+          synthesisThemes: state.synthesisThemes.filter((t) => t.thesisId !== id),
+          researchGaps: state.researchGaps.filter((g) => g.thesisId !== id),
+          evidenceSyntheses: state.evidenceSyntheses.filter((e) => e.thesisId !== id),
           activeThesisId: state.activeThesisId === id ? null : state.activeThesisId,
         }));
       },
@@ -325,10 +357,17 @@ export const useAppStore = create<AppStore>()(
             (c) => c.fromPaperId !== id && c.toPaperId !== id
           ),
           annotations: state.annotations.filter((a) => a.paperId !== id),
+          paperGraphs: state.paperGraphs.filter((g) => g.paperId !== id),
           theses: state.theses.map((t) =>
             t.id === paper.thesisId
               ? { ...t, paperIds: t.paperIds.filter((pid) => pid !== id) }
               : t
+          ),
+          // Also remove from clusters
+          clusters: state.clusters.map((c) =>
+            c.paperIds.includes(id)
+              ? { ...c, paperIds: c.paperIds.filter((pid) => pid !== id) }
+              : c
           ),
           selectedPaperId: state.selectedPaperId === id ? null : state.selectedPaperId,
         }));
@@ -345,11 +384,17 @@ export const useAppStore = create<AppStore>()(
             (c) => !idsSet.has(c.fromPaperId) && !idsSet.has(c.toPaperId)
           ),
           annotations: state.annotations.filter((a) => !idsSet.has(a.paperId)),
+          paperGraphs: state.paperGraphs.filter((g) => !idsSet.has(g.paperId)),
           theses: state.theses.map((t) =>
             thesisIds.has(t.id)
               ? { ...t, paperIds: t.paperIds.filter((pid) => !idsSet.has(pid)) }
               : t
           ),
+          // Also remove from clusters
+          clusters: state.clusters.map((c) => ({
+            ...c,
+            paperIds: c.paperIds.filter((pid) => !idsSet.has(pid)),
+          })),
           selectedPaperId: idsSet.has(state.selectedPaperId || '') ? null : state.selectedPaperId,
         }));
       },
@@ -609,6 +654,7 @@ export const useAppStore = create<AppStore>()(
           researchGaps: [],
           evidenceSyntheses: [],
           clusters: [],
+          paperGraphs: [],
           activeThesisId: null,
           selectedPaperId: null,
           settings: defaultSettings,
@@ -1021,6 +1067,135 @@ export const useAppStore = create<AppStore>()(
       getClusterForPaper: (paperId) => {
         return get().clusters.find((c) => c.paperIds.includes(paperId));
       },
+
+      // Paper IdeaGraph actions
+      createPaperGraph: (paperId) => {
+        const now = new Date().toISOString();
+        const graph: PaperIdeaGraph = {
+          id: generateId(),
+          paperId,
+          extractedAt: now,
+          extractionDepth: 'standard',
+          extractionStatus: 'pending',
+          findings: [],
+          intraPaperConnections: [],
+          dataTables: [],
+          paperType: 'research-article',
+          keyContributions: [],
+          limitations: [],
+          openQuestions: [],
+          potentialConnections: [],
+          reviewStatus: 'unreviewed',
+          tokensUsed: {
+            stage1: { input: 0, output: 0 },
+            stage2: { input: 0, output: 0 },
+            stage3: { input: 0, output: 0 },
+          },
+        };
+        set((state) => ({
+          paperGraphs: [...state.paperGraphs, graph],
+        }));
+        return graph;
+      },
+
+      updatePaperGraph: (id, updates) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === id ? { ...g, ...updates } : g
+          ),
+        }));
+      },
+
+      deletePaperGraph: (id) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.filter((g) => g.id !== id),
+        }));
+      },
+
+      getPaperGraphForPaper: (paperId) => {
+        return get().paperGraphs.find((g) => g.paperId === paperId);
+      },
+
+      updateExtractionStatus: (id, status, error) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === id
+              ? { ...g, extractionStatus: status, extractionError: error }
+              : g
+          ),
+        }));
+      },
+
+      updateReviewStatus: (id, status) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === id
+              ? { ...g, reviewStatus: status, reviewedAt: status === 'reviewed' ? now : g.reviewedAt }
+              : g
+          ),
+        }));
+      },
+
+      addFinding: (graphId, finding) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === graphId
+              ? { ...g, findings: [...g.findings, finding] }
+              : g
+          ),
+        }));
+      },
+
+      updateFinding: (graphId, findingId, updates) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === graphId
+              ? {
+                  ...g,
+                  findings: g.findings.map((f) =>
+                    f.id === findingId ? { ...f, ...updates } : f
+                  ),
+                }
+              : g
+          ),
+        }));
+      },
+
+      deleteFinding: (graphId, findingId) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) =>
+            g.id === graphId
+              ? { ...g, findings: g.findings.filter((f) => f.id !== findingId) }
+              : g
+          ),
+        }));
+      },
+
+      verifyFinding: (graphId, findingId, verified) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) => {
+            if (g.id !== graphId) return g;
+
+            const updatedFindings = g.findings.map((f) =>
+              f.id === findingId ? { ...f, userVerified: verified } : f
+            );
+
+            // Auto-update review status based on verification state
+            const verifiedCount = updatedFindings.filter((f) => f.userVerified).length;
+            let reviewStatus: ReviewStatus = g.reviewStatus;
+            if (verifiedCount === 0) {
+              reviewStatus = 'unreviewed';
+            } else if (verifiedCount === updatedFindings.length) {
+              reviewStatus = 'reviewed';
+            } else {
+              reviewStatus = 'partial';
+            }
+
+            return { ...g, findings: updatedFindings, reviewStatus };
+          }),
+        }));
+      },
     }),
     {
       name: 'ideagraph-storage',
@@ -1097,6 +1272,7 @@ if (typeof window !== 'undefined') {
             researchGaps: actualState.researchGaps ?? current.researchGaps,
             evidenceSyntheses: actualState.evidenceSyntheses ?? current.evidenceSyntheses,
             clusters: actualState.clusters ?? current.clusters,
+            paperGraphs: actualState.paperGraphs ?? current.paperGraphs,
             settings: actualState.settings ?? current.settings,
             aiSettings: actualState.aiSettings ?? current.aiSettings,
           }));
@@ -1119,6 +1295,7 @@ if (typeof window !== 'undefined') {
         papers: state.papers,
         connections: state.connections,
         annotations: state.annotations,
+        paperGraphs: state.paperGraphs,
         settings: state.settings,
         aiSettings: state.aiSettings,
       }),
@@ -1129,7 +1306,7 @@ if (typeof window !== 'undefined') {
         }
         // State changed, notify other tabs
         // The actual state is read from localStorage by other tabs
-        multiTabSync.broadcastStateUpdate(['theses', 'papers', 'connections', 'annotations', 'settings', 'aiSettings']);
+        multiTabSync.broadcastStateUpdate(['theses', 'papers', 'connections', 'annotations', 'paperGraphs', 'settings', 'aiSettings']);
       },
       { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
     );

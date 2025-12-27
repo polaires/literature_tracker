@@ -7,7 +7,7 @@ import type { AISettings } from '../ai/types';
 // Version Management
 // =============================================================================
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 export const VERSION_KEY = 'ideagraph_version';
 export const STORAGE_KEY = 'ideagraph-storage';
 
@@ -177,10 +177,30 @@ const migration2: Migration = {
   },
 };
 
+/**
+ * Migration 3: Add Paper IdeaGraph support
+ * - Adds paperGraphs array for storing extracted knowledge graphs
+ */
+const migration3: Migration = {
+  version: 3,
+  name: 'add-paper-ideagraph',
+  description: 'Add Paper IdeaGraph support for knowledge extraction',
+  migrate: (data: unknown) => {
+    const state = data as Record<string, unknown>;
+
+    return {
+      ...state,
+      // Add paperGraphs array if not exists
+      paperGraphs: state.paperGraphs || [],
+    };
+  },
+};
+
 // All migrations in order
 const MIGRATIONS: Migration[] = [
   migration1,
   migration2,
+  migration3,
 ];
 
 // =============================================================================

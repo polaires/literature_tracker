@@ -269,8 +269,17 @@ export class ClaudeProvider extends BaseAIProvider {
           method: 'POST',
           headers,
           body: requestBody,
+          signal: options?.signal, // Support cancellation
         });
       } catch (fetchError) {
+        // Check if it was an abort
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw this.createError(
+            'NETWORK_ERROR',
+            'Request was cancelled',
+            false
+          );
+        }
         console.error('[ClaudeProvider] Fetch error:', fetchError);
         throw this.createError(
           'NETWORK_ERROR',

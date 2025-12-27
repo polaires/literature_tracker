@@ -97,6 +97,7 @@ export interface CompletionOptions {
   temperature?: number;
   stopSequences?: string[];
   systemPrompt?: string;
+  signal?: AbortSignal; // For cancellation support
 }
 
 export interface CompletionResult {
