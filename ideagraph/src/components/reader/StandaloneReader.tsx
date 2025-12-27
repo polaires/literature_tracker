@@ -180,68 +180,38 @@ export function StandaloneReader({
     };
   }, []);
 
-  // Track current page using IntersectionObserver
+  // Track current page based on scroll position
   useEffect(() => {
     const container = pdfContainerRef.current;
-    if (!container) return;
+    if (!container || totalPages <= 1) return;
 
-    // Observer to detect which page is most visible
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the most visible page
-        let maxRatio = 0;
-        let visiblePage = currentPage;
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight - container.clientHeight;
 
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-            const pageMatch = entry.target.getAttribute('data-page-number');
-            if (pageMatch) {
-              maxRatio = entry.intersectionRatio;
-              visiblePage = parseInt(pageMatch, 10);
-            }
-          }
-        });
-
-        if (visiblePage !== currentPage && maxRatio > 0) {
-          setCurrentPage(visiblePage);
-        }
-      },
-      {
-        root: container,
-        threshold: [0, 0.25, 0.5, 0.75, 1],
+      if (scrollHeight <= 0) {
+        setCurrentPage(1);
+        return;
       }
-    );
 
-    // Observe page elements (react-pdf-highlighter uses .page class)
-    const observePages = () => {
-      const pages = container.querySelectorAll('.page');
-      pages.forEach((page) => {
-        observer.observe(page);
-      });
-      // Update total pages
-      if (pages.length > 0 && pages.length !== totalPages) {
-        setTotalPages(pages.length);
+      // Calculate current page based on scroll percentage
+      const scrollPercentage = scrollTop / scrollHeight;
+      const estimatedPage = Math.floor(scrollPercentage * totalPages) + 1;
+      const clampedPage = Math.min(Math.max(1, estimatedPage), totalPages);
+
+      if (clampedPage !== currentPage) {
+        setCurrentPage(clampedPage);
       }
     };
 
-    // Initial observation
-    observePages();
-
-    // Re-observe when new pages load (use MutationObserver)
-    const mutationObserver = new MutationObserver(() => {
-      observePages();
-    });
-
-    mutationObserver.observe(container, {
-      childList: true,
-      subtree: true,
-    });
+    container.addEventListener('scroll', handleScroll);
+    // Initial check
+    handleScroll();
 
     return () => {
-      observer.disconnect();
-      mutationObserver.disconnect();
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, [currentPage, totalPages]);
+  }, [totalPages, currentPage]);
 
   // Convert annotations to highlight format for react-pdf-highlighter
   const highlights = useMemo((): IHighlight[] =>
@@ -798,7 +768,13 @@ export function StandaloneReader({
             url={pdfUrl}
             beforeLoad={<div className="text-stone-600 p-4">Loading PDF...</div>}
           >
-            {(pdfDocument) => (
+            {(pdfDocument) => {
+              // Set total pages when PDF loads
+              if (pdfDocument.numPages !== totalPages) {
+                // Use setTimeout to avoid state update during render
+                setTimeout(() => setTotalPages(pdfDocument.numPages), 0);
+              }
+              return (
               <PdfHighlighter
                 pdfDocument={pdfDocument}
                 enableAreaSelection={enableAreaSelection}
@@ -902,7 +878,7 @@ export function StandaloneReader({
                 }}
                 highlights={highlights}
               />
-            )}
+            );}}
           </PdfLoader>
         </div>
 
