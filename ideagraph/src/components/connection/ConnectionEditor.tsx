@@ -480,7 +480,17 @@ export function ConnectionEditor({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 dark:border-slate-700">
-          {canSuggestConnections ? (
+          {/* AI Suggest button - grayed out when not authenticated */}
+          {!isAuthenticated ? (
+            <button
+              disabled
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-slate-400 dark:text-slate-600 cursor-not-allowed"
+              title="Sign in to use AI features"
+            >
+              <Sparkles size={14} />
+              AI Suggest
+            </button>
+          ) : canSuggestConnections ? (
             <button
               onClick={handleSuggestConnections}
               disabled={isSuggestingConnections}

@@ -306,7 +306,17 @@ export function PaperDetailContent({
               Connections ({connections.length})
             </label>
             <div className="flex items-center gap-2">
-              {canSuggestConnections && (
+              {/* AI Suggest button - grayed out when not authenticated */}
+              {!isAuthenticated ? (
+                <button
+                  disabled
+                  className="flex items-center gap-1 px-2 py-1 text-xs rounded-lg text-stone-400 dark:text-stone-600 cursor-not-allowed"
+                  title="Sign in to use AI features"
+                >
+                  <Sparkles size={12} />
+                  AI Suggest
+                </button>
+              ) : canSuggestConnections ? (
                 <button
                   onClick={handleSuggestConnections}
                   disabled={isSuggestingConnections}
@@ -323,7 +333,7 @@ export function PaperDetailContent({
                   )}
                   {isSuggestingConnections ? 'Finding...' : 'AI Suggest'}
                 </button>
-              )}
+              ) : null}
               <button
                 onClick={() => setShowConnectionEditor(true)}
                 className="p-1 text-stone-700 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800/30 rounded"
