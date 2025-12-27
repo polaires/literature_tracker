@@ -32,8 +32,7 @@ import {
 } from 'lucide-react';
 import type { AnnotationColor } from '../../types';
 import { AIAssistantPanel } from '../pdf/AIAssistantPanel';
-import { UsageMeter } from '../pdf/UsageMeter';
-import { useUsage, calculateUsageDisplay } from '../../services/usage';
+import { ReadingProgress } from '../pdf/ReadingProgress';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuth } from '../../contexts/AuthContext';
 import { pdfStorage } from '../../services/pdfStorage';
@@ -88,8 +87,9 @@ export function StandaloneReader({
   const addAnnotation = useAppStore((state) => state.addAnnotation);
   const { isAuthenticated } = useAuth();
 
-  // Use the proper React hook for usage tracking
-  const usage = useUsage();
+  // PDF reading progress state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // State
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -117,6 +117,9 @@ export function StandaloneReader({
 
   // Scroll to highlight ref
   const scrollViewerTo = useRef<(highlight: IHighlight) => void>(() => {});
+
+  // PDF container ref for scroll tracking
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   // Refs to track current values (avoids stale closure in react-pdf-highlighter callbacks)
   const activeColorRef = useRef<AnnotationColor>(activeColor);
@@ -176,6 +179,69 @@ export function StandaloneReader({
       }
     };
   }, []);
+
+  // Track current page using IntersectionObserver
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    // Observer to detect which page is most visible
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the most visible page
+        let maxRatio = 0;
+        let visiblePage = currentPage;
+
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+            const pageMatch = entry.target.getAttribute('data-page-number');
+            if (pageMatch) {
+              maxRatio = entry.intersectionRatio;
+              visiblePage = parseInt(pageMatch, 10);
+            }
+          }
+        });
+
+        if (visiblePage !== currentPage && maxRatio > 0) {
+          setCurrentPage(visiblePage);
+        }
+      },
+      {
+        root: container,
+        threshold: [0, 0.25, 0.5, 0.75, 1],
+      }
+    );
+
+    // Observe page elements (react-pdf-highlighter uses .page class)
+    const observePages = () => {
+      const pages = container.querySelectorAll('.page');
+      pages.forEach((page) => {
+        observer.observe(page);
+      });
+      // Update total pages
+      if (pages.length > 0 && pages.length !== totalPages) {
+        setTotalPages(pages.length);
+      }
+    };
+
+    // Initial observation
+    observePages();
+
+    // Re-observe when new pages load (use MutationObserver)
+    const mutationObserver = new MutationObserver(() => {
+      observePages();
+    });
+
+    mutationObserver.observe(container, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [currentPage, totalPages]);
 
   // Convert annotations to highlight format for react-pdf-highlighter
   const highlights = useMemo((): IHighlight[] =>
@@ -413,8 +479,6 @@ export function StandaloneReader({
       setIsAdding(false);
     }
   }, [selectedThesis, paperTitle, paperTakeaway, paperRole, pdf, addPaper, addAnnotation, annotations, onBack]);
-
-  const usageDisplay = calculateUsageDisplay(usage);
 
   if (!pdfUrl) {
     return (
@@ -725,6 +789,7 @@ export function StandaloneReader({
 
         {/* PDF Viewer - Container must be relative for absolute positioned PdfHighlighter */}
         <div
+          ref={pdfContainerRef}
           className="flex-1 min-h-0 overflow-auto"
           style={{ position: 'relative', width: '100%', height: '100%' }}
         >
@@ -858,7 +923,7 @@ export function StandaloneReader({
       {/* Bottom action bar */}
       <div className="bg-[#FDFBF7] border-t border-stone-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <UsageMeter usage={usageDisplay} variant="compact" className="w-32" />
+          <ReadingProgress currentPage={currentPage} totalPages={totalPages} variant="compact" className="w-36" />
         </div>
 
         <div className="flex items-center gap-3">
