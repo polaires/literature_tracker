@@ -181,33 +181,70 @@ export function StandaloneReader({
   }, []);
 
   // Track current page based on scroll position
+  // Note: react-pdf-highlighter creates its own scrollable container with class _container_*
   useEffect(() => {
-    const container = pdfContainerRef.current;
-    if (!container || totalPages < 1) return;
+    if (totalPages < 1) return;
 
-    const handleScroll = () => {
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight - container.clientHeight;
+    // Find the actual scrollable container from react-pdf-highlighter
+    // It has a class that starts with "_container_" (CSS modules)
+    const findScrollContainer = () => {
+      const containers = document.querySelectorAll('[class*="_container_"]');
+      for (const container of containers) {
+        if (container.scrollHeight > container.clientHeight) {
+          return container as HTMLElement;
+        }
+      }
+      return null;
+    };
 
-      if (scrollHeight <= 0) {
-        setCurrentPage(1);
+    let container: HTMLElement | null = null;
+    let retryCount = 0;
+    const maxRetries = 10;
+
+    const setupScrollListener = () => {
+      container = findScrollContainer();
+
+      if (!container && retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(setupScrollListener, 200);
         return;
       }
 
-      // Calculate current page based on scroll percentage
-      const scrollPercentage = scrollTop / scrollHeight;
-      const estimatedPage = Math.floor(scrollPercentage * (totalPages - 1)) + 1;
-      const clampedPage = Math.min(Math.max(1, estimatedPage), totalPages);
+      if (!container) return;
 
-      setCurrentPage(clampedPage);
+      const handleScroll = () => {
+        if (!container) return;
+
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight - container.clientHeight;
+
+        if (scrollHeight <= 0) {
+          setCurrentPage(1);
+          return;
+        }
+
+        // Calculate current page based on scroll percentage
+        const scrollPercentage = scrollTop / scrollHeight;
+        const estimatedPage = Math.floor(scrollPercentage * (totalPages - 1)) + 1;
+        const clampedPage = Math.min(Math.max(1, estimatedPage), totalPages);
+
+        setCurrentPage(clampedPage);
+      };
+
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      // Initial check
+      handleScroll();
+
+      // Store cleanup function
+      (window as unknown as Record<string, () => void>).__pdfScrollCleanup = () => {
+        container?.removeEventListener('scroll', handleScroll);
+      };
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    // Initial check
-    handleScroll();
+    setupScrollListener();
 
     return () => {
-      container.removeEventListener('scroll', handleScroll);
+      (window as unknown as Record<string, () => void>).__pdfScrollCleanup?.();
     };
   }, [totalPages]);
 

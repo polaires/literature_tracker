@@ -238,7 +238,97 @@ export interface UserSettings {
   theme: 'light' | 'dark' | 'system';
   autoSave: boolean;
   showAiSuggestions: boolean;
+  graphCustomization: GraphCustomization;
 }
+
+// ============================================
+// GRAPH CUSTOMIZATION
+// ============================================
+
+export interface GraphCustomization {
+  // Node settings
+  nodeSizeMode: 'fixed' | 'citations' | 'connections';
+  nodeBaseSize: number;           // 32-80
+  nodeSizeRange: [number, number]; // [min, max] for dynamic sizing
+  nodeColorMode: 'role' | 'year' | 'status' | 'subthesis';
+  showNodeLabels: 'always' | 'hover' | 'never';
+  nodeLabelSize: 'small' | 'medium' | 'large';
+
+  // Edge settings
+  edgeBaseWidth: number;          // 1-5
+  edgeWidthScaling: 'none' | 'by-strength';
+  edgeOpacity: number;            // 0.3-1.0
+  edgeArrowSize: 'small' | 'medium' | 'large';
+  edgeCurveStyle: 'bezier' | 'straight' | 'taxi';
+
+  // Visibility
+  showPhantomEdges: boolean;
+  phantomEdgeOpacity: number;     // 0.1-0.5
+  showEdgeLabels: boolean;
+  dimUnconnectedNodes: boolean;
+}
+
+export const DEFAULT_GRAPH_CUSTOMIZATION: GraphCustomization = {
+  nodeSizeMode: 'fixed',
+  nodeBaseSize: 48,
+  nodeSizeRange: [40, 72],
+  nodeColorMode: 'role',
+  showNodeLabels: 'always',
+  nodeLabelSize: 'medium',
+
+  edgeBaseWidth: 1.5,
+  edgeWidthScaling: 'none',
+  edgeOpacity: 0.6,
+  edgeArrowSize: 'medium',
+  edgeCurveStyle: 'bezier',
+
+  showPhantomEdges: true,
+  phantomEdgeOpacity: 0.25,
+  showEdgeLabels: false,
+  dimUnconnectedNodes: true,
+};
+
+// Graph presets for quick switching
+export type GraphPresetName = 'default' | 'presentation' | 'dense' | 'minimalist' | 'highContrast';
+
+export const GRAPH_PRESETS: Record<GraphPresetName, Partial<GraphCustomization>> = {
+  default: {
+    nodeBaseSize: 48,
+    edgeBaseWidth: 1.5,
+    edgeOpacity: 0.6,
+    showNodeLabels: 'always',
+    nodeLabelSize: 'medium',
+  },
+  presentation: {
+    nodeBaseSize: 64,
+    edgeBaseWidth: 3,
+    edgeOpacity: 0.8,
+    showNodeLabels: 'always',
+    nodeLabelSize: 'large',
+    edgeArrowSize: 'large',
+  },
+  dense: {
+    nodeBaseSize: 36,
+    edgeBaseWidth: 1,
+    edgeOpacity: 0.4,
+    showNodeLabels: 'hover',
+    nodeLabelSize: 'small',
+  },
+  minimalist: {
+    nodeBaseSize: 40,
+    edgeBaseWidth: 1,
+    edgeOpacity: 0.3,
+    showNodeLabels: 'never',
+    showPhantomEdges: false,
+  },
+  highContrast: {
+    nodeBaseSize: 56,
+    edgeBaseWidth: 2.5,
+    edgeOpacity: 0.9,
+    showNodeLabels: 'always',
+    nodeLabelSize: 'large',
+  },
+};
 
 // ============================================
 // AI SETTINGS (Phase 3)

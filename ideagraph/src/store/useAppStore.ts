@@ -13,8 +13,9 @@ import type {
   ResearchGap,
   EvidenceSynthesis,
   PaperCluster,
+  GraphCustomization,
 } from '../types';
-import { CLUSTER_COLORS } from '../types';
+import { CLUSTER_COLORS, DEFAULT_GRAPH_CUSTOMIZATION } from '../types';
 import type { AISettings, AITaskModelAssignment, ClaudeModelId } from '../services/ai/types';
 import { isUsingDefaultAPI } from '../services/ai/config';
 
@@ -85,6 +86,7 @@ interface AppStore {
 
   // Settings
   updateSettings: (updates: Partial<UserSettings>) => void;
+  updateGraphCustomization: (updates: Partial<GraphCustomization>) => void;
 
   // AI Settings actions
   updateAISettings: (updates: Partial<AISettings>) => void;
@@ -155,6 +157,7 @@ const defaultSettings: UserSettings = {
   theme: 'system',
   autoSave: true,
   showAiSuggestions: true,
+  graphCustomization: DEFAULT_GRAPH_CUSTOMIZATION,
 };
 
 // Default AI settings (moved from useAI hook for centralization)
@@ -534,6 +537,18 @@ export const useAppStore = create<AppStore>()(
       updateSettings: (updates) => {
         set((state) => ({
           settings: { ...state.settings, ...updates },
+        }));
+      },
+
+      updateGraphCustomization: (updates) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            graphCustomization: {
+              ...state.settings.graphCustomization,
+              ...updates,
+            },
+          },
         }));
       },
 
@@ -1020,6 +1035,11 @@ export const useAppStore = create<AppStore>()(
           settings: {
             ...currentState.settings,
             ...(persisted?.settings || {}),
+            // Deep merge graphCustomization to pick up new options
+            graphCustomization: {
+              ...currentState.settings.graphCustomization,
+              ...(persisted?.settings?.graphCustomization || {}),
+            },
           },
           // Ensure AI settings are deep-merged with defaults to pick up new feature flags
           aiSettings: {

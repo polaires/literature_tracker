@@ -10,6 +10,7 @@ import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import { getSimilarPapers, fetchPaperByDOI } from '../../services/api/semanticScholar';
 import { QuickAddModal } from './QuickAddModal';
 import { DiscoveryPanel } from './DiscoveryPanel';
+import { GraphSettingsPopover } from './GraphSettingsPopover';
 import { useAppStore } from '../../store/useAppStore';
 import {
   ZoomIn,
@@ -292,6 +293,7 @@ export function GraphView({
 
   // Store actions
   const { createConnection, deleteConnection, updatePaper: storeUpdatePaper, deletePaper } = useAppStore();
+  const graphCustomization = useAppStore((state) => state.settings.graphCustomization);
 
   // UI state
   const [activeRoles, setActiveRoles] = useState<Set<ThesisRole>>(
@@ -300,6 +302,7 @@ export function GraphView({
   const [showEdges, setShowEdges] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [showGraphSettings, setShowGraphSettings] = useState(false);
   const [layoutType, setLayoutType] = useState<LayoutType>('fcose');
   const [hoveredPaper, setHoveredPaper] = useState<Paper | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -752,7 +755,19 @@ export function GraphView({
     [elements, discoveryElements]
   );
 
-  // Professional stylesheet with smooth styling
+  // Graph customization helper constants
+  const LABEL_FONT_SIZES: Record<typeof graphCustomization.nodeLabelSize, number> = {
+    small: 9,
+    medium: 11,
+    large: 14,
+  };
+  const ARROW_SCALES: Record<typeof graphCustomization.edgeArrowSize, number> = {
+    small: 0.5,
+    medium: 0.7,
+    large: 1.0,
+  };
+
+  // Professional stylesheet with smooth styling (uses graphCustomization)
   const stylesheet = useMemo(
     () => [
       {
@@ -760,10 +775,10 @@ export function GraphView({
         style: {
           'background-color': '#64748b',
           'background-opacity': 0.95,
-          label: 'data(label)',
-          width: 48,
-          height: 48,
-          'font-size': 11,
+          label: graphCustomization.showNodeLabels === 'never' ? '' : 'data(label)',
+          width: graphCustomization.nodeBaseSize,
+          height: graphCustomization.nodeBaseSize,
+          'font-size': LABEL_FONT_SIZES[graphCustomization.nodeLabelSize],
           'font-weight': 500,
           'font-family': 'Inter, system-ui, -apple-system, sans-serif',
           'text-wrap': 'wrap',
@@ -775,7 +790,7 @@ export function GraphView({
           // Strong text outline for readability over other nodes (no background)
           'text-outline-color': '#ffffff',
           'text-outline-width': 3,
-          'text-outline-opacity': 0.9,
+          'text-outline-opacity': graphCustomization.showNodeLabels === 'hover' ? 0 : 0.9,
           // Transparent background - rely on outline for visibility
           'text-background-opacity': 0,
           'border-width': 2.5,
@@ -784,11 +799,18 @@ export function GraphView({
           'overlay-opacity': 0,
           // Ensure labels render on top
           'z-compound-depth': 'top',
-          'transition-property': 'background-color, border-color, width, height, opacity',
+          'transition-property': 'background-color, border-color, width, height, opacity, text-outline-opacity',
           'transition-duration': '0.2s',
           'transition-timing-function': 'ease-out',
         },
       },
+      // Show labels on hover when showNodeLabels is 'hover'
+      ...(graphCustomization.showNodeLabels === 'hover' ? [{
+        selector: 'node:active, node:selected, node.highlighted',
+        style: {
+          'text-outline-opacity': 0.9,
+        },
+      }] : []),
       // Role colors (default coloring)
       ...Object.entries(ROLE_COLORS).map(([role, colors]) => ({
         selector: `node[role="${role}"]`,
@@ -805,25 +827,25 @@ export function GraphView({
             },
           }]
         : []),
-      // Dynamic node sizing based on citations (Connected Papers style)
-      ...(layoutType === 'hybrid' && hybridConfig.nodeSizeMetric === 'citations'
+      // Dynamic node sizing based on citations (uses graphCustomization.nodeSizeMode)
+      ...(graphCustomization.nodeSizeMode === 'citations'
         ? [{
             selector: 'node[citationCount]',
             style: {
-              // mapData: citationCount 0-500 → size 40-72px
-              width: 'mapData(citationCount, 0, 500, 40, 72)',
-              height: 'mapData(citationCount, 0, 500, 40, 72)',
+              // mapData: citationCount 0-500 → size range from graphCustomization
+              width: `mapData(citationCount, 0, 500, ${graphCustomization.nodeSizeRange[0]}, ${graphCustomization.nodeSizeRange[1]})`,
+              height: `mapData(citationCount, 0, 500, ${graphCustomization.nodeSizeRange[0]}, ${graphCustomization.nodeSizeRange[1]})`,
             },
           }]
         : []),
       // Dynamic node sizing based on connections
-      ...(layoutType === 'hybrid' && hybridConfig.nodeSizeMetric === 'connections'
+      ...(graphCustomization.nodeSizeMode === 'connections'
         ? [{
             selector: 'node[connectionCount]',
             style: {
-              // mapData: connectionCount 0-10 → size 40-72px
-              width: 'mapData(connectionCount, 0, 10, 40, 72)',
-              height: 'mapData(connectionCount, 0, 10, 40, 72)',
+              // mapData: connectionCount 0-10 → size range from graphCustomization
+              width: `mapData(connectionCount, 0, 10, ${graphCustomization.nodeSizeRange[0]}, ${graphCustomization.nodeSizeRange[1]})`,
+              height: `mapData(connectionCount, 0, 10, ${graphCustomization.nodeSizeRange[0]}, ${graphCustomization.nodeSizeRange[1]})`,
             },
           }]
         : []),
@@ -913,17 +935,21 @@ export function GraphView({
           height: 56,
         },
       },
-      // Edge styling
+      // Edge styling (uses graphCustomization)
       {
         selector: 'edge',
         style: {
-          width: 1.5,
+          width: graphCustomization.edgeBaseWidth,
           'line-color': '#cbd5e1',
           'target-arrow-color': '#cbd5e1',
           'target-arrow-shape': 'triangle',
-          'arrow-scale': 0.7,
-          'curve-style': 'bezier',
-          opacity: 0.6,
+          'arrow-scale': ARROW_SCALES[graphCustomization.edgeArrowSize],
+          'curve-style': graphCustomization.edgeCurveStyle,
+          opacity: graphCustomization.edgeOpacity,
+          label: graphCustomization.showEdgeLabels ? 'data(type)' : '',
+          'font-size': 8,
+          'text-rotation': 'autorotate',
+          'text-margin-y': -8,
           'transition-property': 'opacity, line-color, width',
           'transition-duration': '0.15s',
         },
@@ -949,19 +975,25 @@ export function GraphView({
       },
       // Phantom edges (similarity-based for hybrid layout)
       // Thickness and opacity vary by similarity score for visual distinction
-      {
+      // Only show if graphCustomization.showPhantomEdges is true
+      ...(graphCustomization.showPhantomEdges ? [{
         selector: 'edge[?isPhantom]',
         style: {
           'line-style': 'dashed',
           'line-color': '#94a3b8',
           // mapData: similarity 0.25-1.0 → opacity scales with config
-          opacity: `mapData(similarity, 0.25, 1.0, ${hybridConfig.similarityEdgeOpacity * 0.5}, ${hybridConfig.similarityEdgeOpacity})`,
+          opacity: `mapData(similarity, 0.25, 1.0, ${graphCustomization.phantomEdgeOpacity * 0.5}, ${graphCustomization.phantomEdgeOpacity})`,
           // mapData: similarity 0.25-1.0 → width 1-3px
           width: 'mapData(similarity, 0.25, 1.0, 1, 3)',
           'target-arrow-shape': 'none',
-          'curve-style': 'bezier',
+          'curve-style': graphCustomization.edgeCurveStyle,
         },
-      },
+      }] : [{
+        selector: 'edge[?isPhantom]',
+        style: {
+          display: 'none',
+        },
+      }]),
       // Cluster edges (aggregated connections to/from clusters)
       // Thicker based on number of connections aggregated
       {
@@ -1023,7 +1055,7 @@ export function GraphView({
         },
       },
     ],
-    [hybridConfig.similarityEdgeOpacity, hybridConfig.nodeSizeMetric, hybridConfig.nodeColorMetric, layoutType]
+    [hybridConfig.similarityEdgeOpacity, hybridConfig.nodeSizeMetric, hybridConfig.nodeColorMetric, layoutType, graphCustomization]
   );
 
   // Role order for clustering layout (center to edge)
@@ -2438,7 +2470,7 @@ export function GraphView({
           <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="relative">
               <button
-                onClick={() => { setShowFilters(!showFilters); setShowLayoutPicker(false); }}
+                onClick={() => { setShowFilters(!showFilters); setShowLayoutPicker(false); setShowGraphSettings(false); }}
                 className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
                   showFilters
                     ? 'bg-stone-700 text-white'
@@ -2451,8 +2483,8 @@ export function GraphView({
             </div>
             <div className="relative">
               <button
-                onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowFilters(false); }}
-                className={`p-2.5 transition-all duration-200 ${
+                onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowFilters(false); setShowGraphSettings(false); }}
+                className={`p-2.5 transition-all duration-200 border-r border-slate-200 dark:border-slate-700 ${
                   showLayoutPicker
                     ? 'bg-stone-700 text-white'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
@@ -2460,6 +2492,19 @@ export function GraphView({
                 title="Layout Options"
               >
                 <LayoutGrid size={18} />
+              </button>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => { setShowGraphSettings(!showGraphSettings); setShowFilters(false); setShowLayoutPicker(false); }}
+                className={`p-2.5 transition-all duration-200 ${
+                  showGraphSettings
+                    ? 'bg-stone-700 text-white'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+                title="Graph Appearance Settings"
+              >
+                <Settings2 size={18} />
               </button>
             </div>
           </div>
@@ -2891,6 +2936,11 @@ export function GraphView({
             </div>
           )}
         </div>
+      )}
+
+      {/* Graph Settings Popover */}
+      {showGraphSettings && (
+        <GraphSettingsPopover onClose={() => setShowGraphSettings(false)} />
       )}
 
       {/* Tool Mode Banners - positioned below toolbar */}
