@@ -183,7 +183,7 @@ export function StandaloneReader({
   // Track current page based on scroll position
   useEffect(() => {
     const container = pdfContainerRef.current;
-    if (!container || totalPages <= 1) return;
+    if (!container || totalPages < 1) return;
 
     const handleScroll = () => {
       const scrollTop = container.scrollTop;
@@ -196,22 +196,20 @@ export function StandaloneReader({
 
       // Calculate current page based on scroll percentage
       const scrollPercentage = scrollTop / scrollHeight;
-      const estimatedPage = Math.floor(scrollPercentage * totalPages) + 1;
+      const estimatedPage = Math.floor(scrollPercentage * (totalPages - 1)) + 1;
       const clampedPage = Math.min(Math.max(1, estimatedPage), totalPages);
 
-      if (clampedPage !== currentPage) {
-        setCurrentPage(clampedPage);
-      }
+      setCurrentPage(clampedPage);
     };
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
     // Initial check
     handleScroll();
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [totalPages, currentPage]);
+  }, [totalPages]);
 
   // Convert annotations to highlight format for react-pdf-highlighter
   const highlights = useMemo((): IHighlight[] =>
