@@ -9,7 +9,7 @@ import {
   AreaHighlight,
   Popup,
 } from 'react-pdf-highlighter';
-import type { IHighlight, NewHighlight } from 'react-pdf-highlighter';
+import type { IHighlight } from 'react-pdf-highlighter';
 
 import '../../lib/pdfWorker';
 import {
@@ -26,7 +26,6 @@ import {
   Highlighter,
   Square,
   MessageSquare,
-  ChevronRight,
   ChevronLeft,
   Keyboard,
   Edit3,
@@ -188,19 +187,6 @@ export function StandaloneReader({
     })),
     [annotations]
   );
-
-  // Handle adding a new highlight
-  // Uses ref to get current activeColor to avoid stale closure issues with react-pdf-highlighter
-  const handleAddHighlight = useCallback((highlight: NewHighlight) => {
-    const newAnnotation: TempAnnotation = {
-      id: `highlight-${Date.now()}`,
-      color: activeColorRef.current,
-      position: highlight.position,
-      content: highlight.content,
-      comment: highlight.comment?.text,
-    };
-    setAnnotations(prev => [...prev, newAnnotation]);
-  }, []);
 
   // Handle deleting a highlight
   const handleDeleteHighlight = useCallback((highlightId: string) => {
