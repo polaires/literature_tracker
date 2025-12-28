@@ -23,6 +23,7 @@ import {
   MessageSquare,
   List,
   Network,
+  GripVertical,
 } from 'lucide-react';
 import { UsageMeter } from './UsageMeter';
 import { FindingsGraphView } from './FindingsGraphView';
@@ -138,6 +139,46 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   const [pdfText, setPdfText] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<ReturnType<typeof detectSections> | null>(null);
   const [expandedFindings, setExpandedFindings] = useState<Set<string>>(new Set());
+
+  // Resize state
+  const [panelWidth, setPanelWidth] = useState(320); // default w-80 = 320px
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  // Resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startWidth: panelWidth,
+    };
+  }, [panelWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+      // Calculate new width (dragging left increases width since panel is on right)
+      const delta = resizeRef.current.startX - e.clientX;
+      const newWidth = Math.min(Math.max(resizeRef.current.startWidth + delta, 280), 600);
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      resizeRef.current = null;
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Track whether auto-summarize has been triggered to prevent loops
   const hasAutoSummarizedRef = useRef(false);
@@ -355,7 +396,20 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   }
 
   return (
-    <div className={`fixed right-0 top-0 h-full w-80 bg-[#FDFBF7]/95 dark:bg-slate-900/95 backdrop-blur-sm border-l border-stone-200 dark:border-slate-700 shadow-xl z-40 flex flex-col ${className}`}>
+    <div
+      className={`fixed right-0 top-0 h-full bg-[#FDFBF7]/95 dark:bg-slate-900/95 backdrop-blur-sm border-l border-stone-200 dark:border-slate-700 shadow-xl z-40 flex flex-col ${className}`}
+      style={{ width: panelWidth }}
+    >
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleResizeStart}
+        className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-purple-500/20 transition-colors z-50 flex items-center justify-center group ${
+          isResizing ? 'bg-purple-500/30' : ''
+        }`}
+      >
+        <GripVertical className="w-3 h-3 text-stone-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
@@ -497,35 +551,29 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
                   >
                     Cancel
                   </button>
+                ) : existingGraph ? (
+                  // Only show "View Findings" when graph already exists (no re-extract)
+                  <button
+                    onClick={() => setActiveTab('findings')}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    View Findings
+                  </button>
                 ) : (
-                  <>
-                    <button
-                      onClick={handleExtraction}
-                      disabled={!pdfText || usageDisplay.isExhausted}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        !pdfText || usageDisplay.isExhausted
-                          ? 'bg-stone-200 dark:bg-slate-700 text-stone-400 dark:text-slate-500 cursor-not-allowed'
-                          : existingGraph
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {isExtracting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                      {existingGraph ? 'Re-extract' : 'Start Extraction'}
-                    </button>
-                    {existingGraph && (
-                      <button
-                        onClick={() => setActiveTab('findings')}
-                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30"
-                      >
-                        View Findings
-                      </button>
-                    )}
-                  </>
+                  // Show extract button when no graph exists
+                  <button
+                    onClick={handleExtraction}
+                    disabled={!pdfText || usageDisplay.isExhausted}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      !pdfText || usageDisplay.isExhausted
+                        ? 'bg-stone-200 dark:bg-slate-700 text-stone-400 dark:text-slate-500 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Start Extraction
+                  </button>
                 )}
               </div>
             </div>
@@ -691,49 +739,65 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
             {/* List view */}
             {existingGraph && findingsViewMode === 'list' && (
               <div className="space-y-2">
-                {existingGraph.findings.map((finding) => (
-                  <div
-                    key={finding.id}
-                    className={`border rounded-lg overflow-hidden ${
-                      finding.userVerified
-                        ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20'
-                        : 'border-stone-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <button
-                      onClick={() => toggleFinding(finding.id)}
-                      className="w-full flex items-start gap-2 p-3 text-left hover:bg-stone-50 dark:hover:bg-slate-800/50"
+                {existingGraph.findings.map((finding) => {
+                  // Short labels for finding types
+                  const typeLabel = {
+                    'central-finding': 'Central',
+                    'supporting-finding': 'Support',
+                    'methodological': 'Method',
+                    'limitation': 'Limit',
+                    'implication': 'Implic.',
+                    'open-question': 'Question',
+                    'background': 'Bgnd',
+                  }[finding.findingType] || finding.findingType;
+
+                  return (
+                    <div
+                      key={finding.id}
+                      className={`border rounded-lg overflow-hidden ${
+                        finding.userVerified
+                          ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20'
+                          : 'border-stone-200 dark:border-slate-700'
+                      }`}
                     >
-                      <span className={`px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0 ${
-                        finding.findingType === 'central-finding' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
-                        finding.findingType === 'supporting-finding' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
-                        finding.findingType === 'methodological' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
-                        finding.findingType === 'limitation' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
-                        finding.findingType === 'implication' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
-                        finding.findingType === 'open-question' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300' :
-                        'bg-stone-100 text-stone-700 dark:bg-slate-700 dark:text-slate-300'
-                      }`}>
-                        {finding.findingType.replace(/-/g, ' ')}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-700 dark:text-slate-300">
+                      <button
+                        onClick={() => toggleFinding(finding.id)}
+                        className="w-full p-3 text-left hover:bg-stone-50 dark:hover:bg-slate-800/50"
+                      >
+                        {/* Header row: badge + icons */}
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className={`px-1.5 py-0.5 text-[10px] rounded font-medium ${
+                            finding.findingType === 'central-finding' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+                            finding.findingType === 'supporting-finding' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
+                            finding.findingType === 'methodological' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
+                            finding.findingType === 'limitation' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                            finding.findingType === 'implication' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
+                            finding.findingType === 'open-question' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300' :
+                            'bg-stone-100 text-stone-700 dark:bg-slate-700 dark:text-slate-300'
+                          }`}>
+                            {typeLabel}
+                          </span>
+                          <span className="flex-1" />
+                          {finding.userVerified && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                          )}
+                          {expandedFindings.has(finding.id) ? (
+                            <ChevronUp className="w-4 h-4 text-stone-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-stone-400" />
+                          )}
+                        </div>
+                        {/* Title */}
+                        <p className="text-sm font-medium text-stone-700 dark:text-slate-300 leading-snug">
                           {finding.title}
                         </p>
+                        {/* Description preview when collapsed */}
                         {!expandedFindings.has(finding.id) && (
-                          <p className="text-xs text-stone-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                          <p className="text-xs text-stone-500 dark:text-slate-400 line-clamp-2 mt-1">
                             {finding.description}
                           </p>
                         )}
-                      </div>
-                      {finding.userVerified && (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      )}
-                      {expandedFindings.has(finding.id) ? (
-                        <ChevronUp className="w-4 h-4 text-stone-400 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-stone-400 flex-shrink-0" />
-                      )}
-                    </button>
+                      </button>
                     {expandedFindings.has(finding.id) && (
                       <div className="px-3 pb-3 space-y-3 border-t border-stone-100 dark:border-slate-700">
                         <p className="text-sm text-stone-600 dark:text-slate-300 mt-3">
@@ -783,7 +847,8 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
