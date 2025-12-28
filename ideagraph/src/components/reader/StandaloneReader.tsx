@@ -919,15 +919,12 @@ export function StandaloneReader({
 
         {/* AI Assistant Panel */}
         {showAIPanel && isAuthenticated && (
-          <div className="w-80 flex-shrink-0 bg-[#FDFBF7] dark:bg-slate-800 border-l border-stone-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <AIAssistantPanel
-              paper={tempPaper}
-              thesis={selectedThesis || undefined}
-              isOpen={true}
-              onToggle={() => setShowAIPanel(false)}
-              className="relative w-full h-full"
-            />
-          </div>
+          <AIAssistantPanel
+            paper={tempPaper}
+            thesis={selectedThesis || undefined}
+            isOpen={true}
+            onToggle={() => setShowAIPanel(false)}
+          />
         )}
 
       </div>
