@@ -1,9 +1,9 @@
 // AI Assistant Panel Component
-// Floating panel for AI-assisted PDF reading
+// Floating panel for AI-assisted PDF reading with tabbed interface
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
-  Brain,
+  Bot,
   FileText,
   Search,
   GitCompare,
@@ -16,8 +16,16 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  Sparkles,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  List,
+  Network,
 } from 'lucide-react';
 import { UsageMeter } from './UsageMeter';
+import { FindingsGraphView } from './FindingsGraphView';
 import { usageTracker, useUsage, calculateUsageDisplay } from '../../services/usage';
 import type { PDFAIAction } from '../../services/ai/prompts/pdfSummary';
 import type { Thesis, Paper } from '../../types';
@@ -30,6 +38,7 @@ import {
 } from '../../services/ai/prompts/pdfSummary';
 import { getAIProvider } from '../../services/ai/providers';
 import { useAppStore } from '../../store/useAppStore';
+import { usePaperExtraction } from '../../hooks/usePaperExtraction';
 
 interface AIAssistantPanelProps {
   paper: Paper;
@@ -87,6 +96,10 @@ interface AIResult {
   timestamp: string;
 }
 
+// Tab types for the panel
+type PanelTab = 'extraction' | 'chat' | 'findings';
+type FindingsViewMode = 'list' | 'graph';
+
 export const AIAssistantPanel = memo(function AIAssistantPanel({
   paper,
   thesis,
@@ -100,6 +113,22 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   // Use the proper React hook for usage tracking
   const usage = useUsage();
 
+  // Extraction hook
+  const {
+    isExtracting,
+    progress: extractionProgress,
+    error: extractionError,
+    extractPaper,
+    cancelExtraction,
+    getGraphForPaper,
+    verifyFinding,
+    clearError: clearExtractionError,
+  } = usePaperExtraction();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<PanelTab>('extraction');
+  const [findingsViewMode, setFindingsViewMode] = useState<FindingsViewMode>('list');
+
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<PDFAIAction | null>(null);
@@ -108,9 +137,13 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   const [copied, setCopied] = useState(false);
   const [pdfText, setPdfText] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<ReturnType<typeof detectSections> | null>(null);
+  const [expandedFindings, setExpandedFindings] = useState<Set<string>>(new Set());
 
   // Track whether auto-summarize has been triggered to prevent loops
   const hasAutoSummarizedRef = useRef(false);
+
+  // Get existing graph for this paper
+  const existingGraph = getGraphForPaper(paper.id);
 
   // Handle AI action - defined before effects that use it
   const handleAction = useCallback(async (action: PDFAIAction) => {
@@ -241,6 +274,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       hasAutoSummarizedRef.current = true;
       // Small delay to let the panel animate in
       const timer = setTimeout(() => {
+        setActiveTab('chat');
         handleAction('summarize');
       }, 500);
       return () => clearTimeout(timer);
@@ -261,6 +295,44 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
     }
   }, [currentResult]);
 
+  // Handle extraction
+  const handleExtraction = useCallback(async () => {
+    if (!pdfText) {
+      setError('Please wait for PDF to load before extracting.');
+      return;
+    }
+
+    clearExtractionError();
+
+    const result = await extractPaper({
+      id: paper.id,
+      title: paper.title,
+      abstract: paper.abstract || null,
+      authors: paper.authors.map(a => a.name),
+      year: paper.year,
+      journal: paper.journal || null,
+      pdfText: pdfText,
+    });
+
+    // Switch to findings tab after successful extraction
+    if (result) {
+      setActiveTab('findings');
+    }
+  }, [paper, pdfText, extractPaper, clearExtractionError]);
+
+  // Toggle finding expansion
+  const toggleFinding = useCallback((findingId: string) => {
+    setExpandedFindings(prev => {
+      const next = new Set(prev);
+      if (next.has(findingId)) {
+        next.delete(findingId);
+      } else {
+        next.add(findingId);
+      }
+      return next;
+    });
+  }, []);
+
   // Get action label
   const getActionLabel = (action: PDFAIAction): string => {
     return ACTION_BUTTONS.find(b => b.action === action)?.label || action;
@@ -276,7 +348,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         className={`fixed right-0 top-1/2 -translate-y-1/2 z-40 flex items-center gap-2 px-3 py-3 bg-stone-800 hover:bg-stone-900 text-white rounded-l-lg shadow-lg transition-all ${className}`}
         title="Open AI Assistant"
       >
-        <Brain className="w-5 h-5" />
+        <Bot className="w-5 h-5" />
         <ChevronLeft className="w-4 h-4" />
       </button>
     );
@@ -287,7 +359,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-stone-700 dark:text-stone-400" />
+          <Bot className="w-5 h-5 text-stone-700 dark:text-stone-400" />
           <h3 className="font-semibold text-stone-800 dark:text-white">AI Assistant</h3>
         </div>
         <div className="flex items-center gap-1">
@@ -315,92 +387,426 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         <UsageMeter usage={usageDisplay} variant="compact" />
       </div>
 
-      {/* Action buttons */}
-      <div className="p-3 space-y-1.5 border-b border-stone-100 dark:border-slate-800">
-        {ACTION_BUTTONS.map((btn) => {
-          const isDisabled = isLoading || usageDisplay.isExhausted ||
-            (btn.action === 'thesis-relevance' && !thesis);
-          const isActive = loadingAction === btn.action;
-
-          return (
-            <button
-              key={btn.action}
-              onClick={() => handleAction(btn.action)}
-              disabled={isDisabled}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                isActive
-                  ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-800 dark:text-stone-300'
-                  : isDisabled
-                  ? 'bg-stone-50 dark:bg-slate-800/50 text-stone-400 dark:text-slate-500 cursor-not-allowed'
-                  : 'hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-700 dark:text-slate-300'
-              }`}
-              title={btn.description}
-            >
-              {isActive ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                btn.icon
-              )}
-              <span className="text-sm font-medium">{btn.label}</span>
-            </button>
-          );
-        })}
+      {/* Tab navigation */}
+      <div className="flex border-b border-stone-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveTab('extraction')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === 'extraction'
+              ? 'text-purple-700 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-50/50 dark:bg-purple-900/20'
+              : 'text-stone-500 dark:text-slate-400 hover:text-stone-700 dark:hover:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="hidden sm:inline">Extract</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === 'chat'
+              ? 'text-stone-800 dark:text-white border-b-2 border-stone-800 dark:border-white bg-stone-50/50 dark:bg-slate-800/50'
+              : 'text-stone-500 dark:text-slate-400 hover:text-stone-700 dark:hover:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span className="hidden sm:inline">Chat</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('findings')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors relative ${
+            activeTab === 'findings'
+              ? 'text-green-700 dark:text-green-400 border-b-2 border-green-500 bg-green-50/50 dark:bg-green-900/20'
+              : 'text-stone-500 dark:text-slate-400 hover:text-stone-700 dark:hover:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <List className="w-4 h-4" />
+          <span className="hidden sm:inline">Findings</span>
+          {existingGraph && existingGraph.findings.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-green-500 text-white rounded-full">
+              {existingGraph.findings.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Result area */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {error && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
+      {/* Tab content area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Global errors */}
+        {(error || extractionError) && (
+          <div className="m-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <p>{error}</p>
+            <p>{error || extractionError}</p>
           </div>
         )}
 
-        {isLoading && !currentResult && (
-          <div className="flex flex-col items-center justify-center py-8 text-stone-500 dark:text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-sm">Analyzing paper...</p>
-          </div>
-        )}
+        {/* ===== EXTRACTION TAB ===== */}
+        {activeTab === 'extraction' && (
+          <div className="p-4 space-y-4">
+            {/* Extraction status card */}
+            <div className={`p-4 rounded-lg border ${
+              existingGraph
+                ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
+                : 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20'
+            }`}>
+              <div className="flex items-center gap-3 mb-3">
+                {existingGraph ? (
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                ) : (
+                  <Sparkles className="w-8 h-8 text-purple-500" />
+                )}
+                <div>
+                  <h4 className={`font-semibold ${
+                    existingGraph ? 'text-green-800 dark:text-green-300' : 'text-purple-800 dark:text-purple-300'
+                  }`}>
+                    {existingGraph ? 'Knowledge Graph Ready' : 'Extract Knowledge Graph'}
+                  </h4>
+                  <p className="text-sm text-stone-600 dark:text-slate-400">
+                    {existingGraph
+                      ? `${existingGraph.findings.length} findings extracted`
+                      : 'AI will analyze this paper to extract structured findings'}
+                  </p>
+                </div>
+              </div>
 
-        {currentResult && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-stone-500 dark:text-slate-400 uppercase tracking-wide">
-                {getActionLabel(currentResult.action)}
-              </span>
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-stone-500 hover:text-stone-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800 rounded"
-                title="Copy to clipboard"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3" />
-                    Copied
-                  </>
+              {/* Extraction progress */}
+              {isExtracting && extractionProgress && (
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-purple-700 dark:text-purple-300">
+                      Stage {extractionProgress.currentStage}/3: {extractionProgress.stageDescription}
+                    </span>
+                    <span className="text-purple-600 dark:text-purple-400">
+                      {extractionProgress.overallProgress}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-2">
+                    <div
+                      className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${extractionProgress.overallProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                {isExtracting ? (
+                  <button
+                    onClick={cancelExtraction}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                  >
+                    Cancel
+                  </button>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" />
-                    Copy
+                    <button
+                      onClick={handleExtraction}
+                      disabled={!pdfText || usageDisplay.isExhausted}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        !pdfText || usageDisplay.isExhausted
+                          ? 'bg-stone-200 dark:bg-slate-700 text-stone-400 dark:text-slate-500 cursor-not-allowed'
+                          : existingGraph
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      }`}
+                    >
+                      {isExtracting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {existingGraph ? 'Re-extract' : 'Start Extraction'}
+                    </button>
+                    {existingGraph && (
+                      <button
+                        onClick={() => setActiveTab('findings')}
+                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30"
+                      >
+                        View Findings
+                      </button>
+                    )}
                   </>
                 )}
-              </button>
-            </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <div className="text-sm text-stone-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                {currentResult.content}
               </div>
+            </div>
+
+            {/* Info section */}
+            <div className="text-sm text-stone-500 dark:text-slate-400 space-y-2">
+              <p className="font-medium text-stone-600 dark:text-slate-300">What gets extracted:</p>
+              <ul className="space-y-1 text-xs list-disc pl-4">
+                <li>Central findings and key results</li>
+                <li>Methodology and techniques</li>
+                <li>Limitations and open questions</li>
+                <li>Connections between findings</li>
+                {thesis && <li>Relevance to your thesis</li>}
+              </ul>
             </div>
           </div>
         )}
 
-        {!isLoading && !currentResult && !error && (
-          <div className="flex flex-col items-center justify-center py-8 text-stone-400 dark:text-slate-500">
-            <Brain className="w-12 h-12 mb-3 opacity-50" />
-            <p className="text-sm text-center">
-              Select an action above to get AI-powered insights about this paper
-            </p>
+        {/* ===== CHAT TAB ===== */}
+        {activeTab === 'chat' && (
+          <div className="p-4 space-y-4">
+            {/* Action buttons */}
+            <div className="space-y-1.5">
+              {ACTION_BUTTONS.map((btn) => {
+                const isDisabled = isLoading || usageDisplay.isExhausted ||
+                  (btn.action === 'thesis-relevance' && !thesis);
+                const isActive = loadingAction === btn.action;
+
+                return (
+                  <button
+                    key={btn.action}
+                    onClick={() => handleAction(btn.action)}
+                    disabled={isDisabled}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                      isActive
+                        ? 'bg-stone-100 dark:bg-stone-800/40 text-stone-800 dark:text-stone-300'
+                        : isDisabled
+                        ? 'bg-stone-50 dark:bg-slate-800/50 text-stone-400 dark:text-slate-500 cursor-not-allowed'
+                        : 'hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-700 dark:text-slate-300'
+                    }`}
+                    title={btn.description}
+                  >
+                    {isActive ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      btn.icon
+                    )}
+                    <span className="text-sm font-medium">{btn.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-stone-200 dark:bg-slate-700" />
+
+            {/* Results area */}
+            <div>
+              {isLoading && !currentResult && (
+                <div className="flex flex-col items-center justify-center py-8 text-stone-500 dark:text-slate-400">
+                  <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                  <p className="text-sm">Analyzing paper...</p>
+                </div>
+              )}
+
+              {currentResult && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-stone-500 dark:text-slate-400 uppercase tracking-wide">
+                      {getActionLabel(currentResult.action)}
+                    </span>
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-stone-500 hover:text-stone-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-stone-100 dark:hover:bg-slate-800 rounded"
+                      title="Copy to clipboard"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="text-sm text-stone-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      {currentResult.content}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isLoading && !currentResult && (
+                <div className="flex flex-col items-center justify-center py-8 text-stone-400 dark:text-slate-500">
+                  <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
+                  <p className="text-sm text-center">
+                    Select an action above to get AI-powered insights
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== FINDINGS TAB ===== */}
+        {activeTab === 'findings' && (
+          <div className="p-4">
+            {/* View mode toggle */}
+            {existingGraph && existingGraph.findings.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-medium text-stone-500 dark:text-slate-400 uppercase tracking-wide">
+                  {existingGraph.findings.length} Findings
+                </span>
+                <div className="flex items-center gap-1 p-1 bg-stone-100 dark:bg-slate-800 rounded-lg">
+                  <button
+                    onClick={() => setFindingsViewMode('list')}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded ${
+                      findingsViewMode === 'list'
+                        ? 'bg-white dark:bg-slate-700 text-stone-800 dark:text-white shadow-sm'
+                        : 'text-stone-500 dark:text-slate-400 hover:text-stone-700'
+                    }`}
+                  >
+                    <List className="w-3 h-3" />
+                    List
+                  </button>
+                  <button
+                    onClick={() => setFindingsViewMode('graph')}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded ${
+                      findingsViewMode === 'graph'
+                        ? 'bg-white dark:bg-slate-700 text-stone-800 dark:text-white shadow-sm'
+                        : 'text-stone-500 dark:text-slate-400 hover:text-stone-700'
+                    }`}
+                  >
+                    <Network className="w-3 h-3" />
+                    Graph
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* No findings yet */}
+            {!existingGraph && (
+              <div className="flex flex-col items-center justify-center py-12 text-stone-400 dark:text-slate-500">
+                <Sparkles className="w-12 h-12 mb-3 opacity-50" />
+                <p className="text-sm text-center mb-4">
+                  No findings extracted yet
+                </p>
+                <button
+                  onClick={() => setActiveTab('extraction')}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Extract Knowledge Graph
+                </button>
+              </div>
+            )}
+
+            {/* List view */}
+            {existingGraph && findingsViewMode === 'list' && (
+              <div className="space-y-2">
+                {existingGraph.findings.map((finding) => (
+                  <div
+                    key={finding.id}
+                    className={`border rounded-lg overflow-hidden ${
+                      finding.userVerified
+                        ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20'
+                        : 'border-stone-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <button
+                      onClick={() => toggleFinding(finding.id)}
+                      className="w-full flex items-start gap-2 p-3 text-left hover:bg-stone-50 dark:hover:bg-slate-800/50"
+                    >
+                      <span className={`px-1.5 py-0.5 text-xs rounded font-medium flex-shrink-0 ${
+                        finding.findingType === 'central-finding' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+                        finding.findingType === 'supporting-finding' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
+                        finding.findingType === 'methodological' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' :
+                        finding.findingType === 'limitation' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                        finding.findingType === 'implication' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' :
+                        finding.findingType === 'open-question' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300' :
+                        'bg-stone-100 text-stone-700 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {finding.findingType.replace(/-/g, ' ')}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-stone-700 dark:text-slate-300">
+                          {finding.title}
+                        </p>
+                        {!expandedFindings.has(finding.id) && (
+                          <p className="text-xs text-stone-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                            {finding.description}
+                          </p>
+                        )}
+                      </div>
+                      {finding.userVerified && (
+                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      )}
+                      {expandedFindings.has(finding.id) ? (
+                        <ChevronUp className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      )}
+                    </button>
+                    {expandedFindings.has(finding.id) && (
+                      <div className="px-3 pb-3 space-y-3 border-t border-stone-100 dark:border-slate-700">
+                        <p className="text-sm text-stone-600 dark:text-slate-300 mt-3">
+                          {finding.description}
+                        </p>
+                        {finding.directQuotes && finding.directQuotes.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-stone-500 dark:text-slate-400">Evidence:</span>
+                            <blockquote className="mt-1 pl-3 border-l-2 border-stone-300 dark:border-slate-600 text-xs italic text-stone-600 dark:text-slate-400">
+                              "{finding.directQuotes[0].text}"
+                            </blockquote>
+                          </div>
+                        )}
+                        {finding.thesisRelevance?.reasoning && (
+                          <div>
+                            <span className="text-xs font-medium text-stone-500 dark:text-slate-400">Thesis Relevance:</span>
+                            <p className="text-xs text-stone-600 dark:text-slate-400 mt-1">
+                              {finding.thesisRelevance.reasoning}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              verifyFinding(existingGraph.id, finding.id, !finding.userVerified);
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              finding.userVerified
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300'
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {finding.userVerified ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Verified
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                Mark Verified
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Graph view */}
+            {existingGraph && findingsViewMode === 'graph' && (
+              <FindingsGraphView
+                findings={existingGraph.findings}
+                connections={existingGraph.intraPaperConnections || []}
+                onFindingClick={(findingId) => {
+                  // Expand the finding in list view
+                  setExpandedFindings(prev => {
+                    const next = new Set(prev);
+                    next.add(findingId);
+                    return next;
+                  });
+                }}
+                onFindingVerify={(findingId, verified) => {
+                  verifyFinding(existingGraph.id, findingId, verified);
+                }}
+                compact={true}
+                showTooltip={true}
+              />
+            )}
           </div>
         )}
       </div>

@@ -5,12 +5,15 @@ import fcose from 'cytoscape-fcose';
 import type { Core, ElementDefinition } from 'cytoscape';
 import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus, HybridLayoutConfig } from '../../types';
 import { DEFAULT_HYBRID_CONFIG } from '../../types';
+import type { FindingType, IntraPaperConnectionType, PaperIdeaGraph } from '../../types/paperGraph';
+import { FINDING_TYPE_COLORS, INTRA_CONNECTION_COLORS } from '../pdf/FindingsGraphView';
 import { generatePhantomEdges, generateAutoClusters, type PhantomEdge, type AutoCluster } from '../../utils/similarityEngine';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
 import { getSimilarPapers, fetchPaperByDOI } from '../../services/api/semanticScholar';
 import { QuickAddModal } from './QuickAddModal';
 import { DiscoveryPanel } from './DiscoveryPanel';
 import { GraphSettingsPopover } from './GraphSettingsPopover';
+import { PaperIdeaGraphPanel } from './PaperIdeaGraphPanel';
 import { useAppStore } from '../../store/useAppStore';
 import {
   ZoomIn,
@@ -42,6 +45,7 @@ import {
   BookOpen,
   RotateCcw,
   Circle,
+  Network,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -294,6 +298,7 @@ export function GraphView({
   // Store actions
   const { createConnection, deleteConnection, updatePaper: storeUpdatePaper, deletePaper } = useAppStore();
   const graphCustomization = useAppStore((state) => state.settings.graphCustomization);
+  const getPaperGraphForPaper = useAppStore((state) => state.getPaperGraphForPaper);
 
   // UI state
   const [activeRoles, setActiveRoles] = useState<Set<ThesisRole>>(
@@ -367,6 +372,13 @@ export function GraphView({
   const [enableAutoClustering, setEnableAutoClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.45);
   const [expandedClusterIds, setExpandedClusterIds] = useState<Set<string>>(new Set());
+
+  // Paper findings expansion (inline knowledge graph view)
+  const [expandedPaperIds, setExpandedPaperIds] = useState<Set<string>>(new Set());
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+
+  // Knowledge graph panel (dedicated side panel for viewing paper findings)
+  const [ideaGraphPanelPaperId, setIdeaGraphPanelPaperId] = useState<string | null>(null);
 
   // Reset expanded cluster IDs when threshold changes (cluster IDs change)
   useEffect(() => {
@@ -749,10 +761,90 @@ export function GraphView({
     return [...nodes, ...edges];
   }, [discoveryState, existingSemanticScholarIds, papers, getSSPaperLabel]);
 
-  // Merge main elements with discovery elements
+  // Finding elements for expanded papers (inline knowledge graph)
+  const findingElements = useMemo<ElementDefinition[]>(() => {
+    if (expandedPaperIds.size === 0) return [];
+
+    const findingNodes: ElementDefinition[] = [];
+    const findingEdges: ElementDefinition[] = [];
+
+    expandedPaperIds.forEach((paperId) => {
+      const graph = getPaperGraphForPaper(paperId);
+      if (!graph || graph.findings.length === 0) return;
+
+      // Get the paper node position (we'll position findings around it)
+      // For now, add findings as connected nodes - layout will position them
+      graph.findings.forEach((finding, index) => {
+        const findingNodeId = `finding_${finding.id}`;
+        findingNodes.push({
+          data: {
+            id: findingNodeId,
+            label: finding.title.length > 20 ? finding.title.slice(0, 20) + '...' : finding.title,
+            fullLabel: finding.title,
+            isFinding: true,
+            parentPaperId: paperId,
+            findingType: finding.findingType,
+            color: FINDING_TYPE_COLORS[finding.findingType],
+            confidence: finding.confidence,
+            userVerified: finding.userVerified,
+            order: index,
+            description: finding.description,
+          },
+        });
+
+        // Edge from paper to finding
+        findingEdges.push({
+          data: {
+            id: `paper_to_finding_${finding.id}`,
+            source: paperId,
+            target: findingNodeId,
+            isPaperToFinding: true,
+          },
+        });
+      });
+
+      // Add intra-paper connections between findings
+      if (graph.intraPaperConnections) {
+        graph.intraPaperConnections.forEach((conn) => {
+          findingEdges.push({
+            data: {
+              id: `intra_${conn.id}`,
+              source: `finding_${conn.fromFindingId}`,
+              target: `finding_${conn.toFindingId}`,
+              isIntraPaper: true,
+              connectionType: conn.connectionType,
+              color: INTRA_CONNECTION_COLORS[conn.connectionType],
+              explanation: conn.explanation,
+            },
+          });
+        });
+      }
+    });
+
+    return [...findingNodes, ...findingEdges];
+  }, [expandedPaperIds, getPaperGraphForPaper]);
+
+  // Toggle paper findings expansion
+  const togglePaperExpansion = useCallback((paperId: string) => {
+    setExpandedPaperIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(paperId)) {
+        next.delete(paperId);
+      } else {
+        // Check if paper has findings before expanding
+        const graph = getPaperGraphForPaper(paperId);
+        if (graph && graph.findings.length > 0) {
+          next.add(paperId);
+        }
+      }
+      return next;
+    });
+  }, [getPaperGraphForPaper]);
+
+  // Merge main elements with discovery and finding elements
   const allElements = useMemo(
-    () => [...elements, ...discoveryElements],
-    [elements, discoveryElements]
+    () => [...elements, ...discoveryElements, ...findingElements],
+    [elements, discoveryElements, findingElements]
   );
 
   // Graph customization helper constants
@@ -896,6 +988,40 @@ export function GraphView({
           'font-weight': 600,
         },
       },
+      // Finding nodes (inline expansion)
+      {
+        selector: 'node[?isFinding]',
+        style: {
+          'background-color': 'data(color)',
+          'background-opacity': 'mapData(confidence, 0, 1, 0.5, 1)',
+          width: 28,
+          height: 28,
+          'border-width': 2,
+          'border-color': '#d1d5db',
+          'font-size': 8,
+          'text-valign': 'bottom',
+          'text-margin-y': 4,
+          'text-max-width': '60px',
+        },
+      },
+      // Verified finding nodes
+      {
+        selector: 'node[?isFinding][?userVerified]',
+        style: {
+          'border-color': '#22c55e',
+          'border-width': 3,
+        },
+      },
+      // Central findings are slightly larger
+      {
+        selector: 'node[isFinding][findingType = "central-finding"]',
+        style: {
+          width: 36,
+          height: 36,
+          'font-size': 9,
+          'font-weight': 600,
+        },
+      },
       // Selected nodes (for clustering)
       {
         selector: 'node[?isSelected]',
@@ -1009,6 +1135,52 @@ export function GraphView({
           'target-arrow-shape': 'triangle',
           'arrow-scale': 0.8,
           'curve-style': 'bezier',
+        },
+      },
+      // Paper-to-finding edges (expansion connections)
+      {
+        selector: 'edge[?isPaperToFinding]',
+        style: {
+          'line-style': 'dotted',
+          'line-color': '#a8a29e',
+          opacity: 0.4,
+          width: 1,
+          'target-arrow-shape': 'none',
+          'curve-style': 'bezier',
+        },
+      },
+      // Intra-paper connection edges (between findings)
+      {
+        selector: 'edge[?isIntraPaper]',
+        style: {
+          'line-color': 'data(color)',
+          'target-arrow-color': 'data(color)',
+          'target-arrow-shape': 'triangle',
+          'arrow-scale': 0.6,
+          width: 1.5,
+          opacity: 0.7,
+          'curve-style': 'bezier',
+        },
+      },
+      // Contradicts edge style (dashed)
+      {
+        selector: 'edge[isIntraPaper][connectionType = "contradicts"]',
+        style: {
+          'line-style': 'dashed',
+        },
+      },
+      // Requires edge style (dotted)
+      {
+        selector: 'edge[isIntraPaper][connectionType = "requires"]',
+        style: {
+          'line-style': 'dotted',
+        },
+      },
+      // Qualifies edge style (dashed)
+      {
+        selector: 'edge[isIntraPaper][connectionType = "qualifies"]',
+        style: {
+          'line-style': 'dashed',
         },
       },
       // Hover/selected states
@@ -2155,12 +2327,38 @@ export function GraphView({
         setHoveredPaper(null);
       });
 
-      cy.on('dbltap', () => {
-        cy.animate({
-          fit: { eles: cy.elements(), padding: 50 },
-          duration: 300,
-          easing: 'ease-out-cubic',
-        });
+      // Double-click on paper node to expand/collapse findings
+      cy.on('dbltap', 'node', (event) => {
+        const nodeId = event.target.id();
+        const nodeData = event.target.data();
+
+        // Skip for special nodes
+        if (nodeId.startsWith('discovery_') || nodeId.startsWith('cluster_') || nodeData.isAutoCluster) {
+          return;
+        }
+
+        // If it's a finding node, show details (don't propagate)
+        if (nodeData.isFinding) {
+          setSelectedFindingId(nodeId.replace('finding_', ''));
+          event.stopPropagation();
+          return;
+        }
+
+        // For regular paper nodes, toggle expansion
+        togglePaperExpansion(nodeId);
+        event.stopPropagation();
+      });
+
+      // Double-click on canvas to fit view
+      cy.on('dbltap', (event) => {
+        // Only fit if clicking on canvas (not a node or edge)
+        if (event.target === cy) {
+          cy.animate({
+            fit: { eles: cy.elements(), padding: 50 },
+            duration: 300,
+            easing: 'ease-out-cubic',
+          });
+        }
       });
 
       // Box selection support - works in select mode OR pointer mode with Shift key
@@ -2250,6 +2448,7 @@ export function GraphView({
       handleClusterNodeClick,
       handleAutoClusterNodeClick,
       toggleNodeSelection,
+      togglePaperExpansion,
       focusedNodeId,
     ]
   );
@@ -3235,6 +3434,24 @@ export function GraphView({
                 <Compass size={14} />
                 Find Similar
               </button>
+              <button
+                onClick={() => {
+                  if (contextMenu.targetId) {
+                    const graph = getPaperGraphForPaper(contextMenu.targetId);
+                    if (graph && graph.findings.length > 0) {
+                      setIdeaGraphPanelPaperId(contextMenu.targetId);
+                    } else {
+                      // Toggle inline expansion if no dedicated panel
+                      togglePaperExpansion(contextMenu.targetId);
+                    }
+                  }
+                  setContextMenu(prev => ({ ...prev, visible: false }));
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <Network size={14} />
+                View Knowledge Graph
+              </button>
               <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
               <button
                 onClick={() => {
@@ -3440,6 +3657,20 @@ export function GraphView({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Paper Knowledge Graph Panel */}
+      {ideaGraphPanelPaperId && (
+        <div className="absolute right-0 top-0 h-full w-80 z-30 shadow-xl">
+          <PaperIdeaGraphPanel
+            paperId={ideaGraphPanelPaperId}
+            onClose={() => setIdeaGraphPanelPaperId(null)}
+            onOpenPaper={(paperId) => {
+              onPaperSelect(paperId);
+              setIdeaGraphPanelPaperId(null);
+            }}
+          />
         </div>
       )}
     </div>
