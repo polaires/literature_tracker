@@ -386,7 +386,7 @@ export class PaperGraphExtractor {
 
     const options: CompletionOptions = {
       systemPrompt,
-      maxTokens: 4096,
+      maxTokens: 8192, // Increased for detailed extractions with many findings/tables
       temperature: 0.3,
       signal: this.abortController?.signal,
     };

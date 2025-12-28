@@ -110,7 +110,15 @@ class UsageTracker {
       try {
         const serverUsage = await fetchCurrentUsage();
         if (serverUsage) {
-          this.usage = serverUsage;
+          // Ensure all required fields exist with defaults
+          this.usage = {
+            userId: serverUsage.userId ?? userId,
+            totalCredits: serverUsage.totalCredits ?? 100,
+            usedCredits: serverUsage.usedCredits ?? 0,
+            resetDate: serverUsage.resetDate ?? null,
+            lastUpdated: serverUsage.lastUpdated ?? new Date().toISOString(),
+            history: Array.isArray(serverUsage.history) ? serverUsage.history : [],
+          };
           this.saveToStorage();
         }
       } catch (error) {
@@ -193,9 +201,14 @@ class UsageTracker {
       error,
     };
 
-    // Update local state
-    this.usage.usedCredits += creditCost;
+    // Update local state (with defensive checks)
+    this.usage.usedCredits = (this.usage.usedCredits ?? 0) + creditCost;
     this.usage.lastUpdated = new Date().toISOString();
+
+    // Ensure history array exists before adding entry
+    if (!Array.isArray(this.usage.history)) {
+      this.usage.history = [];
+    }
     this.usage.history.unshift(historyEntry);
 
     // Keep only last 100 history entries locally

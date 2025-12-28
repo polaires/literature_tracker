@@ -19,7 +19,7 @@ import {
   ChevronDown,
   Clock,
   FileText,
-  Brain,
+  Bot,
   Loader2,
   Check,
   X,
@@ -653,7 +653,7 @@ export function StandaloneReader({
                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200'
               }`}
             >
-              <Brain className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
               <span className="text-sm">AI</span>
             </button>
           ) : (
@@ -662,7 +662,7 @@ export function StandaloneReader({
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
               title="Sign in to use AI features"
             >
-              <Brain className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
               <span className="text-sm">AI</span>
             </button>
           )}
@@ -929,6 +929,7 @@ export function StandaloneReader({
             />
           </div>
         )}
+
       </div>
 
       {/* Bottom action bar */}
@@ -1207,7 +1208,7 @@ export function StandaloneReader({
                   </div>
                   <div className="flex items-center justify-between py-1">
                     <div className="flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-stone-500" />
+                      <Bot className="w-4 h-4 text-stone-500" />
                       <span className="text-sm text-stone-700">AI Assistant</span>
                     </div>
                     <kbd className="px-2 py-0.5 text-xs font-mono bg-stone-100 border border-stone-200 rounded text-stone-600">

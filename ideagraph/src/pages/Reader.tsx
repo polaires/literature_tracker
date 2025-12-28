@@ -60,7 +60,8 @@ export function Reader() {
             : undefined;
 
           setUploadedPDF({
-            id: stored.id,
+            // Use READER_SESSION_ID so AIAssistantPanel can find the PDF
+            id: READER_SESSION_ID,
             filename: stored.filename,
             fileSize: stored.fileSize,
             pdfData: pdfDataForViewer,
@@ -116,16 +117,15 @@ export function Reader() {
         ? estimateReadingTime(extraction.wordCount)
         : undefined;
 
-      const pdfId = crypto.randomUUID();
-
       // Store in IndexedDB for persistence across refreshes
       // First clear any existing session PDF
       await pdfStorage.deletePDFsByPaperId(READER_SESSION_ID);
-      // Store the new PDF
+      // Store the new PDF with READER_SESSION_ID as paperId
       await pdfStorage.storePDF(READER_SESSION_ID, file);
 
       setUploadedPDF({
-        id: pdfId,
+        // Use READER_SESSION_ID so AIAssistantPanel can find the PDF
+        id: READER_SESSION_ID,
         filename: file.name,
         fileSize: file.size,
         pdfData,

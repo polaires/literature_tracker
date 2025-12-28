@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Users, Settings, Cloud, Trash2, RefreshCw, Shield, Ban, Check, Zap } from 'lucide-react';
 import { getToken } from '../../services/auth/api';
 import { UsageTab } from '../admin/UsageTab';
@@ -145,9 +146,15 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     fetchSettings();
   }, []);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-800"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
           <div className="flex items-center gap-3">
@@ -412,6 +419,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -34,12 +34,20 @@ export abstract class BaseAIProvider implements AIProvider {
       // Log the raw response for debugging
       console.log('[BaseProvider] Raw response text:', completion.text.substring(0, 500));
 
+      // Pre-process: Fix common LLM JSON errors
+      // Pattern: "text value" (annotation) -> "text value (annotation)"
+      // This happens when LLMs add page references outside the string
+      let processedText = completion.text.replace(
+        /"([^"]*?)"\s*\(([^)]+)\)\s*([,}\]])/g,
+        '"$1 ($2)"$3'
+      );
+
       // Try to extract JSON from the response
       // First, try to find a JSON array (common for suggestions)
       let jsonString: string | null = null;
 
       // Method 1: Try direct parse (if response is pure JSON)
-      const trimmedText = completion.text.trim();
+      const trimmedText = processedText.trim();
       if (trimmedText.startsWith('[') || trimmedText.startsWith('{')) {
         try {
           const data = JSON.parse(trimmedText) as T;
@@ -50,18 +58,26 @@ export abstract class BaseAIProvider implements AIProvider {
       }
 
       // Method 2: Look for JSON code block (```json ... ```)
-      const codeBlockMatch = completion.text.match(/```(?:json)?\s*([\[\{][\s\S]*?[\]\}])\s*```/);
+      const codeBlockMatch = processedText.match(/```(?:json)?\s*([\[\{][\s\S]*?[\]\}])\s*```/);
       if (codeBlockMatch) {
         jsonString = codeBlockMatch[1];
       }
 
       // Method 3: Find JSON by bracket matching
       if (!jsonString) {
-        jsonString = this.extractValidJSON(completion.text);
+        jsonString = this.extractValidJSON(processedText);
+      }
+
+      // Method 4: Try to repair truncated JSON
+      if (!jsonString) {
+        jsonString = this.repairTruncatedJSON(processedText);
+        if (jsonString) {
+          console.log('[BaseProvider] Repaired truncated JSON successfully');
+        }
       }
 
       if (!jsonString) {
-        console.error('[BaseProvider] No JSON found in response:', completion.text);
+        console.error('[BaseProvider] No JSON found in response:', processedText);
         throw new Error('No JSON found in response');
       }
 
@@ -272,6 +288,199 @@ export abstract class BaseAIProvider implements AIProvider {
             // Not valid JSON, continue searching
             return null;
           }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Attempt to repair truncated JSON by closing unclosed brackets
+   * This handles cases where the LLM response was cut off due to token limits
+   */
+  private repairTruncatedJSON(text: string): string | null {
+    // Find the first [ or {
+    const startArray = text.indexOf('[');
+    const startObject = text.indexOf('{');
+
+    if (startArray === -1 && startObject === -1) {
+      return null;
+    }
+
+    const startIndex = startArray === -1 ? startObject :
+                       startObject === -1 ? startArray :
+                       Math.min(startArray, startObject);
+
+    // Extract from start to end
+    let jsonText = text.substring(startIndex);
+
+    // Track what brackets need to be closed
+    const bracketStack: string[] = [];
+    let inString = false;
+    let escape = false;
+
+    for (let i = 0; i < jsonText.length; i++) {
+      const char = jsonText[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === '{' || char === '[') {
+        bracketStack.push(char === '{' ? '}' : ']');
+      } else if (char === '}' || char === ']') {
+        if (bracketStack.length > 0) {
+          bracketStack.pop();
+        }
+      }
+    }
+
+    // If we're in a string, close it
+    if (inString) {
+      jsonText += '"';
+    }
+
+    // Try to find a good truncation point (end of a complete property)
+    // Look for the last complete value ending with , or : followed by a value
+    const lastCompleteIndex = this.findLastCompleteJsonIndex(jsonText);
+    if (lastCompleteIndex > 0) {
+      jsonText = jsonText.substring(0, lastCompleteIndex);
+
+      // Recalculate bracket stack for truncated text
+      bracketStack.length = 0;
+      inString = false;
+      escape = false;
+
+      for (let i = 0; i < jsonText.length; i++) {
+        const char = jsonText[i];
+
+        if (escape) {
+          escape = false;
+          continue;
+        }
+
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
+
+        if (inString) continue;
+
+        if (char === '{' || char === '[') {
+          bracketStack.push(char === '{' ? '}' : ']');
+        } else if (char === '}' || char === ']') {
+          if (bracketStack.length > 0) {
+            bracketStack.pop();
+          }
+        }
+      }
+    }
+
+    // Close all unclosed brackets
+    const closingBrackets = bracketStack.reverse().join('');
+    jsonText += closingBrackets;
+
+    // Try to parse
+    try {
+      JSON.parse(jsonText);
+      return jsonText;
+    } catch {
+      // Try removing trailing incomplete elements
+      return this.tryRemoveTrailingIncomplete(jsonText);
+    }
+  }
+
+  /**
+   * Find the index of the last complete JSON value
+   */
+  private findLastCompleteJsonIndex(text: string): number {
+    // Look for patterns that indicate complete values
+    // Find last occurrence of }, ], ", or number followed by comma or closing bracket
+    let lastGoodIndex = -1;
+    let inString = false;
+    let escape = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        if (!inString) {
+          // End of string - potential good stopping point
+          lastGoodIndex = i + 1;
+        }
+        continue;
+      }
+
+      if (inString) continue;
+
+      // Good stopping points: after }, ], or numbers/booleans/null
+      if (char === '}' || char === ']') {
+        lastGoodIndex = i + 1;
+      } else if (char === ',') {
+        // After a comma is also good if we just finished a value
+        lastGoodIndex = i;
+      }
+    }
+
+    return lastGoodIndex;
+  }
+
+  /**
+   * Try to remove trailing incomplete elements to make valid JSON
+   */
+  private tryRemoveTrailingIncomplete(text: string): string | null {
+    // Try progressively removing characters from the end and re-parsing
+    let testText = text;
+
+    // Remove trailing incomplete array/object elements
+    for (let i = 0; i < 100; i++) {
+      // Remove trailing comma if present
+      testText = testText.replace(/,\s*$/, '');
+
+      try {
+        JSON.parse(testText);
+        return testText;
+      } catch {
+        // Try removing the last element
+        // Remove from last comma or opening bracket
+        const lastComma = testText.lastIndexOf(',');
+        const lastOpenBrace = testText.lastIndexOf('{');
+        const lastOpenBracket = testText.lastIndexOf('[');
+
+        if (lastComma > Math.max(lastOpenBrace, lastOpenBracket) && lastComma > 0) {
+          testText = testText.substring(0, lastComma) + testText.substring(testText.length).replace(/^[^}\]]*/, '');
+        } else {
+          break;
         }
       }
     }
