@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { FindingsGraphView, FINDING_TYPE_COLORS } from '../pdf/FindingsGraphView';
-import type { PaperIdeaGraph, ExtractedFinding } from '../../types/paperGraph';
+import type { ExtractedFinding } from '../../types/paperGraph';
 
 interface PaperIdeaGraphPanelProps {
   paperId: string;

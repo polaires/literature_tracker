@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState, useCallback, memo, useMemo } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
-import type { Core, ElementDefinition, Stylesheet, EventObject } from 'cytoscape';
+import type { Core, ElementDefinition, EventObject } from 'cytoscape';
 import type {
   ExtractedFinding,
   IntraPaperConnection,
@@ -13,11 +13,6 @@ import type {
 import {
   CheckCircle2,
   Sparkles,
-  FlaskConical,
-  AlertTriangle,
-  Lightbulb,
-  HelpCircle,
-  BookOpen,
   X,
 } from 'lucide-react';
 
@@ -87,7 +82,7 @@ interface TooltipData {
 // Stylesheet
 // =============================================================================
 
-function getStylesheet(compact: boolean): Stylesheet[] {
+function getStylesheet(compact: boolean) {
   const nodeSize = compact ? 28 : 36;
   const fontSize = compact ? 8 : 10;
   const edgeWidth = compact ? 1.5 : 2;
@@ -318,7 +313,6 @@ export const FindingsGraphView = memo(function FindingsGraphView({
       if (showTooltip && containerRef.current) {
         const finding = findings.find(f => f.id === nodeId);
         if (finding) {
-          const containerRect = containerRef.current.getBoundingClientRect();
           const renderedPos = e.target.renderedPosition();
           setTooltip({
             finding,

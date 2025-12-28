@@ -5,7 +5,6 @@ import fcose from 'cytoscape-fcose';
 import type { Core, ElementDefinition } from 'cytoscape';
 import type { Paper, Connection, ThesisRole, PaperCluster, ConnectionType, ReadingStatus, HybridLayoutConfig } from '../../types';
 import { DEFAULT_HYBRID_CONFIG } from '../../types';
-import type { FindingType, IntraPaperConnectionType, PaperIdeaGraph } from '../../types/paperGraph';
 import { FINDING_TYPE_COLORS, INTRA_CONNECTION_COLORS } from '../pdf/FindingsGraphView';
 import { generatePhantomEdges, generateAutoClusters, type PhantomEdge, type AutoCluster } from '../../utils/similarityEngine';
 import type { SemanticScholarPaper } from '../../services/api/semanticScholar';
@@ -375,7 +374,6 @@ export function GraphView({
 
   // Paper findings expansion (inline knowledge graph view)
   const [expandedPaperIds, setExpandedPaperIds] = useState<Set<string>>(new Set());
-  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
 
   // Knowledge graph panel (dedicated side panel for viewing paper findings)
   const [ideaGraphPanelPaperId, setIdeaGraphPanelPaperId] = useState<string | null>(null);
@@ -2337,9 +2335,12 @@ export function GraphView({
           return;
         }
 
-        // If it's a finding node, show details (don't propagate)
+        // If it's a finding node, open the paper panel (don't propagate)
         if (nodeData.isFinding) {
-          setSelectedFindingId(nodeId.replace('finding_', ''));
+          const parentPaperId = nodeData.parentPaperId;
+          if (parentPaperId) {
+            setIdeaGraphPanelPaperId(parentPaperId);
+          }
           event.stopPropagation();
           return;
         }
