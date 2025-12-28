@@ -18,7 +18,10 @@ import type {
   ExtractedFinding,
   ExtractionStatus,
   ReviewStatus,
+  AIChatResult,
+  AIChatAction,
 } from '../types';
+import { createEmptyChatHistory } from '../types/paperGraph';
 import { CLUSTER_COLORS, DEFAULT_GRAPH_CUSTOMIZATION } from '../types';
 import type { AISettings, AITaskModelAssignment, ClaudeModelId } from '../services/ai/types';
 import { isUsingDefaultAPI } from '../services/ai/config';
@@ -166,6 +169,11 @@ interface AppStore {
   updateFinding: (graphId: string, findingId: string, updates: Partial<ExtractedFinding>) => void;
   deleteFinding: (graphId: string, findingId: string) => void;
   verifyFinding: (graphId: string, findingId: string, verified: boolean) => void;
+
+  // AI Chat History actions
+  saveChatResult: (paperId: string, action: AIChatAction, result: AIChatResult) => void;
+  getChatResult: (paperId: string, action: AIChatAction) => AIChatResult | null;
+  clearChatHistory: (paperId: string) => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -1193,6 +1201,81 @@ export const useAppStore = create<AppStore>()(
             }
 
             return { ...g, findings: updatedFindings, reviewStatus };
+          }),
+        }));
+      },
+
+      // AI Chat History actions
+      saveChatResult: (paperId, action, result) => {
+        set((state) => {
+          // Find the graph for this paper
+          const graphIndex = state.paperGraphs.findIndex((g) => g.paperId === paperId);
+
+          if (graphIndex === -1) {
+            // No graph exists yet - create one with just chat history
+            const newGraph: PaperIdeaGraph = {
+              id: `graph-${paperId}-${Date.now()}`,
+              paperId,
+              extractedAt: new Date().toISOString(),
+              extractionDepth: 'standard',
+              extractionStatus: 'pending',
+              findings: [],
+              intraPaperConnections: [],
+              dataTables: [],
+              paperType: 'research-article',
+              keyContributions: [],
+              limitations: [],
+              openQuestions: [],
+              potentialConnections: [],
+              reviewStatus: 'unreviewed',
+              tokensUsed: {
+                stage1: { input: 0, output: 0 },
+                stage2: { input: 0, output: 0 },
+                stage3: { input: 0, output: 0 },
+              },
+              chatHistory: {
+                ...createEmptyChatHistory(),
+                [action === 'key-findings' ? 'keyFindings' : action === 'thesis-relevance' ? 'thesisRelevance' : action]: result,
+                lastUpdated: new Date().toISOString(),
+              },
+            };
+            return { paperGraphs: [...state.paperGraphs, newGraph] };
+          }
+
+          // Update existing graph's chat history
+          const actionKey = action === 'key-findings' ? 'keyFindings' : action === 'thesis-relevance' ? 'thesisRelevance' : action;
+          return {
+            paperGraphs: state.paperGraphs.map((g, i) => {
+              if (i !== graphIndex) return g;
+              return {
+                ...g,
+                chatHistory: {
+                  ...(g.chatHistory || createEmptyChatHistory()),
+                  [actionKey]: result,
+                  lastUpdated: new Date().toISOString(),
+                },
+              };
+            }),
+          };
+        });
+      },
+
+      getChatResult: (paperId, action) => {
+        const graph = get().paperGraphs.find((g) => g.paperId === paperId);
+        if (!graph?.chatHistory) return null;
+
+        const actionKey = action === 'key-findings' ? 'keyFindings' : action === 'thesis-relevance' ? 'thesisRelevance' : action;
+        return graph.chatHistory[actionKey as keyof typeof graph.chatHistory] as AIChatResult | null;
+      },
+
+      clearChatHistory: (paperId) => {
+        set((state) => ({
+          paperGraphs: state.paperGraphs.map((g) => {
+            if (g.paperId !== paperId) return g;
+            return {
+              ...g,
+              chatHistory: createEmptyChatHistory(),
+            };
           }),
         }));
       },

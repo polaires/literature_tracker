@@ -29,7 +29,7 @@ import { UsageMeter } from './UsageMeter';
 import { FindingsGraphView } from './FindingsGraphView';
 import { usageTracker, useUsage, calculateUsageDisplay } from '../../services/usage';
 import type { PDFAIAction } from '../../services/ai/prompts/pdfSummary';
-import type { Thesis, Paper } from '../../types';
+import type { Thesis, Paper, AIChatResult, AIChatAction } from '../../types';
 import { extractPDFText, detectSections } from '../../services/pdf';
 import { pdfStorage } from '../../services/pdfStorage';
 import {
@@ -90,13 +90,6 @@ const ACTION_BUTTONS: ActionButton[] = [
   },
 ];
 
-interface AIResult {
-  id: string;
-  action: PDFAIAction;
-  content: string;
-  timestamp: string;
-}
-
 // Tab types for the panel
 type PanelTab = 'extraction' | 'chat' | 'findings';
 type FindingsViewMode = 'list' | 'graph';
@@ -110,6 +103,8 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   className = '',
 }: AIAssistantPanelProps) {
   const aiSettings = useAppStore((state) => state.aiSettings);
+  const saveChatResult = useAppStore((state) => state.saveChatResult);
+  const getChatResult = useAppStore((state) => state.getChatResult);
 
   // Use the proper React hook for usage tracking
   const usage = useUsage();
@@ -133,7 +128,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   // State
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<PDFAIAction | null>(null);
-  const [currentResult, setCurrentResult] = useState<AIResult | null>(null);
+  const [currentResult, setCurrentResult] = useState<AIChatResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pdfText, setPdfText] = useState<string | null>(null);
@@ -187,7 +182,19 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
   const existingGraph = getGraphForPaper(paper.id);
 
   // Handle AI action - defined before effects that use it
-  const handleAction = useCallback(async (action: PDFAIAction) => {
+  const handleAction = useCallback(async (action: PDFAIAction, forceRefresh = false) => {
+    // Map PDFAIAction to AIChatAction
+    const chatAction = action as AIChatAction;
+
+    // Check if we have a saved result (and not forcing refresh)
+    if (!forceRefresh) {
+      const savedResult = getChatResult(paper.id, chatAction);
+      if (savedResult) {
+        setCurrentResult(savedResult);
+        return;
+      }
+    }
+
     // Check if action requires thesis context
     if (action === 'thesis-relevance' && !thesis) {
       setError('This action requires a thesis context. Please add this paper to a thesis first.');
@@ -257,13 +264,19 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
         success: true,
       });
 
-      // Store result
-      setCurrentResult({
+      // Store result locally and persist to store
+      const chatResult: AIChatResult = {
         id: `result-${Date.now()}`,
-        action,
+        action: action as AIChatAction,
         content: result.text,
         timestamp: new Date().toISOString(),
-      });
+        tokensUsed: result.tokensUsed ? {
+          input: result.tokensUsed.input,
+          output: result.tokensUsed.output,
+        } : undefined,
+      };
+      setCurrentResult(chatResult);
+      saveChatResult(paper.id, action as AIChatAction, chatResult);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get AI response';
@@ -283,7 +296,7 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
       setIsLoading(false);
       setLoadingAction(null);
     }
-  }, [paper, thesis, pdfText, pdfSections, aiSettings]);
+  }, [paper, thesis, pdfText, pdfSections, aiSettings, getChatResult, saveChatResult]);
 
   // Extract PDF text on mount
   useEffect(() => {

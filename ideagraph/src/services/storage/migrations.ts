@@ -7,7 +7,7 @@ import type { AISettings } from '../ai/types';
 // Version Management
 // =============================================================================
 
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 export const VERSION_KEY = 'ideagraph_version';
 export const STORAGE_KEY = 'ideagraph-storage';
 
@@ -196,11 +196,45 @@ const migration3: Migration = {
   },
 };
 
+/**
+ * Migration 4: Add AI Chat History to Paper IdeaGraphs
+ * - Adds chatHistory field to all existing paperGraphs
+ * - Enables persisting AI assistant results (summarize, key-findings, etc.)
+ */
+const migration4: Migration = {
+  version: 4,
+  name: 'add-paper-chat-history',
+  description: 'Add AI chat history to Paper IdeaGraphs for persisting AI assistant results',
+  migrate: (data: unknown) => {
+    const state = data as Record<string, unknown>;
+    const paperGraphs = (state.paperGraphs as Array<Record<string, unknown>>) || [];
+
+    // Add chatHistory to all existing paperGraphs
+    const migratedPaperGraphs = paperGraphs.map((graph) => ({
+      ...graph,
+      chatHistory: graph.chatHistory || {
+        summarize: null,
+        keyFindings: null,
+        thesisRelevance: null,
+        methodology: null,
+        takeaway: null,
+        lastUpdated: new Date().toISOString(),
+      },
+    }));
+
+    return {
+      ...state,
+      paperGraphs: migratedPaperGraphs,
+    };
+  },
+};
+
 // All migrations in order
 const MIGRATIONS: Migration[] = [
   migration1,
   migration2,
   migration3,
+  migration4,
 ];
 
 // =============================================================================

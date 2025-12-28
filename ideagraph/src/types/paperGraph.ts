@@ -4,6 +4,32 @@
 // ============================================
 
 // ============================================
+// AI CHAT RESULT (for persisting AI assistant results)
+// ============================================
+
+export type AIChatAction = 'summarize' | 'key-findings' | 'thesis-relevance' | 'methodology' | 'takeaway';
+
+export interface AIChatResult {
+  id: string;
+  action: AIChatAction;
+  content: string;
+  timestamp: string;               // ISO date
+  tokensUsed?: {
+    input: number;
+    output: number;
+  };
+}
+
+export interface PaperChatHistory {
+  summarize: AIChatResult | null;
+  keyFindings: AIChatResult | null;
+  thesisRelevance: AIChatResult | null;
+  methodology: AIChatResult | null;
+  takeaway: AIChatResult | null;
+  lastUpdated: string;             // ISO date
+}
+
+// ============================================
 // PAPER TYPE CLASSIFICATION
 // ============================================
 
@@ -285,6 +311,9 @@ export interface PaperIdeaGraph {
     stage2: { input: number; output: number };
     stage3: { input: number; output: number };
   };
+
+  // AI chat history (persisted results from AI Assistant)
+  chatHistory?: PaperChatHistory;
 }
 
 // ============================================
@@ -353,6 +382,25 @@ export function createEmptyPaperIdeaGraph(paperId: string): PaperIdeaGraph {
       stage2: { input: 0, output: 0 },
       stage3: { input: 0, output: 0 },
     },
+    chatHistory: {
+      summarize: null,
+      keyFindings: null,
+      thesisRelevance: null,
+      methodology: null,
+      takeaway: null,
+      lastUpdated: now,
+    },
+  };
+}
+
+export function createEmptyChatHistory(): PaperChatHistory {
+  return {
+    summarize: null,
+    keyFindings: null,
+    thesisRelevance: null,
+    methodology: null,
+    takeaway: null,
+    lastUpdated: new Date().toISOString(),
   };
 }
 
