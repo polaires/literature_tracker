@@ -156,8 +156,8 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeRef.current) return;
       // Calculate new width (dragging left increases width since panel is on right)
-      const delta = resizeRef.current.startX - e.clientX;
-      const newWidth = Math.min(Math.max(resizeRef.current.startWidth + delta, 280), 600);
+      const delta = e.clientX - resizeRef.current.startX;
+      const newWidth = Math.min(Math.max(resizeRef.current.startWidth - delta, 280), 600);
       setPanelWidth(newWidth);
     };
 
