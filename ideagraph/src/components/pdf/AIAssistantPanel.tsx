@@ -154,11 +154,10 @@ export const AIAssistantPanel = memo(function AIAssistantPanel({
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeRef.current) return;
-      // Calculate new width (dragging left increases width since panel is on right)
-      const delta = e.clientX - resizeRef.current.startX;
-      const newWidth = Math.min(Math.max(resizeRef.current.startWidth - delta, 280), 600);
-      setPanelWidth(newWidth);
+      // Width = distance from mouse to right edge of viewport
+      // This makes the left edge follow the cursor directly
+      const newWidth = window.innerWidth - e.clientX;
+      setPanelWidth(Math.min(Math.max(newWidth, 280), 600));
     };
 
     const handleMouseUp = () => {
